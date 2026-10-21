@@ -1,2 +1,9 @@
-# Google App Engine generated folder
-appengine-generated/
+node_modules/
+.next/
+out/
+.env
+.env*.local
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+coverage/

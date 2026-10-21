@@ -9,3 +9,6 @@ next-env.d.ts
 coverage/
 out-static/
 .static-build/
+
+# Graphe de connaissances graphify (reconstruit à chaque session)
+graphify-out/

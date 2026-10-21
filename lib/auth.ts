@@ -2,7 +2,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { createClient } from "./supabase/server";
 import { adminClient } from "./supabase/admin";
-import { supabaseConfigured } from "./config";
+import { serverConfigured } from "./config";
 
 export type Profile = {
   id: string;
@@ -15,7 +15,8 @@ export type Profile = {
 };
 
 export async function getUser() {
-  if (!supabaseConfigured()) return null;
+  // Sans la clé serveur, aucune session n'est exploitable : on traite le visiteur comme déconnecté.
+  if (!serverConfigured()) return null;
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
   return data.user ?? null;
@@ -32,7 +33,7 @@ export async function getProfile(): Promise<Profile | null> {
 }
 
 export async function requireProfile(next = "/espace"): Promise<Profile> {
-  if (!supabaseConfigured()) redirect("/configuration");
+  if (!serverConfigured()) redirect("/configuration");
   const profile = await getProfile();
   if (!profile) redirect(`/connexion?next=${encodeURIComponent(next)}`);
   if (profile.suspended) redirect("/compte-suspendu");

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { AuthShell } from "@/components/AuthShell";
 import { getProfile } from "@/lib/auth";
-import { supabaseConfigured } from "@/lib/config";
+import { serverConfigured } from "@/lib/config";
 import { AcceptInvite } from "./AcceptInvite";
 
 export const metadata = { title: "Invitation" };
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Page({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  if (!supabaseConfigured()) redirect("/configuration");
+  if (!serverConfigured()) redirect("/configuration");
   const profile = await getProfile();
   if (!profile) redirect(`/inscription?next=/invitation/${encodeURIComponent(token)}`);
   return (

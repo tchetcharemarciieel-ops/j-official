@@ -22,8 +22,8 @@ export default function Page() {
   return (
     <AuthShell title="Configuration de la plateforme" subtitle="État des services nécessaires au fonctionnement de MiniSoft RCA.">
       <ul className="space-y-4 text-sm">
-        <Row ok={supabaseConfigured()} label="Base de données et comptes (Supabase)" help="Ajoutez NEXT_PUBLIC_SUPABASE_URL et NEXT_PUBLIC_SUPABASE_ANON_KEY dans les variables d'environnement Vercel." />
-        <Row ok={serverConfigured()} label="Accès serveur sécurisé" help="Ajoutez SUPABASE_SERVICE_ROLE_KEY (variable serveur, jamais préfixée NEXT_PUBLIC_)." />
+        <Row ok={supabaseConfigured()} label="Base de données et comptes (Supabase)" help="Ajoutez NEXT_PUBLIC_SUPABASE_URL et NEXT_PUBLIC_SUPABASE_ANON_KEY dans les variables d'environnement de l'hébergeur (Render)." />
+        <Row ok={serverConfigured()} label="Accès serveur sécurisé" help="Ajoutez SUPABASE_SERVICE_ROLE_KEY dans Render › Environment (clé « secret » de Supabase, commence par sb_secret_)." />
         <Row ok={aiAvailable()} label="Fournisseur IA (facultatif)" help="Sans ANTHROPIC_API_KEY, l'analyse se fait par règles et la plateforme l'indique clairement." />
         <Row ok={false} label="Paiement en ligne" help="Aucun prestataire de paiement n'est branché : aucune facturation n'est possible." />
       </ul>

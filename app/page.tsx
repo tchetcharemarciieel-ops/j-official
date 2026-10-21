@@ -1,53 +1,78 @@
 import { siteHref, STATIC_SITE } from "@/lib/site-mode";
 import Link from "next/link";
+import { ArrowRight, BarChart3, Check, FileText, LifeBuoy, Settings, ShieldCheck, Users } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { HeroPrompt } from "@/components/HeroPrompt";
-import { BuildDemo } from "@/components/BuildDemo";
 import { Reveal } from "@/components/Reveal";
-import { TEMPLATES } from "@/lib/templates";
-import { SECTORS } from "@/lib/generator";
+import { SECTOR_PAGES } from "@/lib/marketing";
+import { getModule } from "@/lib/modules";
 import { getPlans, xaf } from "@/lib/plans";
 import { CREDIT_COSTS, SITE_URL } from "@/lib/config";
 import { LeadForm } from "@/components/LeadForm";
-import { ScrollStory } from "@/components/story/ScrollStory";
 
 export const dynamic = "force-dynamic";
 
+const PROBLEMS = [
+  { title: "Des cahiers qui se perdent", text: "Ventes, commandes et dettes notées à la main, difficiles à retrouver et faciles à perdre." },
+  { title: "Des ruptures de stock imprévues", text: "Vous découvrez qu'un produit manque au moment où le client le demande." },
+  { title: "Un chiffre d'affaires inconnu", text: "Pour connaître les recettes du mois, il faut tout recompter à la main." },
+  { title: "Des clients qui doivent de l'argent", text: "Les crédits accordés ne sont pas suivis et les relances sont oubliées." },
+  { title: "Une équipe difficile à suivre", text: "Vos employés vous appellent pour savoir où en est une commande ou un dossier." },
+  { title: "Des logiciels inadaptés", text: "Les logiciels du marché sont chers, en anglais ou trop compliqués pour votre activité." },
+];
+
 const STEPS = [
-  { n: "1", title: "Décrivez votre besoin", text: "En français, à l'écrit ou à la voix. Joignez si besoin un fichier Excel/CSV ou une photo de votre cahier.", icon: "💬" },
-  { n: "2", title: "L'IA construit votre solution", text: "Diagnostic, cahier des charges modifiable, tables, formulaires, tableau de bord et tests automatiques.", icon: "⚙️" },
-  { n: "3", title: "Utilisez et partagez votre logiciel", text: "Testez l'aperçu, publiez, puis partagez le lien avec vos employés autorisés.", icon: "🚀" },
+  { title: "Décrivez votre besoin", text: "Expliquez votre activité et votre problème en quelques phrases, à l'écrit ou à la voix. Vous pouvez joindre un fichier Excel." },
+  { title: "Validez le plan proposé", text: "MiniSoft RCA propose les écrans, les champs et le tableau de bord. Vous gardez ou retirez chaque fonctionnalité." },
+  { title: "Testez votre logiciel", text: "Le logiciel est créé avec des exemples de données et vérifié par des tests automatiques. Vous l'essayez avant de le publier." },
+  { title: "Utilisez-le avec votre équipe", text: "Publiez-le sur un lien permanent et invitez vos employés, chacun avec ses droits." },
 ];
 
 const FEATURES = [
-  { icon: "🩺", title: "Diagnostic intelligent", text: "Problème principal, tâches manuelles, données à conserver, utilisateurs, automatisations et limites — avant toute génération." },
-  { icon: "🧩", title: "Composants validés", text: "Chaque logiciel est assemblé à partir de composants testés : pas de code arbitraire exécuté, donc fiable et sûr." },
-  { icon: "🗣️", title: "Modifications par conversation", text: "« Ajoute un champ téléphone », « Change les couleurs en vert » : aperçu avant/après, puis application." },
-  { icon: "🧪", title: "Tests automatiques", text: "Formulaires, calculs, permissions, base de données et isolation entre clients vérifiés avant publication." },
-  { icon: "🔗", title: "Lien permanent", text: "Votre logiciel publié sur une adresse unique, ouverte dans Chrome sur téléphone et ordinateur." },
-  { icon: "👥", title: "Équipe et rôles", text: "Propriétaire, administrateur, gestionnaire, employé, lecteur : droits vérifiés côté serveur." },
-  { icon: "🕓", title: "Versions et sauvegardes", text: "Historique, comparaison, restauration de la structure, sauvegardes de vos données." },
-  { icon: "📈", title: "Assistant de données", text: "« Combien ai-je vendu cette semaine ? » : réponses calculées sur vos données, sans chiffre inventé." },
+  { icon: BarChart3, title: "Tableau de bord", text: "Ventes, dépenses et totaux du mois en FCFA, calculés automatiquement à partir de vos données." },
+  { icon: Users, title: "Équipe et rôles", text: "Propriétaire, gestionnaire, employé, lecteur : chacun ne voit et ne modifie que ce qui le concerne." },
+  { icon: FileText, title: "Fiches et exports", text: "Clients, produits, commandes ou factures, avec recherche, filtres et export Excel ou PDF." },
+  { icon: Settings, title: "Modifications simples", text: "Ajoutez un champ ou changez les couleurs en le demandant. Chaque version est enregistrée." },
+  { icon: ShieldCheck, title: "Données protégées", text: "Les données de chaque entreprise sont séparées. Chaque action est vérifiée selon le rôle de l'utilisateur." },
+  { icon: LifeBuoy, title: "Accompagnement", text: "Nous vous aidons à importer vos fichiers et à prendre en main votre logiciel." },
+];
+
+const BENEFITS = [
+  { title: "Du temps gagné chaque jour", text: "Plus besoin de recopier ni de recompter : les totaux sont calculés pour vous." },
+  { title: "Moins d'erreurs et de pertes", text: "Chaque vente, dépense et paiement est enregistré et retrouvé en quelques secondes." },
+  { title: "De meilleures décisions", text: "Vous savez ce qui se vend, ce qui manque et combien vous gagnez." },
+  { title: "Un prix adapté", text: "Une formule gratuite pour commencer, puis des prix mensuels en FCFA." },
+  { title: "Sur téléphone et ordinateur", text: "Votre logiciel s'ouvre dans le navigateur, sans installation." },
+  { title: "En français, pour votre métier", text: "Les écrans et les mots correspondent à votre activité, pas à un logiciel générique." },
 ];
 
 const FAQ = [
-  { q: "Comment créer mon mini-logiciel ?", a: "Cliquez sur « Créer mon logiciel », décrivez votre problème et répondez aux quelques questions posées. Vous validez ensuite le plan proposé (fonctionnalités à garder ou retirer), puis le logiciel est généré et testé. Vous pouvez aussi partir d'un modèle." },
-  { q: "Dois-je savoir programmer ?", a: "Non. Tout se fait en français, par formulaires et par conversation. Le logiciel est assemblé à partir de composants déjà testés." },
-  { q: "Puis-je utiliser mon logiciel dans Chrome ?", a: "Oui. Un logiciel publié s'ouvre depuis son lien dans Chrome (et les autres navigateurs récents), sur ordinateur, tablette et téléphone. Il peut aussi être ajouté à l'écran d'accueil." },
-  { q: "Puis-je partager mon lien ?", a: "Oui, avec les personnes que vous invitez. Le lien est permanent, mais l'accès aux données exige que la personne soit connectée et invitée dans votre logiciel avec un rôle." },
-  { q: "Puis-je modifier mon logiciel après sa création ?", a: "Oui, par l'assistant intégré ou par les paramètres (couleurs, logo, textes). Chaque modification crée une nouvelle version testée ; vos données existantes sont conservées et vous pouvez revenir à une version précédente." },
-  { q: "Mes données sont-elles privées ?", a: "Oui. Chaque logiciel a ses propres données, séparées par des règles d'accès dans la base. Chaque action est vérifiée côté serveur selon votre rôle : changer une adresse web ne donne jamais accès aux données d'un autre client." },
-  { q: "Puis-je utiliser mon logiciel sur téléphone ?", a: "Oui, l'interface s'adapte aux petits écrans. Sans connexion Internet, les nouvelles fiches saisies sont gardées temporairement sur l'appareil et envoyées au retour du réseau ; la consultation et les fonctions IA nécessitent Internet." },
-  { q: "Combien coûte la création ?", a: `La formule Découverte est gratuite (crédits limités, sans publication). Une analyse IA coûte ${CREDIT_COSTS.diagnose} crédits et une modification IA ${CREDIT_COSTS.modify} crédits. Les formules payantes sont affichées ci-dessus en FCFA.` },
-  { q: "Puis-je annuler mon abonnement ?", a: "Le paiement en ligne n'est pas encore activé : aucun prélèvement n'est effectué. Le passage à une formule payante se fait aujourd'hui avec l'équipe MiniSoft RCA, et peut être arrêté à tout moment." },
-  { q: "Que se passe-t-il si la génération échoue ?", a: "Les crédits réservés sont intégralement remboursés, l'erreur est affichée avec une explication, et le projet passe au statut « Échec nécessitant une correction ». Les tests proposent des corrections automatiques quand c'est possible." },
+  { q: "Comment créer mon logiciel ?", a: "Cliquez sur « Créer mon logiciel », décrivez votre besoin et répondez à quelques questions. Vous validez ensuite le plan proposé, puis le logiciel est créé et testé. Vous pouvez aussi partir d'un modèle." },
+  { q: "Dois-je savoir programmer ?", a: "Non. Tout se fait en français, avec des formulaires simples. Le logiciel est assemblé à partir de composants déjà testés." },
+  { q: "Puis-je utiliser mon logiciel sur téléphone ?", a: "Oui. Votre logiciel s'ouvre dans Chrome ou tout navigateur récent, sur téléphone, tablette et ordinateur. Sans connexion, les nouvelles fiches sont gardées sur l'appareil puis envoyées au retour du réseau." },
+  { q: "Qui peut accéder à mes données ?", a: "Seules les personnes que vous invitez, avec le rôle que vous choisissez. Les données de chaque entreprise sont séparées et chaque action est vérifiée sur le serveur." },
+  { q: "Puis-je modifier mon logiciel après sa création ?", a: "Oui, par l'assistant intégré ou dans les paramètres (couleurs, logo, textes). Chaque modification crée une nouvelle version testée. Vos données sont conservées et vous pouvez revenir à une version précédente." },
+  { q: "Puis-je importer mes fichiers Excel ?", a: "Oui. Vous pouvez importer un fichier Excel ou CSV : les colonnes sont associées aux champs de votre logiciel et les lignes en erreur vous sont signalées." },
+  { q: "Combien coûte la création ?", a: `La formule Découverte est gratuite, avec des crédits limités et sans publication. Une analyse coûte ${CREDIT_COSTS.diagnose} crédits et une modification ${CREDIT_COSTS.modify} crédits. Les formules payantes sont affichées en FCFA dans la section Tarifs.` },
+  { q: "Comment se passe le paiement ?", a: "Le paiement en ligne n'est pas encore disponible : aucun prélèvement n'est effectué. Le passage à une formule payante se fait avec l'équipe MiniSoft RCA et peut être arrêté à tout moment." },
+  { q: "Que se passe-t-il si la création échoue ?", a: "Les crédits réservés sont remboursés, l'erreur est expliquée et des corrections automatiques sont proposées lorsque c'est possible." },
 ];
+
+function SectionTitle({ eyebrow, title, text, center = true }: { eyebrow?: string; title: string; text?: string; center?: boolean }) {
+  return (
+    <Reveal className={center ? "mx-auto max-w-2xl text-center" : "max-w-2xl"}>
+      {eyebrow && <p className="text-sm font-semibold text-blue-600">{eyebrow}</p>}
+      <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">{title}</h2>
+      {text && <p className="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg">{text}</p>}
+    </Reveal>
+  );
+}
 
 export default async function Home() {
   const plans = await getPlans();
   return (
-    <div className="bg-aurora">
+    <div className="bg-white">
       <script
         type="application/ld+json"
         // Données structurées : logiciel + questions fréquentes (affichage enrichi dans Google)
@@ -75,124 +100,76 @@ export default async function Home() {
       <SiteHeader />
       <main id="contenu">
         {/* Section principale */}
-        <section className="relative overflow-hidden px-4 pb-20 pt-16 sm:px-6 sm:pt-24">
-          <div className="pointer-events-none absolute left-1/2 top-24 -z-0 h-72 w-72 -translate-x-1/2 rounded-full bg-brand-500/30 blur-3xl animate-pulse-glow" />
-          <div className="relative mx-auto max-w-5xl text-center">
+        <section className="border-b border-slate-200 px-4 pb-16 pt-14 sm:px-6 sm:pb-24 sm:pt-20">
+          <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[1.1fr_1fr]">
             <Reveal>
-              <p className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs text-slate-300">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Restaurants, garages, pharmacies, écoles, hôtels, PME…
+              <p className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-700">
+                Restaurants, pharmacies, garages, commerces, écoles
               </p>
-              <h1 className="font-display text-4xl font-bold leading-tight tracking-tight sm:text-6xl">
-                <span className="text-gradient">Votre problème mérite son propre logiciel.</span>
-              </h1>
-              <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-300">Décrivez votre problème. Notre IA conçoit un mini-logiciel adapté à votre entreprise, sans que vous ayez besoin de programmer.</p>
-            </Reveal>
-            <Reveal delay={150}>
-              <HeroPrompt />
-              <ul className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-slate-300" aria-label="Points clés">
-                {["Gratuit pour commencer", "Sans carte bancaire", "En français", "Montants en FCFA", "Téléphone et ordinateur"].map((t) => (
-                  <li key={t} className="flex items-center gap-1.5"><span className="text-emerald-400">✓</span>{t}</li>
+              <h1 className="mt-6 text-4xl font-bold leading-tight tracking-tight text-slate-900 sm:text-5xl lg:text-[3.4rem]">Des logiciels simples pour développer votre entreprise</h1>
+              <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-600">Décrivez vos besoins et obtenez un mini-logiciel adapté à votre activité. En français, avec vos montants en FCFA.</p>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Link href={siteHref("/creer")} className="btn btn-primary px-6 text-base">
+                  Créer mon logiciel
+                </Link>
+                <Link href="/#solutions" className="btn btn-ghost px-6 text-base">
+                  Découvrir nos solutions
+                </Link>
+              </div>
+              <ul className="mt-8 grid gap-2 text-sm text-slate-600 sm:grid-cols-2" aria-label="Points clés">
+                {["Gratuit pour commencer", "Sans installation", "Sur téléphone et ordinateur", "Données séparées par entreprise"].map((t) => (
+                  <li key={t} className="flex items-center gap-2">
+                    <Check className="h-4 w-4 shrink-0 text-green-600" aria-hidden />
+                    {t}
+                  </li>
                 ))}
               </ul>
             </Reveal>
-          </div>
-        </section>
-
-        {/* Histoire animée au défilement */}
-        <div id="video" className="scroll-mt-16">
-          <ScrollStory />
-        </div>
-
-        {/* Avant / après */}
-        <section className="px-4 py-16 sm:px-6">
-          <div className="mx-auto max-w-6xl">
-            <Reveal className="text-center">
-              <h2 className="font-display text-3xl font-bold sm:text-4xl">Du cahier au logiciel</h2>
-              <p className="mx-auto mt-3 max-w-2xl text-slate-400">Ce qui change dans votre journée, concrètement.</p>
-            </Reveal>
-            <div className="mt-10 grid gap-4 md:grid-cols-2">
-              <Reveal className="rounded-2xl border border-red-400/20 bg-red-500/5 p-6">
-                <h3 className="font-semibold text-red-200">Aujourd&apos;hui</h3>
-                <ul className="mt-4 space-y-3 text-slate-300">
-                  {["Les commandes et les ventes sont notées sur un cahier qui se perd ou s'abîme.", "Vous découvrez une rupture de stock quand le client est devant vous.", "Pour connaître le chiffre du mois, il faut tout recompter à la main.", "Vos employés vous appellent pour savoir où en est un dossier.", "Les logiciels du marché sont chers, en anglais ou trop compliqués."].map((t) => <li key={t} className="flex gap-2"><span className="text-red-300">✗</span>{t}</li>)}
-                </ul>
-              </Reveal>
-              <Reveal delay={100} className="rounded-2xl border border-emerald-400/20 bg-emerald-500/5 p-6">
-                <h3 className="font-semibold text-emerald-200">Avec MiniSoft RCA</h3>
-                <ul className="mt-4 space-y-3 text-slate-300">
-                  {["Chaque fiche est enregistrée en ligne, retrouvable en une recherche.", "Les produits sous le seuil apparaissent sur le tableau de bord.", "Les totaux du mois en FCFA sont calculés automatiquement.", "Chaque employé consulte ce dont il a besoin, avec des droits limités.", "Un logiciel en français, fait pour votre métier, modifiable en le demandant."].map((t) => <li key={t} className="flex gap-2"><span className="text-emerald-300">✓</span>{t}</li>)}
-                </ul>
-              </Reveal>
-            </div>
-          </div>
-        </section>
-
-        {/* Étapes + illustration */}
-        <section id="comment" className="scroll-mt-20 px-4 py-20 sm:px-6">
-          <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-2">
-            <div>
-              <Reveal>
-                <h2 className="font-display text-3xl font-bold sm:text-4xl">Comment ça marche</h2>
-                <p className="mt-3 text-slate-400">Trois étapes, du problème au logiciel en ligne.</p>
-              </Reveal>
-              <ol className="mt-8 space-y-4">
-                {STEPS.map((s, i) => (
-                  <Reveal as="li" key={s.n} delay={i * 120} className="glass flex gap-4 rounded-2xl p-5 transition hover:border-brand-400/40">
-                    <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand-500/40 to-sky-glow/30 text-xl">{s.icon}</span>
-                    <div>
-                      <h3 className="font-semibold text-white">
-                        {s.n}. {s.title}
-                      </h3>
-                      <p className="mt-1 text-sm text-slate-400">{s.text}</p>
-                    </div>
-                  </Reveal>
-                ))}
-              </ol>
-            </div>
-            <Reveal delay={200}>
-              <BuildDemo />
+            <Reveal delay={100}>
+              <ScreenPreview />
             </Reveal>
           </div>
         </section>
 
-        {/* Fonctionnalités */}
+        {/* Problèmes résolus */}
         <section className="px-4 py-20 sm:px-6">
           <div className="mx-auto max-w-7xl">
-            <Reveal className="text-center">
-              <h2 className="font-display text-3xl font-bold sm:text-4xl">Une vraie plateforme, pas une maquette</h2>
-              <p className="mx-auto mt-3 max-w-2xl text-slate-400">Chaque bouton a une action réelle. Chaque logiciel a sa base de données, ses permissions et son lien.</p>
-            </Reveal>
-            <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {FEATURES.map((f, i) => (
-                <Reveal key={f.title} delay={(i % 4) * 80} className="glass group rounded-2xl p-5 transition duration-300 hover:-translate-y-1 hover:border-brand-400/40">
-                  <div className="text-2xl transition group-hover:scale-110">{f.icon}</div>
-                  <h3 className="mt-3 font-semibold text-white">{f.title}</h3>
-                  <p className="mt-1 text-sm text-slate-400">{f.text}</p>
+            <SectionTitle eyebrow="Les problèmes que nous résolvons" title="Votre gestion quotidienne, enfin simplifiée" text="Ces situations vous sont familières ? Un logiciel adapté à votre activité les règle au quotidien." />
+            <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {PROBLEMS.map((p, i) => (
+                <Reveal key={p.title} delay={(i % 3) * 60} className="rounded-xl border border-slate-200 bg-white p-6">
+                  <h3 className="font-semibold text-slate-900">{p.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600">{p.text}</p>
                 </Reveal>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Exemples */}
-        <section id="exemples" className="scroll-mt-20 px-4 py-20 sm:px-6">
+        {/* Solutions */}
+        <section id="solutions" className="scroll-mt-20 bg-slate-100 px-4 py-20 sm:px-6">
           <div className="mx-auto max-w-7xl">
-            <Reveal className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
-              <div>
-                <h2 className="font-display text-3xl font-bold sm:text-4xl">Un logiciel pour votre métier</h2>
-                <p className="mt-3 text-slate-400">Choisissez votre secteur pour voir ce que votre logiciel contiendra.</p>
-              </div>
-              <Link href="/modeles" className="btn btn-ghost">
-                Voir tous les modèles →
+            <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
+              <SectionTitle center={false} eyebrow="Nos solutions" title="Un logiciel pour chaque métier" text="Partez d'un modèle prêt à l'emploi, puis adaptez-le à votre entreprise." />
+              <Link href="/modeles" className="btn btn-ghost shrink-0">
+                Voir tous les modèles
               </Link>
-            </Reveal>
-            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-              {TEMPLATES.map((t, i) => (
-                <Reveal key={t.id} delay={(i % 5) * 60}>
-                  <Link href={`/secteurs/${t.id}`} className="glass block h-full rounded-2xl p-4 transition hover:-translate-y-1 hover:border-brand-400/40">
-                    <span className="text-2xl">{SECTORS[t.sector]?.icon}</span>
-                    <h3 className="mt-2 text-sm font-semibold text-white">{t.name}</h3>
-                    <p className="mt-1 text-xs text-slate-400">{t.description}</p>
+            </div>
+            <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {SECTOR_PAGES.map((s, i) => (
+                <Reveal key={s.slug} delay={(i % 3) * 60}>
+                  <Link href={`/secteurs/${s.slug}`} className="group flex h-full flex-col rounded-xl border border-slate-200 bg-white p-6 transition-colors hover:border-blue-300">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{s.template.category}</p>
+                    <h3 className="mt-2 text-lg font-semibold text-slate-900">{s.template.name}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-600">{s.template.description}</p>
+                    <ul className="mt-4 flex flex-wrap gap-1.5">
+                      {s.template.modules.map((m) => (
+                        <li key={m} className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{getModule(m)?.title ?? m}</li>
+                      ))}
+                    </ul>
+                    <span className="mt-auto inline-flex items-center gap-1 pt-5 text-sm font-semibold text-blue-600">
+                      Découvrir <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+                    </span>
                   </Link>
                 </Reveal>
               ))}
@@ -200,53 +177,91 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* Sécurité */}
-        <section className="px-4 py-16 sm:px-6">
-          <div className="mx-auto max-w-6xl">
-            <Reveal className="text-center">
-              <h2 className="font-display text-3xl font-bold sm:text-4xl">Vos données restent les vôtres</h2>
+        {/* Étapes */}
+        <section id="comment" className="scroll-mt-20 px-4 py-20 sm:px-6">
+          <div className="mx-auto max-w-7xl">
+            <SectionTitle eyebrow="Comment ça marche" title="Votre logiciel en quatre étapes" text="Du besoin au logiciel en ligne, sans connaissances techniques." />
+            <ol className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {STEPS.map((s, i) => (
+                <Reveal as="li" key={s.title} delay={i * 60} className="rounded-xl border border-slate-200 bg-white p-6">
+                  <span className="grid h-9 w-9 place-items-center rounded-full bg-blue-600 text-sm font-bold text-white">{i + 1}</span>
+                  <h3 className="mt-4 font-semibold text-slate-900">{s.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600">{s.text}</p>
+                </Reveal>
+              ))}
+            </ol>
+            <Reveal className="mt-10 text-center">
+              <Link href="/demo" className="inline-flex items-center gap-1 text-sm font-semibold text-blue-600 hover:text-blue-700">
+                Essayer la démonstration sans créer de compte <ArrowRight className="h-4 w-4" aria-hidden />
+              </Link>
             </Reveal>
-            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                ["🔒", "Séparées par entreprise", "Chaque logiciel a ses propres données. Un autre client ne peut pas les voir, même en modifiant une adresse web."],
-                ["👤", "Accès sur invitation", "Seules les personnes que vous invitez accèdent à votre logiciel, avec le rôle que vous choisissez."],
-                ["💾", "Sauvegardes", "Une sauvegarde est faite avant chaque changement important, et vous pouvez en créer à tout moment."],
-                ["📤", "Export libre", "Exportez vos fiches en Excel (CSV) ou en PDF quand vous voulez."],
-              ].map(([icon, title, text], i) => (
-                <Reveal key={title} delay={i * 80} className="glass rounded-2xl p-5">
-                  <p className="text-2xl">{icon}</p>
-                  <h3 className="mt-2 font-semibold text-white">{title}</h3>
-                  <p className="mt-1 text-sm text-slate-400">{text}</p>
+          </div>
+        </section>
+
+        {/* Fonctionnalités */}
+        <section id="fonctionnalites" className="scroll-mt-20 bg-slate-100 px-4 py-20 sm:px-6">
+          <div className="mx-auto max-w-7xl">
+            <SectionTitle eyebrow="Fonctionnalités" title="Tout ce qu'il faut pour bien gérer" text="Chaque logiciel dispose de sa base de données, de ses utilisateurs et de son lien permanent." />
+            <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {FEATURES.map((f, i) => (
+                <Reveal key={f.title} delay={(i % 3) * 60} className="rounded-xl border border-slate-200 bg-white p-6">
+                  <span className="grid h-10 w-10 place-items-center rounded-lg bg-blue-50 text-blue-600">
+                    <f.icon className="h-5 w-5" aria-hidden />
+                  </span>
+                  <h3 className="mt-4 font-semibold text-slate-900">{f.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600">{f.text}</p>
                 </Reveal>
               ))}
             </div>
           </div>
         </section>
 
+        {/* Avantages */}
+        <section className="px-4 py-20 sm:px-6">
+          <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1fr_1.4fr] lg:items-start">
+            <SectionTitle center={false} eyebrow="Avantages" title="Pourquoi les entreprises choisissent MiniSoft RCA" text="Un outil pensé pour les réalités des entreprises de Centrafrique et d'Afrique : simple, abordable et accessible partout." />
+            <ul className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
+              {BENEFITS.map((b, i) => (
+                <Reveal as="li" key={b.title} delay={(i % 2) * 60} className="flex gap-3">
+                  <Check className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" aria-hidden />
+                  <div>
+                    <h3 className="font-semibold text-slate-900">{b.title}</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-slate-600">{b.text}</p>
+                  </div>
+                </Reveal>
+              ))}
+            </ul>
+          </div>
+        </section>
+
         {/* Tarifs */}
-        <section id="tarifs" className="scroll-mt-20 px-4 py-20 sm:px-6">
+        <section id="tarifs" className="scroll-mt-20 bg-slate-100 px-4 py-20 sm:px-6">
           <div className="mx-auto max-w-7xl">
-            <Reveal className="text-center">
-              <h2 className="font-display text-3xl font-bold sm:text-4xl">Tarifs</h2>
-              {STATIC_SITE && <p className="mx-auto mt-3 max-w-2xl rounded-xl border border-sky-400/30 bg-sky-400/10 px-4 py-2 text-sm text-sky-100">Les comptes et les formules ouvriront avec la version complète. En attendant, la démo est gratuite et sans inscription.</p>}
-              <p className="mx-auto mt-3 max-w-2xl text-slate-400">Prix mensuels en FCFA (XAF). Les crédits servent aux opérations IA ; une opération IA échouée est remboursée.</p>
-            </Reveal>
+            <SectionTitle eyebrow="Tarifs" title="Des formules claires, en FCFA" text="Prix mensuels en francs CFA. Les crédits servent à l'analyse et aux modifications ; une opération échouée est remboursée." />
+            {STATIC_SITE && <p className="mx-auto mt-6 max-w-2xl rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-center text-sm text-blue-800">Les comptes et les formules ouvriront avec la version complète. En attendant, la démonstration est gratuite et sans inscription.</p>}
             <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               {plans.map((p, i) => (
-                <Reveal key={p.id} delay={i * 80} className={`glass flex flex-col rounded-2xl p-6 ${p.id === "pro" ? "glow-ring" : ""}`}>
-                  {p.id === "pro" && <span className="mb-3 self-start rounded-full bg-brand-500/30 px-3 py-1 text-xs text-brand-300">Le plus choisi</span>}
-                  <h3 className="font-display text-xl font-semibold text-white">{p.name}</h3>
-                  <p className="mt-1 text-sm text-slate-400">{p.description}</p>
-                  <p className="mt-5 font-display text-3xl font-bold text-white">
+                <Reveal key={p.id} delay={i * 60} className={`flex flex-col rounded-xl border bg-white p-6 ${p.id === "pro" ? "border-blue-600 ring-1 ring-blue-600" : "border-slate-200"}`}>
+                  {p.id === "pro" && <span className="mb-3 self-start rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">Recommandée</span>}
+                  <h3 className="text-xl font-semibold text-slate-900">{p.name}</h3>
+                  <p className="mt-1 text-sm text-slate-600">{p.description}</p>
+                  <p className="mt-5 text-3xl font-bold text-slate-900">
                     {p.price_xaf === 0 ? "Gratuit" : xaf(p.price_xaf)}
-                    {p.price_xaf > 0 && <span className="text-sm font-normal text-slate-400"> / mois</span>}
+                    {p.price_xaf > 0 && <span className="text-sm font-normal text-slate-500"> / mois</span>}
                   </p>
-                  <ul className="mt-5 flex-1 space-y-2 text-sm text-slate-300">
-                    <li>✓ {p.monthly_credits} crédits IA par mois</li>
-                    <li>✓ {p.max_projects} logiciel{p.max_projects > 1 ? "s" : ""}</li>
-                    <li>✓ {p.max_members} utilisateur{p.max_members > 1 ? "s" : ""} par logiciel</li>
-                    <li>{p.can_publish ? "✓ Publication avec lien permanent" : "✗ Pas de publication (aperçu uniquement)"}</li>
-                    <li>✓ Tests automatiques, versions, exports</li>
+                  <ul className="mt-5 flex-1 space-y-2.5 text-sm text-slate-700">
+                    {[
+                      `${p.monthly_credits} crédits par mois`,
+                      `${p.max_projects} logiciel${p.max_projects > 1 ? "s" : ""}`,
+                      `${p.max_members} utilisateur${p.max_members > 1 ? "s" : ""} par logiciel`,
+                      p.can_publish ? "Publication avec lien permanent" : "Aperçu uniquement, sans publication",
+                      "Tests, versions et exports",
+                    ].map((t) => (
+                      <li key={t} className="flex gap-2">
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-600" aria-hidden />
+                        {t}
+                      </li>
+                    ))}
                   </ul>
                   <Link href={siteHref(p.price_xaf === 0 ? "/inscription" : "/espace/abonnement")} className={`btn mt-6 ${p.id === "pro" ? "btn-primary" : "btn-ghost"}`}>
                     {p.price_xaf === 0 ? "Commencer gratuitement" : "Choisir cette formule"}
@@ -254,8 +269,8 @@ export default async function Home() {
                 </Reveal>
               ))}
             </div>
-            <p className="mt-6 text-center text-xs text-slate-500">
-              Coûts IA : analyse {CREDIT_COSTS.diagnose} crédits · modification {CREDIT_COSTS.modify} crédits · question à l&apos;assistant {CREDIT_COSTS.ask} crédit. Le paiement en ligne n&apos;est pas encore activé : aucun prélèvement sans votre confirmation.
+            <p className="mx-auto mt-6 max-w-3xl text-center text-xs leading-relaxed text-slate-500">
+              Coût des opérations : analyse {CREDIT_COSTS.diagnose} crédits, modification {CREDIT_COSTS.modify} crédits, question à l&apos;assistant {CREDIT_COSTS.ask} crédit. Le paiement en ligne n&apos;est pas encore activé : aucun prélèvement n&apos;est effectué sans votre accord.
             </p>
           </div>
         </section>
@@ -263,55 +278,124 @@ export default async function Home() {
         {/* FAQ */}
         <section id="faq" className="scroll-mt-20 px-4 py-20 sm:px-6">
           <div className="mx-auto max-w-3xl">
-            <Reveal className="text-center">
-              <h2 className="font-display text-3xl font-bold sm:text-4xl">Questions fréquentes</h2>
-            </Reveal>
-            <div className="mt-10 space-y-3">
+            <SectionTitle eyebrow="FAQ" title="Questions fréquentes" />
+            <div className="mt-10 divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
               {FAQ.map((f) => (
-                <Reveal key={f.q}>
-                  <details className="glass group rounded-2xl p-5 [&_summary::-webkit-details-marker]:hidden">
-                    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-white">
-                      {f.q}
-                      <span className="text-brand-300 transition group-open:rotate-45">+</span>
-                    </summary>
-                    <p className="mt-3 text-sm leading-relaxed text-slate-300">{f.a}</p>
-                  </details>
-                </Reveal>
+                <details key={f.q} className="group px-5 py-4 [&_summary::-webkit-details-marker]:hidden">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium text-slate-900">
+                    {f.q}
+                    <span className="text-xl leading-none text-slate-400 transition-transform group-open:rotate-45" aria-hidden>+</span>
+                  </summary>
+                  <p className="mt-3 text-sm leading-relaxed text-slate-600">{f.a}</p>
+                </details>
               ))}
             </div>
           </div>
         </section>
 
-        {!STATIC_SITE && (
-          <section id="demonstration" className="scroll-mt-20 px-4 py-16 sm:px-6">
-            <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-[1fr_1.3fr]">
-              <Reveal>
-                <h2 className="font-display text-3xl font-bold">Parlons de votre entreprise</h2>
-                <p className="mt-3 text-slate-300">Laissez vos coordonnées : nous vous montrons en direct le logiciel adapté à votre activité. Gratuit et sans engagement.</p>
-                <ul className="mt-5 space-y-2 text-sm text-slate-400">
-                  <li>✓ Démonstration avec vos propres exemples</li>
-                  <li>✓ Aide à l&apos;import de vos fichiers Excel</li>
-                  <li>✓ Conseils pour équiper vos employés</li>
-                </ul>
-              </Reveal>
-              <Reveal delay={100} className="glass rounded-2xl p-6">
-                <LeadForm source="accueil" />
-              </Reveal>
-            </div>
-          </section>
-        )}
+        {/* Présentez votre projet */}
+        <section className="bg-slate-900 px-4 py-20 sm:px-6">
+          <div className="mx-auto max-w-3xl text-center">
+            <Reveal>
+              <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">Présentez votre projet</h2>
+              <p className="mt-4 text-lg text-slate-300">Décrivez votre besoin en quelques phrases : le plan de votre logiciel est prêt en quelques instants.</p>
+            </Reveal>
+            <Reveal delay={80} className="mt-8">
+              <HeroPrompt />
+            </Reveal>
+          </div>
+        </section>
 
-        <section className="px-4 pb-24 sm:px-6">
-          <Reveal className="glass glow-ring mx-auto max-w-4xl rounded-3xl p-8 text-center sm:p-12">
-            <h2 className="font-display text-3xl font-bold">Prêt à créer votre logiciel ?</h2>
-            <p className="mt-3 text-slate-300">Décrivez votre problème : le diagnostic est prêt en quelques instants.</p>
-            <Link href={siteHref("/creer")} className="btn btn-primary mt-6">
-              Créer mon mini-logiciel avec l&apos;IA
-            </Link>
-          </Reveal>
+        {/* Contact */}
+        <section id="contact" className="scroll-mt-20 px-4 py-20 sm:px-6">
+          <span id="demonstration" className="block scroll-mt-20" aria-hidden />
+          <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1fr_1.2fr]">
+            <Reveal>
+              <p className="text-sm font-semibold text-blue-600">Contact</p>
+              <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Parlons de votre entreprise</h2>
+              <p className="mt-4 leading-relaxed text-slate-600">Laissez vos coordonnées : nous vous présentons le logiciel adapté à votre activité. Le rendez-vous est gratuit et sans engagement.</p>
+              <ul className="mt-6 space-y-3 text-sm text-slate-700">
+                {["Démonstration avec vos propres exemples", "Aide à l'import de vos fichiers Excel", "Conseils pour équiper vos employés"].map((t) => (
+                  <li key={t} className="flex gap-2">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" aria-hidden />
+                    {t}
+                  </li>
+                ))}
+              </ul>
+            </Reveal>
+            <Reveal delay={80} className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+              {STATIC_SITE ? (
+                <div>
+                  <p className="text-slate-700">Le formulaire de contact sera disponible avec la version complète du site.</p>
+                  <Link href="/demo" className="btn btn-primary mt-4">Essayer la démonstration</Link>
+                </div>
+              ) : (
+                <LeadForm source="accueil" />
+              )}
+            </Reveal>
+          </div>
         </section>
       </main>
       <SiteFooter />
     </div>
+  );
+}
+
+/** Aperçu statique d'un écran de logiciel (exemple illustratif, données fictives). */
+function ScreenPreview() {
+  const rows = [
+    ["Commande n° 1024", "Table 4", "18 500 FCFA", "Payée"],
+    ["Commande n° 1025", "À emporter", "7 000 FCFA", "En préparation"],
+    ["Commande n° 1026", "Table 2", "24 000 FCFA", "Payée"],
+  ];
+  return (
+    <figure className="rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-sm">
+      <div className="rounded-xl border border-slate-200 bg-white">
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="grid h-7 w-7 place-items-center rounded-md bg-blue-600 text-[11px] font-bold text-white">RB</span>
+            <span className="text-sm font-semibold text-slate-900">Restaurant Le Baobab</span>
+          </div>
+          <span className="text-xs text-slate-500">Tableau de bord</span>
+        </div>
+        <div className="grid grid-cols-3 gap-3 p-4">
+          {[
+            ["Ventes du jour", "49 500"],
+            ["Dépenses", "12 000"],
+            ["Stock bas", "3 produits"],
+          ].map(([l, v]) => (
+            <div key={l} className="rounded-lg border border-slate-200 p-3">
+              <p className="text-[11px] text-slate-500">{l}</p>
+              <p className="mt-1 text-sm font-bold text-slate-900 sm:text-base">{v}</p>
+            </div>
+          ))}
+        </div>
+        <div className="px-4 pb-4">
+          <table className="w-full text-left text-xs">
+            <thead className="text-slate-500">
+              <tr>
+                <th className="pb-2 font-medium">Commande</th>
+                <th className="hidden pb-2 font-medium sm:table-cell">Service</th>
+                <th className="pb-2 font-medium">Montant</th>
+                <th className="pb-2 font-medium">Statut</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-700">
+              {rows.map(([a, b, c, d]) => (
+                <tr key={a}>
+                  <td className="py-2">{a}</td>
+                  <td className="hidden py-2 sm:table-cell">{b}</td>
+                  <td className="py-2">{c}</td>
+                  <td className="py-2">
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${d === "Payée" ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-700"}`}>{d}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <figcaption className="px-1 pt-2 text-center text-xs text-slate-500">Exemple d&apos;écran d&apos;un logiciel de restaurant (données fictives)</figcaption>
+    </figure>
   );
 }

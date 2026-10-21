@@ -5,15 +5,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
+import { Menu, X } from "lucide-react";
+import { SITE_NAV } from "@/lib/nav";
 
-const NAV = [
-  { href: "/", label: "Accueil" },
-  { href: "/#comment", label: "Comment ça marche" },
-  { href: "/modeles", label: "Exemples de logiciels" },
-  { href: "/demo", label: "Démo" },
-  { href: "/#tarifs", label: "Tarifs" },
-  { href: "/#faq", label: "FAQ" },
-];
 
 export function MobileNav({ loggedIn, isAdmin }: { loggedIn: boolean; isAdmin: boolean }) {
   const [open, setOpen] = useState(false);
@@ -30,24 +24,24 @@ export function MobileNav({ loggedIn, isAdmin }: { loggedIn: boolean; isAdmin: b
   return (
     <div className="lg:hidden">
       <button className="btn btn-ghost px-3" aria-expanded={open} aria-controls="menu-mobile" onClick={() => setOpen((o) => !o)} aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}>
-        {open ? "✕" : "☰"}
+        {open ? <X className="h-5 w-5" aria-hidden /> : <Menu className="h-5 w-5" aria-hidden />}
       </button>
       {/* Rendu dans <body> : le flou de l'en-tête enfermerait sinon le menu dans la barre du haut. */}
       {open && mounted && createPortal(
-        <div id="menu-mobile" className="fixed inset-x-0 top-16 bottom-0 z-[60] overflow-y-auto bg-night-950/95 p-4 backdrop-blur-xl lg:hidden">
+        <div id="menu-mobile" className="fixed inset-x-0 top-16 bottom-0 z-[60] overflow-y-auto border-t border-slate-200 bg-white p-4 lg:hidden">
           <nav className="flex flex-col gap-1" aria-label="Navigation mobile">
-            {NAV.map((n) => (
-              <Link key={n.href} href={n.href} className="rounded-xl px-4 py-3 text-lg text-slate-200 hover:bg-white/5" onClick={() => setOpen(false)}>
+            {SITE_NAV.map((n) => (
+              <Link key={n.href} href={n.href} className="rounded-lg px-4 py-3 text-base font-medium text-slate-800 hover:bg-slate-100" onClick={() => setOpen(false)}>
                 {n.label}
               </Link>
             ))}
             {isAdmin && (
-              <Link href="/admin" className="rounded-xl px-4 py-3 text-lg text-slate-200 hover:bg-white/5">
+              <Link href="/admin" className="rounded-lg px-4 py-3 text-base font-medium text-slate-800 hover:bg-slate-100">
                 Administration
               </Link>
             )}
             {!STATIC_SITE && (
-              <Link href={loggedIn ? "/espace" : "/connexion"} className="rounded-xl px-4 py-3 text-lg text-slate-200 hover:bg-white/5">
+              <Link href={loggedIn ? "/espace" : "/connexion"} className="rounded-lg px-4 py-3 text-base font-medium text-slate-800 hover:bg-slate-100">
                 {loggedIn ? "Mon espace" : "Connexion"}
               </Link>
             )}

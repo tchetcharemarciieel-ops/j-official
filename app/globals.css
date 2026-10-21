@@ -1,20 +1,22 @@
 @import "tailwindcss";
 
 @theme {
-  --color-night-950: #050816;
-  --color-night-900: #0a1030;
-  --color-night-800: #111a45;
-  --color-night-700: #1b2660;
-  --color-brand-500: #6d5dfc;
-  --color-brand-400: #8b7dff;
-  --color-brand-300: #b3a9ff;
-  --color-sky-glow: #38bdf8;
+  /* Palette sobre : bleu marine, bleu professionnel, gris. Les anciens noms restent pour compatibilité. */
+  --color-ink: #0f172a;
+  --color-night-950: #ffffff;
+  --color-night-900: #f8fafc;
+  --color-night-800: #f1f5f9;
+  --color-night-700: #e2e8f0;
+  --color-brand-500: #2563eb;
+  --color-brand-400: #3b82f6;
+  --color-brand-300: #1d4ed8;
+  --color-sky-glow: #2563eb;
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-display: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html {
@@ -23,40 +25,39 @@ html {
 }
 
 body {
-  background: var(--color-night-950);
-  color: #e6e9f5;
+  background: #ffffff;
+  color: #0f172a;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  letter-spacing: -0.015em;
 }
 
 .font-display {
   font-family: var(--font-display);
 }
 
-/* Fond lumineux : dégradés violets et bleus sur bleu nuit */
+/* Anciennes classes décoratives : neutralisées pour un rendu sobre */
 .bg-aurora {
-  background:
-    radial-gradient(60rem 40rem at 10% -10%, rgba(109, 93, 252, 0.35), transparent 60%),
-    radial-gradient(50rem 35rem at 95% 10%, rgba(56, 189, 248, 0.22), transparent 60%),
-    radial-gradient(40rem 30rem at 50% 110%, rgba(168, 85, 247, 0.18), transparent 60%),
-    var(--color-night-950);
+  background: #ffffff;
 }
 
 .text-gradient {
-  background: linear-gradient(100deg, #ffffff 10%, #b3a9ff 45%, #38bdf8 90%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: #0f172a;
 }
 
+/* Carte : fond blanc, bordure discrète, ombre légère */
 .glass {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  backdrop-filter: blur(14px);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .glow-ring {
-  box-shadow: 0 0 0 1px rgba(139, 125, 255, 0.35), 0 10px 40px -10px rgba(109, 93, 252, 0.55);
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 1px #2563eb, 0 8px 24px -12px rgba(37, 99, 235, 0.35);
 }
 
 .btn {
@@ -64,18 +65,18 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: 0.75rem;
+  border-radius: 0.625rem;
   padding: 0.65rem 1.1rem;
   font-weight: 600;
   font-size: 0.925rem;
-  transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s;
   min-height: 44px;
 }
 .btn:focus-visible,
 .input:focus-visible,
 a:focus-visible,
 button:focus-visible {
-  outline: 2px solid #8b7dff;
+  outline: 2px solid #2563eb;
   outline-offset: 2px;
 }
 .btn:disabled {
@@ -83,54 +84,63 @@ button:focus-visible {
   cursor: not-allowed;
 }
 .btn-primary {
-  background: linear-gradient(135deg, #6d5dfc, #4f8cff);
-  color: white;
-  box-shadow: 0 8px 30px -8px rgba(109, 93, 252, 0.7);
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
 }
 .btn-primary:not(:disabled):hover {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 36px -8px rgba(109, 93, 252, 0.85);
+  background: #1d4ed8;
 }
 .btn-ghost {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #e6e9f5;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
 }
 .btn-ghost:not(:disabled):hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: #f1f5f9;
+  border-color: #94a3b8;
 }
 .btn-danger {
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  color: #fecaca;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
 }
 
 .input {
   width: 100%;
-  border-radius: 0.75rem;
-  background: rgba(5, 8, 22, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.625rem;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
   padding: 0.65rem 0.85rem;
-  color: #f1f3fb;
+  color: #0f172a;
   font-size: 1rem;
   min-height: 44px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  outline: none;
 }
 .input::placeholder {
-  color: #7c84a8;
+  color: #94a3b8;
+}
+select.input option {
+  color: #0f172a;
 }
 .label {
   display: block;
   font-size: 0.85rem;
   font-weight: 500;
-  color: #c3c8e0;
+  color: #334155;
   margin-bottom: 0.35rem;
 }
 
 /* Animations d'apparition au défilement */
 .reveal {
   opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+  transform: translateY(12px);
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 .reveal.is-visible {
   opacity: 1;
@@ -155,21 +165,20 @@ button:focus-visible {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
-.animate-float { animation: float 6s ease-in-out infinite; }
-.animate-pulse-glow { animation: pulse-glow 3s ease-in-out infinite; }
-.animate-build { transform-origin: left; animation: build 1.6s cubic-bezier(0.2, 0.7, 0.2, 1) infinite alternate; }
-.caret { animation: blink 1s steps(1) infinite; }
+/* Pas d'animation permanente : ces classes restent sans effet. */
+.animate-float, .animate-pulse-glow, .caret { animation: none; }
+.animate-build { transform-origin: left; animation: build 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 1 both; }
 .spinner {
   width: 1rem;
   height: 1rem;
   border-radius: 9999px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
   animation: spin 0.8s linear infinite;
 }
 
 .skeleton {
-  background: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.09), rgba(255,255,255,0.04));
+  background: linear-gradient(90deg, #f1f5f9, #e2e8f0, #f1f5f9);
   background-size: 200% 100%;
   animation: shimmer 1.4s infinite;
   border-radius: 0.5rem;

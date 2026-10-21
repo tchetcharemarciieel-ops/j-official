@@ -3,25 +3,17 @@ import Link from "next/link";
 import { Logo } from "./Logo";
 import { MobileNav } from "./MobileNav";
 import { getProfile } from "@/lib/auth";
-
-export const NAV = [
-  { href: "/", label: "Accueil" },
-  { href: "/#comment", label: "Comment ça marche" },
-  { href: "/modeles", label: "Exemples de logiciels" },
-  { href: "/demo", label: "Démo" },
-  { href: "/#tarifs", label: "Tarifs" },
-  { href: "/#faq", label: "FAQ" },
-];
+import { SITE_NAV } from "@/lib/nav";
 
 export async function SiteHeader() {
   const profile = await getProfile().catch(() => null);
   return (
-    <header className="no-print sticky top-0 z-50 border-b border-white/5 bg-night-950/70 backdrop-blur-xl">
+    <header className="no-print sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
         <Logo />
         <nav className="hidden items-center gap-1 lg:flex" aria-label="Navigation principale">
-          {NAV.map((n) => (
-            <Link key={n.href} href={n.href} className="rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white">
+          {SITE_NAV.map((n) => (
+            <Link key={n.href} href={n.href} className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900">
               {n.label}
             </Link>
           ))}
@@ -30,7 +22,7 @@ export async function SiteHeader() {
           {profile ? (
             <>
               {profile.is_admin && (
-                <Link href="/admin" className="rounded-lg px-3 py-2 text-sm text-slate-300 hover:text-white">
+                <Link href="/admin" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900">
                   Administration
                 </Link>
               )}
@@ -39,7 +31,7 @@ export async function SiteHeader() {
               </Link>
             </>
           ) : STATIC_SITE ? null : (
-            <Link href="/connexion" className="rounded-lg px-3 py-2 text-sm text-slate-300 hover:text-white">
+            <Link href="/connexion" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900">
               Connexion
             </Link>
           )}

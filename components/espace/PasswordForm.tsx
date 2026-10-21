@@ -28,7 +28,7 @@ export function PasswordForm() {
     <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2" noValidate>
       <label className="block"><span className="label">Nouveau mot de passe</span><input type="password" className="input" value={a} onChange={(e) => setA(e.target.value)} autoComplete="new-password" minLength={8} /></label>
       <label className="block"><span className="label">Confirmer</span><input type="password" className="input" value={b} onChange={(e) => setB(e.target.value)} autoComplete="new-password" minLength={8} /></label>
-      {error && <p role="alert" className="text-sm text-red-300 sm:col-span-2">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-700 sm:col-span-2">{error}</p>}
       <div className="sm:col-span-2"><button className="btn btn-ghost" disabled={busy}>{busy && <span className="spinner" />}Changer le mot de passe</button></div>
     </form>
   );

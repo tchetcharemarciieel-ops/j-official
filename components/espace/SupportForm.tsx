@@ -1,5 +1,6 @@
 "use client";
 
+import { CircleCheck } from "lucide-react";
 import { useState } from "react";
 import { api, ApiError } from "@/lib/fetcher";
 
@@ -21,7 +22,7 @@ export function SupportForm({ phone }: { phone: string }) {
     }
   }
   if (state === "sent")
-    return <p role="status" className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-5 text-sm text-emerald-100">✅ Demande envoyée. L&apos;équipe MiniSoft RCA vous recontacte par téléphone ou par e-mail.</p>;
+    return <p role="status" className="flex items-start gap-2 rounded-2xl border border-green-200 bg-green-50 p-5 text-sm text-green-700"><CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-green-600" aria-hidden /><span>Demande envoyée. L&apos;équipe MiniSoft RCA vous recontacte par téléphone ou par e-mail.</span></p>;
   return (
     <form onSubmit={submit} className="space-y-3" noValidate>
       <label className="block"><span className="label">Sujet</span>
@@ -31,7 +32,7 @@ export function SupportForm({ phone }: { phone: string }) {
       </label>
       <label className="block"><span className="label">Votre message</span><textarea name="message" rows={4} className="input" maxLength={2000} placeholder="Décrivez ce que vous voulez faire ou ce qui ne marche pas…" /></label>
       <label className="block"><span className="label">Téléphone pour vous rappeler (facultatif)</span><input name="phone" type="tel" className="input" defaultValue={phone} maxLength={30} placeholder="+236 7…" /></label>
-      {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <button className="btn btn-primary" disabled={state === "sending"}>{state === "sending" && <span className="spinner" />}Envoyer ma demande</button>
     </form>
   );

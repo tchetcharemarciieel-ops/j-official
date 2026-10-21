@@ -1,5 +1,6 @@
 "use client";
 
+import { Search } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ProjectCard } from "./ProjectCard";
@@ -41,12 +42,12 @@ export function ProjectsBoard({ projects, initialFilter }: { projects: EspacePro
       <div className="glass sticky top-[72px] z-20 flex flex-col gap-3 rounded-2xl p-3 lg:flex-row lg:items-center">
         <label className="relative flex-1">
           <span className="sr-only">Rechercher un logiciel</span>
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden>🔎</span>
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher par nom, description, secteur…" className="input" style={{ paddingLeft: "2.4rem" }} />
         </label>
         <div className="flex gap-1.5 overflow-x-auto pb-1 lg:pb-0" role="tablist" aria-label="Filtrer par statut">
           {FILTERS.map((f) => (
-            <button key={f.id} role="tab" aria-selected={filter === f.id} onClick={() => setFilter(f.id)} className={`shrink-0 rounded-xl px-3 py-2 text-sm transition ${filter === f.id ? "bg-brand-500/30 font-medium text-white" : "text-slate-400 hover:bg-white/5 hover:text-white"}`}>
+            <button key={f.id} role="tab" aria-selected={filter === f.id} onClick={() => setFilter(f.id)} className={`shrink-0 rounded-xl px-3 py-2 text-sm transition ${filter === f.id ? "bg-blue-100 font-medium text-slate-900" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`}>
               {f.label} <span className="text-xs opacity-70">{counts[f.id]}</span>
             </button>
           ))}
@@ -62,13 +63,12 @@ export function ProjectsBoard({ projects, initialFilter }: { projects: EspacePro
       <p className="mt-4 text-sm text-slate-500" aria-live="polite">{list.length} logiciel{list.length > 1 ? "s" : ""}</p>
       {projects.length === 0 ? (
         <div className="glass mt-4 rounded-3xl p-10 text-center">
-          <p className="text-4xl">🧩</p>
-          <p className="mt-3 font-semibold text-white">Vous n&apos;avez pas encore de logiciel</p>
+          <p className="font-semibold text-slate-900">Vous n&apos;avez pas encore de logiciel</p>
           <Link href="/creer" className="btn btn-primary mt-5">Créer mon premier logiciel</Link>
         </div>
       ) : list.length === 0 ? (
-        <div className="glass mt-4 rounded-2xl p-8 text-center text-sm text-slate-400">
-          Aucun logiciel ne correspond. <button className="text-brand-300 underline" onClick={() => { setQ(""); setFilter("tous"); }}>Réinitialiser les filtres</button>
+        <div className="glass mt-4 rounded-2xl p-8 text-center text-sm text-slate-600">
+          Aucun logiciel ne correspond. <button className="text-blue-700 underline" onClick={() => { setQ(""); setFilter("tous"); }}>Réinitialiser les filtres</button>
         </div>
       ) : (
         <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">

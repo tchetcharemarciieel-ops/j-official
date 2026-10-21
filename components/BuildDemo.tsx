@@ -43,22 +43,22 @@ export function BuildDemo() {
         <span className="h-2.5 w-2.5 rounded-full bg-red-400/80" />
         <span className="h-2.5 w-2.5 rounded-full bg-yellow-400/80" />
         <span className="h-2.5 w-2.5 rounded-full bg-green-400/80" />
-        <span className="ml-3 truncate text-xs text-slate-400">minisoft-rca.app/apps/{s.name.toLowerCase().replace(/\s+/g, "-")}</span>
+        <span className="ml-3 truncate text-xs text-slate-600">minisoft-rca.app/apps/{s.name.toLowerCase().replace(/\s+/g, "-")}</span>
       </div>
-      <div className="rounded-xl bg-night-950/70 p-3 text-sm text-slate-200">
-        <span className="text-brand-300">› </span>
+      <div className="rounded-xl bg-white/70 p-3 text-sm text-slate-800">
+        <span className="text-blue-700">› </span>
         {s.prompt.slice(0, typed)}
         {phase === "type" && <span className="caret">▍</span>}
       </div>
-      <div className="mt-3 min-h-44 rounded-xl border border-white/5 bg-night-900/60 p-3">
+      <div className="mt-3 min-h-44 rounded-xl border border-slate-100 bg-slate-50 p-3">
         {phase === "type" && <p className="text-xs text-slate-500">En attente de votre description…</p>}
         {phase === "build" && (
           <div className="space-y-2">
-            <p className="text-xs text-brand-300">L&apos;IA construit votre solution…</p>
+            <p className="text-xs text-blue-700">L&apos;IA construit votre solution…</p>
             {["Analyse du besoin", "Tables et champs", "Tableau de bord", "Tests automatiques"].map((step, k) => (
-              <div key={step} className="flex items-center gap-2 text-xs text-slate-400">
-                <div className="h-1.5 flex-1 overflow-hidden rounded bg-white/5">
-                  <div className="h-full bg-gradient-to-r from-brand-500 to-sky-glow animate-build" style={{ animationDelay: `${k * 150}ms` }} />
+              <div key={step} className="flex items-center gap-2 text-xs text-slate-600">
+                <div className="h-1.5 flex-1 overflow-hidden rounded bg-slate-50">
+                  <div className="h-full bg-blue-600 animate-build" style={{ animationDelay: `${k * 150}ms` }} />
                 </div>
                 <span className="w-32">{step}</span>
               </div>
@@ -67,23 +67,23 @@ export function BuildDemo() {
         )}
         {phase === "done" && (
           <div className="flex gap-3">
-            <div className="w-28 shrink-0 space-y-1 border-r border-white/5 pr-2">
-              <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-white">
+            <div className="w-28 shrink-0 space-y-1 border-r border-slate-100 pr-2">
+              <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-slate-900">
                 <span className="grid h-5 w-5 place-items-center rounded text-[9px]" style={{ background: s.color }}>
                   {s.name.slice(0, 2).toUpperCase()}
                 </span>
                 <span className="truncate">{s.name}</span>
               </div>
-              <div className="rounded px-1.5 py-1 text-[11px] text-white" style={{ background: `${s.color}33` }}>📊 Tableau de bord</div>
+              <div className="rounded px-1.5 py-1 text-[11px] text-slate-900" style={{ background: `${s.color}33` }}>📊 Tableau de bord</div>
               {s.modules.map((m) => (
-                <div key={m} className="px-1.5 py-1 text-[11px] text-slate-400">{m}</div>
+                <div key={m} className="px-1.5 py-1 text-[11px] text-slate-600">{m}</div>
               ))}
             </div>
             <div className="grid flex-1 grid-cols-2 content-start gap-2">
               {s.kpi.map((k) => (
-                <div key={k} className="rounded-lg bg-white/5 p-2 text-[11px] font-semibold text-white">{k}</div>
+                <div key={k} className="rounded-lg bg-slate-50 p-2 text-[11px] font-semibold text-slate-900">{k}</div>
               ))}
-              <div className="col-span-2 flex h-16 items-end gap-1 rounded-lg bg-white/5 p-2">
+              <div className="col-span-2 flex h-16 items-end gap-1 rounded-lg bg-slate-50 p-2">
                 {[40, 65, 50, 80, 60, 95].map((h, k) => (
                   <div key={k} className="flex-1 rounded-t" style={{ height: `${h}%`, background: s.color, opacity: 0.4 + k * 0.1 }} />
                 ))}

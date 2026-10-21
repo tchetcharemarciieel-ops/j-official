@@ -1,5 +1,6 @@
 "use client";
 
+import { LayoutDashboard, Menu, MessageSquare, Table2, TriangleAlert, type LucideIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { can } from "@/lib/permissions";
 import { api } from "@/lib/fetcher";
@@ -30,9 +31,9 @@ export function AppRuntime({ projectId, spec, mode, role, compact = false }: { p
 
   const nav = (
     <nav aria-label={`Menu de ${spec.name}`} className="space-y-1">
-      <NavItem active={page === "__dashboard"} onClick={() => (setPage("__dashboard"), setMenuOpen(false))} icon="📊" label="Tableau de bord" />
+      <NavItem active={page === "__dashboard"} onClick={() => (setPage("__dashboard"), setMenuOpen(false))} icon={LayoutDashboard} label="Tableau de bord" />
       {entities.map((e) => (
-        <NavItem key={e.key} active={page === e.key} onClick={() => (setPage(e.key), setMenuOpen(false))} icon={e.icon} label={e.labelPlural} count={data.records[e.key]?.length} />
+        <NavItem key={e.key} active={page === e.key} onClick={() => (setPage(e.key), setMenuOpen(false))} icon={Table2} label={e.labelPlural} count={data.records[e.key]?.length} />
       ))}
     </nav>
   );
@@ -42,7 +43,7 @@ export function AppRuntime({ projectId, spec, mode, role, compact = false }: { p
       <aside className={`no-print hidden w-60 shrink-0 flex-col border-r border-slate-200 bg-white p-4 lg:flex ${compact ? "rounded-l-2xl" : ""}`}>
         <Brand spec={spec} />
         <div className="mt-6 flex-1">{nav}</div>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-slate-600">
           Rôle : {ROLE_LABELS[role]}
           <br />
           {mode === "live" ? "Données réelles" : mode === "local" ? "Démo — données dans ce navigateur" : "Aperçu — données de démonstration"}
@@ -52,15 +53,15 @@ export function AppRuntime({ projectId, spec, mode, role, compact = false }: { p
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="no-print sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur">
           <div className="flex items-center gap-3 lg:hidden">
-            <button className="rounded-lg border border-slate-200 px-3 py-2" onClick={() => setMenuOpen((o) => !o)} aria-expanded={menuOpen} aria-label="Menu">☰</button>
+            <button className="rounded-lg border border-slate-200 px-3 py-2" onClick={() => setMenuOpen((o) => !o)} aria-expanded={menuOpen} aria-label="Menu"><Menu className="h-4 w-4" aria-hidden /></button>
             <Brand spec={spec} small />
           </div>
           <h1 className="hidden truncate text-sm font-medium text-slate-500 lg:block">{current ? current.labelPlural : "Tableau de bord"}</h1>
           <div className="flex items-center gap-2 text-xs">
             {mode !== "live" && <span className="rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-800">Démo</span>}
             {data.pending > 0 && <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-800">{data.pending} en attente d&apos;envoi</span>}
-            <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 ${data.online ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`} role="status">
-              <span className={`h-2 w-2 rounded-full ${data.online ? "bg-emerald-500" : "bg-red-500"}`} />
+            <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 ${data.online ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`} role="status">
+              <span className={`h-2 w-2 rounded-full ${data.online ? "bg-green-600" : "bg-red-500"}`} />
               <span className="hidden sm:inline">{data.online ? "En ligne" : "Hors ligne"}</span>
               <span className="sr-only sm:hidden">{data.online ? "En ligne" : "Hors ligne"}</span>
             </span>
@@ -120,12 +121,12 @@ function Brand({ spec, small }: { spec: AppSpec; small?: boolean }) {
   );
 }
 
-function NavItem({ active, onClick, icon, label, count }: { active: boolean; onClick: () => void; icon: string; label: string; count?: number }) {
+function NavItem({ active, onClick, icon: Icon, label, count }: { active: boolean; onClick: () => void; icon: LucideIcon; label: string; count?: number }) {
   return (
     <button onClick={onClick} aria-current={active ? "page" : undefined} className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm transition ${active ? "font-semibold text-white" : "text-slate-600 hover:bg-slate-100"}`} style={active ? { background: "var(--app-primary)" } : undefined}>
-      <span aria-hidden>{icon}</span>
+      <Icon className={`h-4 w-4 shrink-0 ${active ? "" : "text-slate-500"}`} aria-hidden />
       <span className="flex-1 truncate">{label}</span>
-      {count !== undefined && <span className={`text-xs ${active ? "text-white/80" : "text-slate-400"}`}>{count}</span>}
+      {count !== undefined && <span className={`text-xs ${active ? "text-white/80" : "text-slate-600"}`}>{count}</span>}
     </button>
   );
 }
@@ -157,7 +158,7 @@ function DataAssistant({ projectId, mode, spec, localRecords }: { projectId: str
   }
   return (
     <section className="no-print rounded-2xl border border-slate-200 bg-white p-4" aria-labelledby="assistant-title">
-      <h3 id="assistant-title" className="font-semibold">💬 Assistant de données</h3>
+      <h3 id="assistant-title" className="flex items-center gap-2 font-semibold"><MessageSquare className="h-4 w-4 text-slate-500" aria-hidden />Assistant de données</h3>
       <p className="text-xs text-slate-500">Exemples : « Combien ai-je vendu cette semaine ? », « Quels produits sont presque épuisés ? »</p>
       <form onSubmit={ask} className="mt-3 flex flex-col gap-2 sm:flex-row">
         <label htmlFor="ask" className="sr-only">Votre question</label>
@@ -173,8 +174,8 @@ function DataAssistant({ projectId, mode, spec, localRecords }: { projectId: str
           <p className="mt-2 text-xs text-slate-500">
             <strong>Période :</strong> {answer.period || "—"} · <strong>Base de calcul :</strong> {answer.basis || "—"} · {answer.mode}
           </p>
-          {answer.missing.length > 0 && <p className="mt-1 text-xs text-amber-700">⚠ {answer.missing.join(" ")}</p>}
-          <p className="mt-1 text-[11px] text-slate-400">Chiffres calculés directement sur vos données ({answer.engine === "ai" ? "question interprétée par l'IA" : "question interprétée par règles"}).</p>
+          {answer.missing.length > 0 && <p className="mt-1 flex items-start gap-1.5 text-xs text-amber-700"><TriangleAlert className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden />{answer.missing.join(" ")}</p>}
+          <p className="mt-1 text-[11px] text-slate-600">Chiffres calculés directement sur vos données ({answer.engine === "ai" ? "question interprétée par l'IA" : "question interprétée par règles"}).</p>
         </div>
       )}
     </section>

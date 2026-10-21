@@ -1,5 +1,6 @@
 "use client";
 
+import { Check } from "lucide-react";
 import { useState } from "react";
 import { AppRuntime } from "@/components/runtime/AppRuntime";
 import { VoiceButton } from "@/components/VoiceButton";
@@ -34,7 +35,7 @@ export function AssistantTab({ data, spec, onApplied }: { data: WorkspaceData; s
       setMsgs((m) => [...m, { role: "assistant", text: r.summary, proposal: r }]);
       setCompare("after");
     } catch (e) {
-      setMsgs((m) => [...m, { role: "assistant", text: `⚠️ ${e instanceof Error ? e.message : "Erreur"}` }]);
+      setMsgs((m) => [...m, { role: "assistant", text: `Erreur : ${e instanceof Error ? e.message : "la demande n'a pas abouti."}` }]);
     } finally {
       setBusy(false);
     }
@@ -62,16 +63,16 @@ export function AssistantTab({ data, spec, onApplied }: { data: WorkspaceData; s
         <div className="max-h-[480px] space-y-3 overflow-y-auto pr-1" aria-live="polite">
           {msgs.length === 0 && (
             <div className="space-y-2">
-              <p className="text-sm text-slate-400">Décrivez la modification souhaitée. L&apos;assistant ne modifie que les éléments nécessaires, conserve vos données et teste la proposition avant de vous la montrer.</p>
+              <p className="text-sm text-slate-600">Décrivez la modification souhaitée. L&apos;assistant ne modifie que les éléments nécessaires, conserve vos données et teste la proposition avant de vous la montrer.</p>
               <div className="flex flex-wrap gap-2">
                 {EXAMPLES.map((e) => (
-                  <button key={e} onClick={() => setInput(e)} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-left text-xs text-slate-300 hover:border-brand-400">{e}</button>
+                  <button key={e} onClick={() => setInput(e)} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-left text-xs text-slate-700 hover:border-blue-300">{e}</button>
                 ))}
               </div>
             </div>
           )}
           {msgs.map((m, i) => (
-            <div key={i} className={m.role === "user" ? "ml-8 rounded-2xl rounded-tr-sm bg-brand-500/20 px-4 py-3 text-sm text-white" : "mr-4 rounded-2xl rounded-tl-sm bg-white/5 px-4 py-3 text-sm text-slate-200"}>
+            <div key={i} className={m.role === "user" ? "ml-8 rounded-2xl rounded-tr-sm bg-blue-50 px-4 py-3 text-sm text-slate-900" : "mr-4 rounded-2xl rounded-tl-sm bg-slate-50 px-4 py-3 text-sm text-slate-800"}>
               <p>{m.text}</p>
               {m.proposal && m.proposal.changes.length > 0 && (
                 <div className="mt-3 space-y-2">
@@ -79,31 +80,31 @@ export function AssistantTab({ data, spec, onApplied }: { data: WorkspaceData; s
                   <ul className="space-y-1 text-xs">
                     {m.proposal.changes.map((c, k) => (
                       <li key={k}>
-                        <span className={c.kind === "added" ? "text-emerald-300" : c.kind === "removed" ? "text-red-300" : "text-amber-200"}>{c.kind === "added" ? "+ " : c.kind === "removed" ? "− " : "~ "}</span>
+                        <span className={c.kind === "added" ? "text-green-700" : c.kind === "removed" ? "text-red-700" : "text-amber-800"}>{c.kind === "added" ? "+ " : c.kind === "removed" ? "− " : "~ "}</span>
                         {c.target} — {c.detail}
                       </li>
                     ))}
                   </ul>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-600">
                     Tests : {m.proposal.checks.filter((c) => c.status === "pass").length}/{m.proposal.checks.length} réussis
                     {m.proposal.checks.some((c) => c.status === "fail") && " — échecs bloquants"}
                   </p>
-                  {m.proposal.changes.some((c) => c.kind === "removed") && <p className="text-xs text-amber-200">⚠ Éléments retirés de l&apos;affichage : leurs données restent stockées et réapparaissent si vous restaurez une version précédente.</p>}
-                  {data.project.publishedVersion && <p className="text-xs text-slate-400">Une sauvegarde de vos données réelles sera créée avant application.</p>}
+                  {m.proposal.changes.some((c) => c.kind === "removed") && <p className="text-xs text-amber-800">Attention : éléments retirés de l&apos;affichage : leurs données restent stockées et réapparaissent si vous restaurez une version précédente.</p>}
+                  {data.project.publishedVersion && <p className="text-xs text-slate-600">Une sauvegarde de vos données réelles sera créée avant application.</p>}
                   {!m.status ? (
                     <div className="flex gap-2 pt-1">
                       <button className="btn btn-primary flex-1" disabled={busy} onClick={() => apply(m)}>Appliquer</button>
                       <button className="btn btn-ghost flex-1" disabled={busy} onClick={() => setMsgs((all) => all.map((x) => (x === m ? { ...x, status: "cancelled" } : x)))}>Annuler</button>
                     </div>
                   ) : (
-                    <p className="text-xs font-medium">{m.status === "applied" ? "✅ Appliqué" : "Annulé"}</p>
+                    <p className="text-xs font-medium">{m.status === "applied" ? <span className="inline-flex items-center gap-1 text-green-600"><Check className="h-4 w-4" aria-hidden />Appliqué</span> : "Annulé"}</p>
                   )}
                 </div>
               )}
-              {m.proposal && m.proposal.changes.length === 0 && <p className="mt-2 text-xs text-slate-400">Aucune modification n&apos;a été faite.</p>}
+              {m.proposal && m.proposal.changes.length === 0 && <p className="mt-2 text-xs text-slate-600">Aucune modification n&apos;a été faite.</p>}
             </div>
           ))}
-          {busy && <p className="text-sm text-slate-400"><span className="spinner mr-2 inline-block align-middle" />Préparation et test de la modification…</p>}
+          {busy && <p className="text-sm text-slate-600"><span className="spinner mr-2 inline-block align-middle" />Préparation et test de la modification…</p>}
         </div>
         <form
           className="mt-4 space-y-2"
@@ -125,19 +126,19 @@ export function AssistantTab({ data, spec, onApplied }: { data: WorkspaceData; s
         {active?.proposal?.proposal ? (
           <>
             <div className="flex items-center justify-between gap-3">
-              <h2 className="font-display text-lg font-semibold text-white">Prévisualisation</h2>
-              <div role="group" aria-label="Comparer" className="flex rounded-xl border border-white/10 p-1 text-sm">
-                <button className={`rounded-lg px-3 py-1.5 ${compare === "before" ? "bg-white/10 text-white" : "text-slate-400"}`} onClick={() => setCompare("before")} aria-pressed={compare === "before"}>Avant</button>
-                <button className={`rounded-lg px-3 py-1.5 ${compare === "after" ? "bg-brand-500/30 text-white" : "text-slate-400"}`} onClick={() => setCompare("after")} aria-pressed={compare === "after"}>Après</button>
+              <h2 className="font-display text-lg font-semibold text-slate-900">Prévisualisation</h2>
+              <div role="group" aria-label="Comparer" className="flex rounded-xl border border-slate-200 p-1 text-sm">
+                <button className={`rounded-lg px-3 py-1.5 ${compare === "before" ? "bg-slate-100 text-slate-900" : "text-slate-600"}`} onClick={() => setCompare("before")} aria-pressed={compare === "before"}>Avant</button>
+                <button className={`rounded-lg px-3 py-1.5 ${compare === "after" ? "bg-blue-100 text-slate-900" : "text-slate-600"}`} onClick={() => setCompare("after")} aria-pressed={compare === "after"}>Après</button>
               </div>
             </div>
-            <div className="overflow-hidden rounded-2xl border border-white/10">
+            <div className="overflow-hidden rounded-2xl border border-slate-200">
               <AppRuntime key={compare} projectId={data.project.id} spec={compare === "after" ? active.proposal.proposal : spec} mode="demo" role={data.role} compact />
             </div>
             {active.proposal.checks.some((c) => c.status !== "pass") && <ChecksList checks={active.proposal.checks.filter((c) => c.status !== "pass")} />}
           </>
         ) : (
-          <div className="glass grid min-h-64 place-items-center rounded-2xl p-8 text-center text-sm text-slate-400">La prévisualisation avant/après apparaîtra ici dès qu&apos;une modification sera proposée.</div>
+          <div className="glass grid min-h-64 place-items-center rounded-2xl p-8 text-center text-sm text-slate-600">La prévisualisation avant/après apparaîtra ici dès qu&apos;une modification sera proposée.</div>
         )}
       </div>
     </div>

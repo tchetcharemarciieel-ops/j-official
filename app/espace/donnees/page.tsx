@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Download, Upload } from "lucide-react";
 import { requireProfile } from "@/lib/auth";
 import { adminClient } from "@/lib/supabase/admin";
 import { loadProjects } from "@/lib/espace";
@@ -21,11 +22,11 @@ export default async function MesDonnees() {
   return (
     <div className="space-y-6">
       <div className="animate-fade-up">
-        <h1 className="font-display text-3xl font-bold text-white">Mes données</h1>
-        <p className="mt-1 text-sm text-slate-400">Les fiches enregistrées dans vos logiciels. Vos données réelles sont séparées des données de démonstration et ne sont visibles que par vos membres.</p>
+        <h1 className="font-display text-3xl font-bold text-slate-900">Mes données</h1>
+        <p className="mt-1 text-sm text-slate-600">Les fiches enregistrées dans vos logiciels. Vos données réelles sont séparées des données de démonstration et ne sont visibles que par vos membres.</p>
       </div>
       {projects.length === 0 ? (
-        <div className="glass rounded-2xl p-8 text-center text-sm text-slate-400">Aucun logiciel dont vous êtes propriétaire ou administrateur. <Link href="/creer" className="text-brand-300 underline">Créer un logiciel</Link></div>
+        <div className="glass rounded-2xl p-8 text-center text-sm text-slate-600">Aucun logiciel dont vous êtes propriétaire ou administrateur. <Link href="/creer" className="text-blue-700 underline">Créer un logiciel</Link></div>
       ) : (
         <div className="space-y-4">
           {projects.map((p, i) => {
@@ -37,13 +38,13 @@ export default async function MesDonnees() {
                   <div className="flex items-center gap-3">
                     <span className="grid h-10 w-10 place-items-center rounded-xl text-xs font-bold text-white" style={{ background: p.primary }}>{p.logoText}</span>
                     <div>
-                      <h2 id={`d-${p.id}`} className="font-semibold text-white">{p.name}</h2>
+                      <h2 id={`d-${p.id}`} className="font-semibold text-slate-900">{p.name}</h2>
                       <p className="text-xs text-slate-500">{real.toLocaleString("fr-FR")} fiche(s) réelle(s) · {count(p.id, undefined, true)} de démonstration · {last ? `dernière sauvegarde ${fmtDateTime(last.created_at)}` : "aucune sauvegarde"}</p>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <a href={`/api/projects/${p.id}/export`} className="btn btn-ghost !min-h-0 py-2 text-xs" download>⬇ Tout exporter (JSON)</a>
-                    <Link href={`/projets/${p.id}?onglet=donnees`} className="btn btn-ghost !min-h-0 py-2 text-xs">📥 Importer · 💾 Sauvegarder</Link>
+                    <a href={`/api/projects/${p.id}/export`} className="btn btn-ghost !min-h-0 py-2 text-xs" download><Download className="h-4 w-4" aria-hidden />Tout exporter (JSON)</a>
+                    <Link href={`/projets/${p.id}?onglet=donnees`} className="btn btn-ghost !min-h-0 py-2 text-xs"><Upload className="h-4 w-4" aria-hidden />Importer · Sauvegarder</Link>
                   </div>
                 </div>
                 {p.entities.length > 0 && (
@@ -54,10 +55,10 @@ export default async function MesDonnees() {
                         {p.entities.map((e) => {
                           const n = count(p.id, e.key);
                           return (
-                            <tr key={e.key} className="border-t border-white/5 text-slate-200">
-                              <td className="py-2.5 pr-4">{e.icon} {e.label}</td>
+                            <tr key={e.key} className="border-t border-slate-100 text-slate-800">
+                              <td className="py-2.5 pr-4">{e.label}</td>
                               <td className="pr-4">{n.toLocaleString("fr-FR")}</td>
-                              <td className="text-right">{n > 0 ? <a href={`/api/projects/${p.id}/export?table=${e.key}`} className="text-brand-300 hover:underline" download>CSV (Excel)</a> : <span className="text-slate-600">—</span>}</td>
+                              <td className="text-right">{n > 0 ? <a href={`/api/projects/${p.id}/export?table=${e.key}`} className="text-blue-700 hover:underline" download>CSV (Excel)</a> : <span className="text-slate-600">—</span>}</td>
                             </tr>
                           );
                         })}

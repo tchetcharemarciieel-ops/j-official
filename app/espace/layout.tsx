@@ -12,22 +12,22 @@ export default async function EspaceLayout({ children }: { children: React.React
   const company = profile.company_name || profile.full_name || profile.email;
   return (
     <div className="bg-aurora min-h-dvh">
-      <header className="sticky top-0 z-50 border-b border-white/5 bg-night-950/90">
+      <header className="sticky top-0 z-50 border-b border-slate-100 bg-white/90">
         <div className="flex h-16 items-center gap-3 px-4 sm:px-6">
           <EspaceNav plan={plan?.name ?? profile.plan} credits={profile.credits} />
           <div className="hidden lg:block"><Logo href="/espace" /></div>
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
-            {profile.is_admin && <Link href="/admin" className="hidden rounded-lg px-3 py-2 text-sm text-slate-300 hover:text-white sm:block">Administration</Link>}
-            <Link href="/" className="hidden rounded-lg px-3 py-2 text-sm text-slate-400 hover:text-white md:block">Site public</Link>
+            {profile.is_admin && <Link href="/admin" className="hidden rounded-lg px-3 py-2 text-sm text-slate-700 hover:text-slate-900 sm:block">Administration</Link>}
+            <Link href="/" className="hidden rounded-lg px-3 py-2 text-sm text-slate-600 hover:text-slate-900 md:block">Site public</Link>
             <NotificationBell />
-            <Link href="/espace/parametres" className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 py-1 pl-1 pr-3 transition hover:bg-white/10" aria-label="Profil de l'entreprise">
+            <Link href="/espace/parametres" className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 py-1 pl-1 pr-3 transition hover:bg-slate-100" aria-label="Profil de l'entreprise">
               {profile.company_logo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={profile.company_logo_url} alt="" className="h-8 w-8 rounded-lg object-cover" referrerPolicy="no-referrer" />
               ) : (
-                <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-brand-500 to-sky-glow text-xs font-bold text-white">{company.slice(0, 2).toUpperCase()}</span>
+                <span className="grid h-8 w-8 place-items-center rounded-lg bg-blue-600 text-xs font-bold text-white">{company.slice(0, 2).toUpperCase()}</span>
               )}
-              <span className="hidden max-w-36 truncate text-sm text-white sm:block">{company}</span>
+              <span className="hidden max-w-36 truncate text-sm text-slate-900 sm:block">{company}</span>
             </Link>
           </div>
         </div>

@@ -54,15 +54,15 @@ export function TeamTab({ data, onChanged }: { data: WorkspaceData; onChanged: (
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <Panel title="Membres" subtitle="Chaque permission est vérifiée par le serveur à chaque action.">
-        <ul className="divide-y divide-white/5">
+        <ul className="divide-y divide-slate-200">
           {data.members.map((m) => (
             <li key={m.userId} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm text-white">{m.name}{m.userId === data.meId && " (vous)"}</p>
+                <p className="text-sm text-slate-900">{m.name}{m.userId === data.meId && " (vous)"}</p>
                 <p className="text-xs text-slate-500">Depuis le {fmtDate(m.since)}</p>
               </div>
               {m.role === "owner" || m.userId === data.meId ? (
-                <span className="text-sm text-slate-300">{ROLE_LABELS[m.role as Role]}</span>
+                <span className="text-sm text-slate-700">{ROLE_LABELS[m.role as Role]}</span>
               ) : (
                 <div className="flex gap-2">
                   <select aria-label={`Rôle de ${m.name}`} className="input !min-h-0 py-1.5 text-sm" value={m.role} disabled={busy || (!isOwner && m.role === "admin")} onChange={(e) => call(() => api(`/api/projects/${data.project.id}/members/${m.userId}`, { method: "PATCH", body: { role: e.target.value } }), "Rôle modifié.")}>
@@ -90,9 +90,9 @@ export function TeamTab({ data, onChanged }: { data: WorkspaceData; onChanged: (
           <button className="btn btn-primary w-full" disabled={busy}>Créer l&apos;invitation</button>
         </form>
         {link && (
-          <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">
-            <p className="text-emerald-100">Invitation créée. L&apos;envoi d&apos;e-mails n&apos;est pas configuré : transmettez ce lien à la personne (WhatsApp, SMS, e-mail…).</p>
-            <div className="mt-2 flex items-center gap-2"><code className="flex-1 truncate text-xs text-white">{link}</code><CopyButton text={link} /></div>
+          <div className="mt-4 rounded-xl border border-green-200 bg-green-50 p-3 text-sm">
+            <p className="text-green-700">Invitation créée. L&apos;envoi d&apos;e-mails n&apos;est pas configuré : transmettez ce lien à la personne (WhatsApp, SMS, e-mail…).</p>
+            <div className="mt-2 flex items-center gap-2"><code className="flex-1 truncate text-xs text-slate-900">{link}</code><CopyButton text={link} /></div>
           </div>
         )}
         {data.invitations.length > 0 && (
@@ -101,8 +101,8 @@ export function TeamTab({ data, onChanged }: { data: WorkspaceData; onChanged: (
             <ul className="mt-2 space-y-2">
               {data.invitations.map((i) => (
                 <li key={i.id} className="flex items-center justify-between gap-2 text-sm">
-                  <span className="truncate text-slate-200">{i.email} · {ROLE_LABELS[i.role as Role]} · expire le {fmtDate(i.expires_at)}</span>
-                  <button className="text-xs text-red-300 underline" disabled={busy} onClick={() => call(() => api(`/api/projects/${data.project.id}/invitations`, { method: "DELETE", body: { invitationId: i.id } }), "Invitation annulée.")}>Annuler</button>
+                  <span className="truncate text-slate-800">{i.email} · {ROLE_LABELS[i.role as Role]} · expire le {fmtDate(i.expires_at)}</span>
+                  <button className="text-xs text-red-700 underline" disabled={busy} onClick={() => call(() => api(`/api/projects/${data.project.id}/invitations`, { method: "DELETE", body: { invitationId: i.id } }), "Invitation annulée.")}>Annuler</button>
                 </li>
               ))}
             </ul>
@@ -111,12 +111,12 @@ export function TeamTab({ data, onChanged }: { data: WorkspaceData; onChanged: (
       </Panel>
       <div className="lg:col-span-2">
         <Panel title="Journal des actions importantes">
-          {data.logs.length === 0 ? <p className="text-sm text-slate-400">Aucune action enregistrée.</p> : (
+          {data.logs.length === 0 ? <p className="text-sm text-slate-600">Aucune action enregistrée.</p> : (
             <ul className="max-h-80 space-y-1 overflow-y-auto text-sm">
               {data.logs.map((l, i) => (
-                <li key={i} className="flex gap-3 text-slate-300">
+                <li key={i} className="flex gap-3 text-slate-700">
                   <span className="shrink-0 text-xs text-slate-500">{fmtDateTime(l.created_at)}</span>
-                  <span className={l.level === "error" ? "text-red-300" : l.level === "warning" ? "text-amber-200" : ""}>{l.action}</span>
+                  <span className={l.level === "error" ? "text-red-700" : l.level === "warning" ? "text-amber-800" : ""}>{l.action}</span>
                   <span className="truncate text-slate-500">{l.actor}</span>
                 </li>
               ))}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowLeft, FlaskConical, MessageSquare, Send } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AppRuntime } from "@/components/runtime/AppRuntime";
@@ -123,7 +124,7 @@ export function DemoStudio() {
 
   return (
     <div>
-      <div className="mb-6 flex flex-col justify-between gap-3 rounded-2xl border border-sky-400/20 bg-sky-400/5 px-4 py-3 text-sm text-sky-100 sm:flex-row sm:items-center">
+      <div className="mb-6 flex flex-col justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800 sm:flex-row sm:items-center">
         <p>
           <strong>Démo sans compte.</strong> Analyse par règles, logiciel et données conservés uniquement dans ce navigateur.{STATIC_SITE ? " La version complète (analyse IA, sauvegarde, équipe, publication) arrive bientôt." : " Créez un compte pour l'analyse IA, la sauvegarde, l'équipe et la publication."}
         </p>
@@ -132,13 +133,13 @@ export function DemoStudio() {
 
       {step === "describe" && (
         <section className="glass mx-auto max-w-3xl rounded-2xl p-5 sm:p-8">
-          <h1 className="font-display text-2xl font-bold text-white sm:text-3xl">Essayez maintenant, sans compte</h1>
-          <p className="mt-2 text-sm text-slate-400">Décrivez votre problème : un mini-logiciel fonctionnel apparaît en quelques secondes.</p>
+          <h1 className="font-display text-2xl font-bold text-slate-900 sm:text-3xl">Essayez maintenant, sans compte</h1>
+          <p className="mt-2 text-sm text-slate-600">Décrivez votre problème : un mini-logiciel fonctionnel apparaît en quelques secondes.</p>
           <label htmlFor="d-pb" className="label mt-6">Votre problème</label>
           <textarea id="d-pb" rows={4} className="input" value={problem} onChange={(e) => setProblem(e.target.value)} maxLength={2000} placeholder="Décrivez le problème que vous souhaitez résoudre…" />
           <div className="mt-3 flex flex-wrap gap-2">
             {EXAMPLES.map((ex) => (
-              <button key={ex} type="button" onClick={() => setProblem(ex)} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300 hover:border-brand-400 hover:text-white">{ex.replace("Je veux ", "")}</button>
+              <button key={ex} type="button" onClick={() => setProblem(ex)} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700 hover:border-blue-300 hover:text-slate-900">{ex.replace("Je veux ", "")}</button>
             ))}
           </div>
           <div className="mt-3"><VoiceButton onText={(t) => setProblem((p) => (p ? `${p} ${t}` : t))} /></div>
@@ -151,24 +152,24 @@ export function DemoStudio() {
       {step === "plan" && diagnosis && (
         <section className="glass mx-auto max-w-3xl rounded-2xl p-5 sm:p-8">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h1 className="font-display text-2xl font-bold text-white">Plan du logiciel</h1>
-            <span className="rounded-full bg-white/5 px-3 py-1 text-xs text-slate-300">📐 Analyse par règles · {diagnosis.sectorLabel}</span>
+            <h1 className="font-display text-2xl font-bold text-slate-900">Plan du logiciel</h1>
+            <span className="rounded-full bg-slate-50 px-3 py-1 text-xs text-slate-700">Analyse par règles · {diagnosis.sectorLabel}</span>
           </div>
-          <p className="mt-2 text-sm text-slate-400">{diagnosis.mainProblem}</p>
+          <p className="mt-2 text-sm text-slate-600">{diagnosis.mainProblem}</p>
           <label htmlFor="d-name2" className="label mt-5">Nom du logiciel</label>
           <input id="d-name2" className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder={`Gestion ${diagnosis.sectorLabel.toLowerCase()}`} />
           <ul className="mt-5 grid gap-3 sm:grid-cols-2">
             {diagnosis.features.map((f) => (
               <li key={f.id}>
-                <label className={`flex h-full cursor-pointer gap-3 rounded-xl border p-4 ${f.selected ? "border-brand-400/60 bg-brand-500/10" : "border-white/10"}`}>
-                  <input type="checkbox" className="mt-1 h-5 w-5 accent-[#6d5dfc]" checked={f.selected} onChange={() => setDiagnosis({ ...diagnosis, features: diagnosis.features.map((x) => (x.id === f.id ? { ...x, selected: !x.selected } : x)) })} />
-                  <span><span className="block font-medium text-white">{f.title}</span><span className="block text-xs text-slate-400">{f.description}</span></span>
+                <label className={`flex h-full cursor-pointer gap-3 rounded-xl border p-4 ${f.selected ? "border-blue-300 bg-blue-50" : "border-slate-200"}`}>
+                  <input type="checkbox" className="mt-1 h-5 w-5 accent-blue-600" checked={f.selected} onChange={() => setDiagnosis({ ...diagnosis, features: diagnosis.features.map((x) => (x.id === f.id ? { ...x, selected: !x.selected } : x)) })} />
+                  <span><span className="block font-medium text-slate-900">{f.title}</span><span className="block text-xs text-slate-600">{f.description}</span></span>
                 </label>
               </li>
             ))}
           </ul>
           <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
-            <button className="btn btn-ghost" onClick={() => setStep("describe")}>← Modifier ma description</button>
+            <button className="btn btn-ghost" onClick={() => setStep("describe")}><ArrowLeft className="h-4 w-4" aria-hidden />Modifier ma description</button>
             <button className="btn btn-primary" disabled={!diagnosis.features.some((f) => f.selected)} onClick={generate}>Générer mon logiciel</button>
           </div>
         </section>
@@ -176,21 +177,21 @@ export function DemoStudio() {
 
       {step === "app" && spec && (
         <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
-          <div className="overflow-hidden rounded-2xl border border-white/10 shadow-2xl">
+          <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
             <AppRuntime key={runtimeKey} projectId="demo" spec={spec} mode="local" role="owner" compact />
           </div>
           <aside className="space-y-4">
             <section className="glass rounded-2xl p-5">
-              <h2 className="font-display text-lg font-semibold text-white">✨ Modifier le logiciel</h2>
-              <p className="mt-1 text-xs text-slate-400">En démo, les demandes courantes sont reconnues par règles. Avec un compte, l&apos;IA comprend des demandes libres.</p>
+              <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-slate-900"><MessageSquare className="h-4 w-4 text-blue-600" aria-hidden />Modifier le logiciel</h2>
+              <p className="mt-1 text-xs text-slate-600">En démo, les demandes courantes sont reconnues par règles. Avec un compte, l&apos;IA comprend des demandes libres.</p>
               <div className="mt-3 max-h-64 space-y-2 overflow-y-auto" aria-live="polite">
                 {msgs.length === 0 && (
                   <div className="flex flex-wrap gap-2">
-                    {MODIFS.map((m) => <button key={m} onClick={() => modify(m)} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-left text-xs text-slate-300 hover:border-brand-400">{m}</button>)}
+                    {MODIFS.map((m) => <button key={m} onClick={() => modify(m)} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-left text-xs text-slate-700 hover:border-blue-300">{m}</button>)}
                   </div>
                 )}
                 {msgs.map((m, i) => (
-                  <p key={i} className={m.role === "user" ? "ml-6 rounded-xl bg-brand-500/20 px-3 py-2 text-sm text-white" : "mr-4 rounded-xl bg-white/5 px-3 py-2 text-sm text-slate-200"}>{m.text}</p>
+                  <p key={i} className={m.role === "user" ? "ml-6 rounded-xl bg-blue-50 px-3 py-2 text-sm text-slate-900" : "mr-4 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-800"}>{m.text}</p>
                 ))}
               </div>
               <form className="mt-3 flex gap-2" onSubmit={(e) => { e.preventDefault(); modify(instruction); }}>
@@ -201,20 +202,20 @@ export function DemoStudio() {
             </section>
             {checks && (
               <section className="glass rounded-2xl p-5">
-                <h2 className="font-display text-lg font-semibold text-white">🧪 Tests automatiques</h2>
-                <p className="mt-1 text-sm text-slate-300">{checks.passed}/{checks.total} réussis{checks.warnings ? ` · ${checks.warnings} avertissement(s)` : ""}{checks.failed ? ` · ${checks.failed} échec(s)` : ""}</p>
+                <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-slate-900"><FlaskConical className="h-4 w-4 text-blue-600" aria-hidden />Tests automatiques</h2>
+                <p className="mt-1 text-sm text-slate-700">{checks.passed}/{checks.total} réussis{checks.warnings ? ` · ${checks.warnings} avertissement(s)` : ""}{checks.failed ? ` · ${checks.failed} échec(s)` : ""}</p>
                 <p className="mt-1 text-xs text-slate-500">Structure, formulaires, calculs, permissions et affichage mobile. Les tests en base de données et l&apos;isolation entre clients s&apos;exécutent sur votre compte.</p>
               </section>
             )}
             <section className="glass rounded-2xl p-5">
-              <h2 className="font-display text-lg font-semibold text-white">🚀 Passer à la vraie version</h2>
-              <ul className="mt-2 space-y-1 text-sm text-slate-300">
+              <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-slate-900"><Send className="h-4 w-4 text-blue-600" aria-hidden />Passer à la vraie version</h2>
+              <ul className="mt-2 space-y-1 text-sm text-slate-700">
                 <li>• Analyse IA de votre besoin, photos et fichiers Excel</li>
                 <li>• Données sauvegardées, versions et restauration</li>
                 <li>• Lien permanent à partager avec votre équipe</li>
               </ul>
               {STATIC_SITE ? (
-                <p className="mt-4 rounded-xl bg-white/5 px-3 py-2 text-xs text-slate-300">Les comptes, la sauvegarde en ligne et la publication arrivent bientôt sur la version complète de la plateforme.</p>
+                <p className="mt-4 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-700">Les comptes, la sauvegarde en ligne et la publication arrivent bientôt sur la version complète de la plateforme.</p>
               ) : (
                 <Link href={`/inscription?next=${encodeURIComponent(`/creer?probleme=${encodeURIComponent(problem)}`)}`} className="btn btn-primary mt-4 w-full">Créer mon compte gratuit</Link>
               )}

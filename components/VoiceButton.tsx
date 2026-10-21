@@ -1,5 +1,6 @@
 "use client";
 
+import { Mic, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 type SR = {
@@ -54,14 +55,15 @@ export function VoiceButton({ onText }: { onText: (text: string) => void }) {
     setListening(true);
   }
 
-  if (supported === false) return <p className="text-xs text-slate-500">🎙️ Dictée vocale indisponible dans ce navigateur : écrivez votre demande.</p>;
+  if (supported === false) return <p className="text-xs text-slate-500">Dictée vocale indisponible dans ce navigateur : écrivez votre demande.</p>;
   return (
     <div>
       <button type="button" onClick={toggle} disabled={supported === null} className={`btn ${listening ? "btn-danger" : "btn-ghost"}`} aria-pressed={listening}>
-        {listening ? "⏹ Arrêter la dictée" : "🎙️ Dicter"}
+        {listening ? <Square className="h-4 w-4" aria-hidden /> : <Mic className="h-4 w-4" aria-hidden />}
+        {listening ? "Arrêter la dictée" : "Dicter"}
       </button>
-      {listening && <span className="ml-2 text-xs text-red-300 animate-pulse-glow">● Écoute en cours…</span>}
-      {error && <p role="alert" className="mt-1 text-xs text-red-300">{error}</p>}
+      {listening && <span className="ml-2 inline-flex items-center gap-1.5 text-xs text-red-700"><span className="h-2 w-2 rounded-full bg-red-600" aria-hidden />Écoute en cours…</span>}
+      {error && <p role="alert" className="mt-1 text-xs text-red-700">{error}</p>}
     </div>
   );
 }

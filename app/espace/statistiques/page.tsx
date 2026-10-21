@@ -1,3 +1,4 @@
+import { BarChart3, FilePlus, History, Sparkles } from "lucide-react";
 import { requireProfile } from "@/lib/auth";
 import { adminClient } from "@/lib/supabase/admin";
 import { loadProjects } from "@/lib/espace";
@@ -30,26 +31,26 @@ export default async function Statistiques() {
   return (
     <div className="space-y-6">
       <div className="animate-fade-up">
-        <h1 className="font-display text-3xl font-bold text-white">Statistiques</h1>
-        <p className="mt-1 text-sm text-slate-400">30 derniers jours. Chiffres calculés sur vos vraies données uniquement.</p>
+        <h1 className="font-display text-3xl font-bold text-slate-900">Statistiques</h1>
+        <p className="mt-1 text-sm text-slate-600">30 derniers jours. Chiffres calculés sur vos vraies données uniquement.</p>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-        <StatCard label="Visites des logiciels" value={total} icon="👀" hint="ouvertures par vos membres" tone="sky" />
-        <StatCard label="Nouvelles fiches" value={newRecords} icon="📝" hint={`${(records ?? []).length.toLocaleString("fr-FR")} au total`} delay={80} />
-        <StatCard label="Versions créées" value={(versions ?? []).length} icon="🕓" hint="depuis la création" tone="amber" delay={160} />
-        <StatCard label="Crédits IA utilisés" value={credits} icon="✨" hint={`${(usage ?? []).length} opération(s), solde ${profile.credits}`} tone="green" delay={240} />
+        <StatCard label="Visites des logiciels" value={total} icon={BarChart3} hint="ouvertures par vos membres" tone="sky" />
+        <StatCard label="Nouvelles fiches" value={newRecords} icon={FilePlus} hint={`${(records ?? []).length.toLocaleString("fr-FR")} au total`} delay={80} />
+        <StatCard label="Versions créées" value={(versions ?? []).length} icon={History} hint="depuis la création" tone="amber" delay={160} />
+        <StatCard label="Crédits IA utilisés" value={credits} icon={Sparkles} hint={`${(usage ?? []).length} opération(s), solde ${profile.credits}`} tone="green" delay={240} />
       </div>
 
       <section className="glass rounded-2xl p-5 animate-fade-up" aria-labelledby="visites">
-        <h2 id="visites" className="font-semibold text-white">Visites par jour</h2>
+        <h2 id="visites" className="font-semibold text-slate-900">Visites par jour</h2>
         {total === 0 ? (
-          <p className="mt-4 text-sm text-slate-400">Aucune visite sur cette période. Les visites sont comptées quand un membre ouvre un logiciel publié depuis son lien.</p>
+          <p className="mt-4 text-sm text-slate-600">Aucune visite sur cette période. Les visites sont comptées quand un membre ouvre un logiciel publié depuis son lien.</p>
         ) : (
           <>
             <div className="mt-5 flex h-40 items-end gap-1" role="img" aria-label={`Visites sur 30 jours : ${total} au total`}>
               {perDay.map((x) => (
                 <div key={x.d} className="group relative flex h-full flex-1 items-end" title={`${fmtDate(x.d)} : ${x.v} visite(s)`}>
-                  <div className="w-full rounded-t bg-gradient-to-t from-brand-500 to-sky-glow transition-all duration-500 group-hover:brightness-125" style={{ height: `${x.v ? Math.max(4, (x.v / max) * 100) : 1}%`, opacity: x.v ? 1 : 0.2 }} />
+                  <div className="w-full rounded-t bg-blue-600 transition-all duration-500 group-hover:brightness-125" style={{ height: `${x.v ? Math.max(4, (x.v / max) * 100) : 1}%`, opacity: x.v ? 1 : 0.2 }} />
                 </div>
               ))}
             </div>
@@ -59,18 +60,18 @@ export default async function Statistiques() {
       </section>
 
       <section className="glass overflow-x-auto rounded-2xl p-5 animate-fade-up">
-        <h2 className="font-semibold text-white">Par logiciel</h2>
-        {projects.length === 0 ? <p className="mt-3 text-sm text-slate-400">Aucun logiciel.</p> : (
+        <h2 className="font-semibold text-slate-900">Par logiciel</h2>
+        {projects.length === 0 ? <p className="mt-3 text-sm text-slate-600">Aucun logiciel.</p> : (
           <table className="mt-3 w-full text-left text-sm">
             <thead className="text-xs uppercase text-slate-500"><tr><th className="py-2 pr-4">Logiciel</th><th className="pr-4">Visites (30 j)</th><th className="pr-4">Fiches réelles</th><th className="pr-4">Versions</th><th>Publication</th></tr></thead>
             <tbody>
               {projects.map((p) => (
-                <tr key={p.id} className="border-t border-white/5 text-slate-200">
+                <tr key={p.id} className="border-t border-slate-100 text-slate-800">
                   <td className="py-2.5 pr-4">{p.name}</td>
                   <td className="pr-4">{(views ?? []).filter((v) => v.project_id === p.id).reduce((a, v) => a + v.views, 0)}</td>
                   <td className="pr-4">{managed.includes(p.id) ? (records ?? []).filter((r) => r.project_id === p.id).length : "—"}</td>
                   <td className="pr-4">{(versions ?? []).filter((v) => v.project_id === p.id).length}</td>
-                  <td className="text-xs text-slate-400">{p.publishedAt ? `v${p.publishedVersion} le ${fmtDate(p.publishedAt)}` : "non publié"}</td>
+                  <td className="text-xs text-slate-600">{p.publishedAt ? `v${p.publishedVersion} le ${fmtDate(p.publishedAt)}` : "non publié"}</td>
                 </tr>
               ))}
             </tbody>

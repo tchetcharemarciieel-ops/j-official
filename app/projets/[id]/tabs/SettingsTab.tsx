@@ -52,8 +52,8 @@ export function SettingsTab({ data, spec, onChanged }: { data: WorkspaceData; sp
           <label className="block"><span className="label">Nom du logiciel</span><input className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} required /></label>
           <label className="block"><span className="label">Texte d&apos;accueil</span><textarea className="input" rows={2} value={welcome} onChange={(e) => setWelcome(e.target.value)} maxLength={300} /></label>
           <div className="grid grid-cols-2 gap-3">
-            <label><span className="label">Couleur principale</span><input type="color" className="h-11 w-full cursor-pointer rounded-xl border border-white/15 bg-transparent" value={primary} onChange={(e) => setPrimary(e.target.value)} /></label>
-            <label><span className="label">Couleur secondaire</span><input type="color" className="h-11 w-full cursor-pointer rounded-xl border border-white/15 bg-transparent" value={accent} onChange={(e) => setAccent(e.target.value)} /></label>
+            <label><span className="label">Couleur principale</span><input type="color" className="h-11 w-full cursor-pointer rounded-xl border border-slate-300 bg-transparent" value={primary} onChange={(e) => setPrimary(e.target.value)} /></label>
+            <label><span className="label">Couleur secondaire</span><input type="color" className="h-11 w-full cursor-pointer rounded-xl border border-slate-300 bg-transparent" value={accent} onChange={(e) => setAccent(e.target.value)} /></label>
           </div>
           <div className="grid grid-cols-[1fr_2fr] gap-3">
             <label><span className="label">Initiales du logo</span><input className="input" value={logoText} onChange={(e) => setLogoText(e.target.value.toUpperCase())} maxLength={4} /></label>
@@ -69,9 +69,9 @@ export function SettingsTab({ data, spec, onChanged }: { data: WorkspaceData; sp
       </Panel>
       <div className="space-y-6">
         <Panel title="Cahier des charges initial">
-          <p className="text-sm text-slate-300">{data.project.problem || "—"}</p>
+          <p className="text-sm text-slate-700">{data.project.problem || "—"}</p>
           {data.diagnosis && (
-            <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-400">
+            <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-600">
               {data.diagnosis.features.filter((f) => f.selected).map((f) => <li key={f.id}>{f.title}</li>)}
             </ul>
           )}

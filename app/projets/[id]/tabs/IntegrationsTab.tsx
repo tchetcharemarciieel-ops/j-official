@@ -1,5 +1,6 @@
 "use client";
 
+import { Plug, X } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/components/Toaster";
 import { api } from "@/lib/fetcher";
@@ -8,12 +9,12 @@ import type { AppSpec, Automation } from "@/lib/spec";
 import { Panel, type WorkspaceData } from "../Workspace";
 
 const PLANNED = [
-  ["💬", "Messagerie (WhatsApp, SMS)"],
-  ["💳", "Paiement (Mobile Money, carte)"],
-  ["📒", "Comptabilité"],
-  ["✉️", "Courriel"],
-  ["📅", "Calendrier"],
-  ["🗂", "Stockage de fichiers"],
+  "Messagerie (WhatsApp, SMS)",
+  "Paiement (Mobile Money, carte)",
+  "Comptabilité",
+  "Courriel",
+  "Calendrier",
+  "Stockage de fichiers",
 ];
 
 export function IntegrationsTab({ data, spec, onChanged }: { data: WorkspaceData; spec: AppSpec; onChanged: () => void }) {
@@ -52,13 +53,14 @@ export function IntegrationsTab({ data, spec, onChanged }: { data: WorkspaceData
     <div className="space-y-6">
       <Panel title="Intégrations" subtitle="Une intégration n'est affichée « connectée » qu'après un test de connexion réussi.">
         {data.integrations.length > 0 && (
-          <ul className="mb-6 divide-y divide-white/5">
+          <ul className="mb-6 divide-y divide-slate-200">
             {data.integrations.map((i) => (
               <li key={i.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm text-white">🔗 {i.label} <span className="text-xs text-slate-500">({i.host})</span></p>
-                  <p className={`text-xs ${i.status === "connected" ? "text-emerald-300" : i.status === "error" ? "text-red-300" : "text-slate-400"}`}>
-                    {i.status === "connected" ? "● Connecté" : i.status === "error" ? `● Erreur : ${i.lastError}` : "● Non testé"}
+                  <p className="flex items-center gap-1.5 text-sm text-slate-900"><Plug className="h-4 w-4 text-slate-500" aria-hidden />{i.label} <span className="text-xs text-slate-500">({i.host})</span></p>
+                  <p className={`flex flex-wrap items-center gap-1.5 text-xs ${i.status === "connected" ? "text-green-700" : i.status === "error" ? "text-red-700" : "text-slate-600"}`}>
+                    <span className={`h-2 w-2 shrink-0 rounded-full ${i.status === "connected" ? "bg-green-600" : i.status === "error" ? "bg-red-600" : "bg-slate-400"}`} aria-hidden />
+                    {i.status === "connected" ? "Connecté" : i.status === "error" ? `Erreur : ${i.lastError}` : "Non testé"}
                     {i.lastTestedAt && ` · testé le ${fmtDateTime(i.lastTestedAt)}`}
                   </p>
                   <p className="text-xs text-slate-500">Autorisations : reçoit les fiches des automatisations qui l&apos;utilisent (contenu de la fiche).</p>
@@ -80,16 +82,16 @@ export function IntegrationsTab({ data, spec, onChanged }: { data: WorkspaceData
         <div className="mt-6">
           <h3 className="text-xs font-semibold uppercase text-slate-500">Connecteurs prévus (non disponibles)</h3>
           <ul className="mt-2 grid gap-2 sm:grid-cols-3">
-            {PLANNED.map(([icon, name]) => <li key={name} className="rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-400">{icon} {name} — <span className="text-xs">non configuré</span></li>)}
+            {PLANNED.map((name) => <li key={name} className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600">{name} — <span className="text-xs">non configuré</span></li>)}
           </ul>
         </div>
       </Panel>
 
       <Panel title="Automatisations" subtitle="Ex. : lorsqu'une commande est enregistrée, prévenir le responsable via un webhook. Désactivées par défaut : activez-les explicitement." actions={<button className="btn btn-ghost" onClick={addAuto} disabled={autos.length >= 20}>+ Ajouter</button>}>
-        {autos.length === 0 ? <p className="text-sm text-slate-400">Aucune automatisation.</p> : (
+        {autos.length === 0 ? <p className="text-sm text-slate-600">Aucune automatisation.</p> : (
           <ul className="space-y-3">
             {autos.map((a, i) => (
-              <li key={a.id} className="grid gap-2 rounded-xl border border-white/10 p-3 lg:grid-cols-[2fr_1fr_1fr_1.5fr_auto_auto] lg:items-end">
+              <li key={a.id} className="grid gap-2 rounded-xl border border-slate-200 p-3 lg:grid-cols-[2fr_1fr_1fr_1.5fr_auto_auto] lg:items-end">
                 <label><span className="label">Nom</span><input className="input" value={a.label} maxLength={120} onChange={(e) => upd(i, { label: e.target.value })} /></label>
                 <label><span className="label">Lorsqu&apos;une fiche</span>
                   <select className="input" value={a.trigger.entity} onChange={(e) => upd(i, { trigger: { ...a.trigger, entity: e.target.value } })}>{spec.entities.map((e) => <option key={e.key} value={e.key}>{e.labelPlural}</option>)}</select>
@@ -103,8 +105,8 @@ export function IntegrationsTab({ data, spec, onChanged }: { data: WorkspaceData
                     {connected.map((c) => <option key={c.id} value={c.id}>Envoyer à {c.label}</option>)}
                   </select>
                 </label>
-                <label className="flex items-center gap-2 pb-3 text-sm text-slate-200"><input type="checkbox" checked={a.enabled} onChange={(e) => upd(i, { enabled: e.target.checked })} /> Active</label>
-                <button className="btn btn-danger" onClick={() => setAutos((x) => x.filter((_, k) => k !== i))} aria-label={`Supprimer ${a.label}`}>✕</button>
+                <label className="flex items-center gap-2 pb-3 text-sm text-slate-800"><input type="checkbox" checked={a.enabled} onChange={(e) => upd(i, { enabled: e.target.checked })} /> Active</label>
+                <button className="btn btn-danger" onClick={() => setAutos((x) => x.filter((_, k) => k !== i))} aria-label={`Supprimer ${a.label}`}><X className="h-4 w-4" aria-hidden /></button>
               </li>
             ))}
           </ul>

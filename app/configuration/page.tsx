@@ -1,3 +1,4 @@
+import { CircleCheck, CircleX } from "lucide-react";
 import { AuthShell } from "@/components/AuthShell";
 import { serverConfigured, supabaseConfigured } from "@/lib/config";
 import { aiAvailable } from "@/lib/ai";
@@ -8,10 +9,10 @@ export const dynamic = "force-dynamic";
 function Row({ ok, label, help }: { ok: boolean; label: string; help: string }) {
   return (
     <li className="flex gap-3">
-      <span>{ok ? "✅" : "⛔"}</span>
+      {ok ? <CircleCheck className="mt-0.5 h-5 w-5 shrink-0 text-green-600" aria-label="Disponible" /> : <CircleX className="mt-0.5 h-5 w-5 shrink-0 text-red-600" aria-label="Manquant" />}
       <div>
-        <p className="font-medium text-white">{label}</p>
-        {!ok && <p className="text-xs text-slate-400">{help}</p>}
+        <p className="font-medium text-slate-900">{label}</p>
+        {!ok && <p className="text-xs text-slate-600">{help}</p>}
       </div>
     </li>
   );

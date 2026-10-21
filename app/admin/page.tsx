@@ -45,38 +45,38 @@ export default async function Admin() {
 
   return (
     <AppShell wide>
-      <h1 className="font-display text-3xl font-bold text-white">Administration MiniSoft RCA</h1>
-      <p className="mt-1 text-sm text-slate-400">Fournisseur IA : {aiAvailable() ? `configuré (${process.env.AI_MODEL || "claude-opus-5-5"})` : "non configuré — analyse par règles"} · Paiement : non configuré</p>
+      <h1 className="font-display text-3xl font-bold text-slate-900">Administration MiniSoft RCA</h1>
+      <p className="mt-1 text-sm text-slate-600">Fournisseur IA : {aiAvailable() ? `configuré (${process.env.AI_MODEL || "claude-opus-5-5"})` : "non configuré — analyse par règles"} · Paiement : non configuré</p>
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {tiles.map(([l, v]) => (
-          <div key={String(l)} className="glass rounded-2xl p-4"><p className="text-xs text-slate-400">{l}</p><p className="mt-1 text-xl font-semibold text-white">{v}</p></div>
+          <div key={String(l)} className="glass rounded-2xl p-4"><p className="text-xs text-slate-600">{l}</p><p className="mt-1 text-xl font-semibold text-slate-900">{v}</p></div>
         ))}
       </div>
 
       <section className="mt-10">
-        <h2 className="font-display text-xl font-semibold text-white">Demandes de démonstration ({(leads.data ?? []).filter((l) => l.status === "nouveau").length} nouvelle(s))</h2>
+        <h2 className="font-display text-xl font-semibold text-slate-900">Demandes de démonstration ({(leads.data ?? []).filter((l) => l.status === "nouveau").length} nouvelle(s))</h2>
         <AdminLeads leads={(leads.data ?? []).map((l) => ({ ...l, created: fmtDateTime(l.created_at) }))} />
       </section>
 
       <section className="mt-10">
-        <h2 className="font-display text-xl font-semibold text-white">Comptes, abonnements et quotas</h2>
+        <h2 className="font-display text-xl font-semibold text-slate-900">Comptes, abonnements et quotas</h2>
         <AdminUsers users={(users.data ?? []).map((x) => ({ ...x, created: fmtDate(x.created_at) }))} plans={plans.map((p) => ({ id: p.id, name: p.name }))} />
       </section>
 
       <section className="mt-10">
-        <h2 className="font-display text-xl font-semibold text-white">Projets et publications</h2>
+        <h2 className="font-display text-xl font-semibold text-slate-900">Projets et publications</h2>
         <AdminProjects projects={(projects.data ?? []).map((p) => ({ id: p.id, name: p.name, slug: p.slug, status: p.status, statusLabel: STATUS[p.status]?.label ?? p.status, owner: emails[p.owner_id] ?? "—", created: fmtDate(p.created_at), published: Boolean(p.published_version) }))} />
       </section>
 
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
         <section className="glass rounded-2xl p-5">
-          <h2 className="font-display text-lg font-semibold text-white">Suivi des générations et coûts IA</h2>
+          <h2 className="font-display text-lg font-semibold text-slate-900">Suivi des générations et coûts IA</h2>
           <div className="mt-3 max-h-96 overflow-auto">
             <table className="w-full text-left text-xs">
               <thead className="text-slate-500"><tr><th className="py-1">Date</th><th>Compte</th><th>Opération</th><th>Jetons</th><th>Coût</th><th>Statut</th></tr></thead>
               <tbody>
                 {u.slice(0, 100).map((x, i) => (
-                  <tr key={i} className="border-t border-white/5 text-slate-300">
+                  <tr key={i} className="border-t border-slate-100 text-slate-700">
                     <td className="py-1 pr-2">{fmtDateTime(x.created_at)}</td>
                     <td className="max-w-32 truncate pr-2">{emails[x.user_id] ?? "—"}</td>
                     <td className="pr-2">{x.operation} ({x.engine})</td>
@@ -90,12 +90,12 @@ export default async function Admin() {
           </div>
         </section>
         <section className="glass rounded-2xl p-5">
-          <h2 className="font-display text-lg font-semibold text-white">Erreurs techniques et alertes</h2>
+          <h2 className="font-display text-lg font-semibold text-slate-900">Erreurs techniques et alertes</h2>
           <ul className="mt-3 max-h-96 space-y-2 overflow-auto text-xs">
-            {(errors.data ?? []).length === 0 && <li className="text-slate-400">Aucune erreur.</li>}
+            {(errors.data ?? []).length === 0 && <li className="text-slate-600">Aucune erreur.</li>}
             {(errors.data ?? []).map((e, i) => (
-              <li key={i} className={e.level === "error" ? "text-red-300" : "text-amber-200"}>
-                {fmtDateTime(e.created_at)} · {e.action} · <span className="text-slate-400">{JSON.stringify(e.details).slice(0, 160)}</span>
+              <li key={i} className={e.level === "error" ? "text-red-700" : "text-amber-800"}>
+                {fmtDateTime(e.created_at)} · {e.action} · <span className="text-slate-600">{JSON.stringify(e.details).slice(0, 160)}</span>
               </li>
             ))}
           </ul>
@@ -103,10 +103,10 @@ export default async function Admin() {
       </div>
 
       <section className="glass mt-10 rounded-2xl p-5">
-        <h2 className="font-display text-lg font-semibold text-white">Modèles disponibles</h2>
-        <p className="mt-1 text-xs text-slate-400">Les modèles sont définis dans le code (lib/templates.ts) et versionnés avec la plateforme.</p>
+        <h2 className="font-display text-lg font-semibold text-slate-900">Modèles disponibles</h2>
+        <p className="mt-1 text-xs text-slate-600">Les modèles sont définis dans le code (lib/templates.ts) et versionnés avec la plateforme.</p>
         <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-          {TEMPLATES.map((t) => <li key={t.id} className="rounded-xl border border-white/10 p-3 text-sm text-slate-200">{t.name}<span className="block text-xs text-slate-500">{t.category} · {perTemplate(t.id)} utilisation(s)</span></li>)}
+          {TEMPLATES.map((t) => <li key={t.id} className="rounded-xl border border-slate-200 p-3 text-sm text-slate-800">{t.name}<span className="block text-xs text-slate-500">{t.category} · {perTemplate(t.id)} utilisation(s)</span></li>)}
         </ul>
       </section>
     </AppShell>

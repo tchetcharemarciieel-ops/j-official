@@ -1,5 +1,6 @@
 "use client";
 
+import { CircleAlert, CircleCheck, Info } from "lucide-react";
 import { createContext, useCallback, useContext, useState } from "react";
 
 type Toast = { id: number; kind: "success" | "error" | "info"; message: string };
@@ -23,10 +24,10 @@ export function Toaster({ children }: { children: React.ReactNode }) {
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`pointer-events-auto glass max-w-md rounded-xl px-4 py-3 text-sm shadow-2xl ${t.kind === "error" ? "border-red-500/50 text-red-100" : t.kind === "success" ? "border-emerald-500/50 text-emerald-100" : "text-slate-100"}`}
+            className={`pointer-events-auto glass flex max-w-md items-start gap-2 rounded-xl px-4 py-3 text-sm shadow-lg ${t.kind === "error" ? "border-red-200 text-red-700" : t.kind === "success" ? "border-green-200 text-green-700" : "text-slate-800"}`}
           >
-            {t.kind === "error" ? "⚠️ " : t.kind === "success" ? "✅ " : "ℹ️ "}
-            {t.message}
+            {t.kind === "error" ? <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-red-600" aria-hidden /> : t.kind === "success" ? <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-green-600" aria-hidden /> : <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" aria-hidden />}
+            <span>{t.message}</span>
           </div>
         ))}
       </div>

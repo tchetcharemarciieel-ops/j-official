@@ -8,7 +8,7 @@ export function WhatsAppButton() {
       href={`https://wa.me/${number}?text=${text}`}
       target="_blank"
       rel="noopener"
-      className="no-print fixed bottom-5 right-5 z-[70] flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-3 font-semibold text-white shadow-2xl shadow-black/40 transition hover:scale-105"
+      className="no-print fixed bottom-5 right-5 z-[70] flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-3 font-semibold text-white shadow-lg transition-colors hover:bg-[#1ebe5b]"
       aria-label="Nous écrire sur WhatsApp"
     >
       <svg viewBox="0 0 24 24" className="h-6 w-6 fill-current" aria-hidden="true">

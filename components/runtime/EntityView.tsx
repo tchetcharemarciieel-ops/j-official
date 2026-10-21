@@ -1,5 +1,6 @@
 "use client";
 
+import { Download, FileText, Printer } from "lucide-react";
 import { useMemo, useState } from "react";
 import { formatValue, toCsv } from "@/lib/records";
 import { can, readonlyFields } from "@/lib/permissions";
@@ -110,19 +111,21 @@ export function EntityView({ spec, entity, role, data, notify }: { spec: AppSpec
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-slate-900">
-            {entity.icon} {entity.labelPlural}
+            {entity.labelPlural}
           </h2>
           <p className="text-sm text-slate-500">{visible.length} fiche(s){visible.length !== rows.length ? ` sur ${rows.length}` : ""}</p>
         </div>
         <div className="no-print flex flex-wrap gap-2">
           {spec.features.csvExport && (
-            <button onClick={exportCsv} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" disabled={!visible.length}>
-              ⬇ CSV
+            <button onClick={exportCsv} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" disabled={!visible.length}>
+              <Download className="h-4 w-4" aria-hidden />
+              CSV
             </button>
           )}
           {spec.features.pdfExport && (
-            <button onClick={() => window.print()} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-              🖨 PDF
+            <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              <Printer className="h-4 w-4" aria-hidden />
+              PDF
             </button>
           )}
           {canCreate && (
@@ -150,7 +153,7 @@ export function EntityView({ spec, entity, role, data, notify }: { spec: AppSpec
         <div className="mt-6 space-y-2">{[0, 1, 2].map((i) => <div key={i} className="h-12 rounded-xl bg-slate-200/70 animate-pulse" />)}</div>
       ) : rows.length === 0 ? (
         <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
-          <p className="text-3xl">{entity.icon}</p>
+          <FileText className="mx-auto h-8 w-8 text-slate-400" aria-hidden />
           <p className="mt-2 font-medium text-slate-700">Aucune fiche pour l&apos;instant</p>
           {canCreate && <button onClick={() => setEditing("new")} className="mt-4 rounded-xl px-4 py-2 text-sm font-semibold text-white" style={{ background: "var(--app-primary)" }}>Ajouter la première</button>}
         </div>
@@ -203,7 +206,7 @@ export function EntityView({ spec, entity, role, data, notify }: { spec: AppSpec
                 <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
                   {columns.slice(0, 6).map((c, i) => (
                     <div key={c.key} className={i === 0 ? "col-span-2" : ""}>
-                      <dt className="text-xs text-slate-400">{c.label}</dt>
+                      <dt className="text-xs text-slate-600">{c.label}</dt>
                       <dd className={i === 0 ? "font-semibold text-slate-900" : "text-slate-700"}>{display(c.key, r.data[c.key])}</dd>
                     </div>
                   ))}

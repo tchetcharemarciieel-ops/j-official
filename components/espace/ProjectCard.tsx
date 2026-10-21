@@ -1,5 +1,6 @@
 "use client";
 
+import { ExternalLink, FlaskConical, Link2, Pencil, Send, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -68,24 +69,24 @@ export function ProjectCard({ project: p, delay = 0, compact = false }: { projec
   const btn = "inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-50";
 
   return (
-    <article className="glass group flex h-full flex-col rounded-2xl p-5 transition duration-300 hover:-translate-y-1 hover:border-white/20 hover:shadow-xl hover:shadow-brand-500/10 animate-fade-up" style={{ animationDelay: `${delay}ms` }}>
+    <article className="glass flex h-full flex-col rounded-2xl p-5 transition-colors hover:border-slate-300 animate-fade-up" style={{ animationDelay: `${delay}ms` }}>
       <div className="flex items-start gap-3">
         {p.logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={p.logoUrl} alt="" className="h-11 w-11 shrink-0 rounded-xl object-cover" referrerPolicy="no-referrer" />
         ) : (
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-sm font-bold text-white shadow-lg transition group-hover:scale-105" style={{ background: p.primary }}>{p.logoText}</span>
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-sm font-bold text-white" style={{ background: p.primary }}>{p.logoText}</span>
         )}
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-semibold text-white">{p.name}</h3>
+          <h3 className="truncate font-semibold text-slate-900">{p.name}</h3>
           <p className="text-xs text-slate-500">{p.sector || "—"} · {ROLE_LABELS[p.role]}</p>
         </div>
         <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] ${st.cls}`} title={st.label}>{SHORT[p.status] ?? st.label}</span>
       </div>
-      {!compact && p.description && <p className="mt-3 line-clamp-2 text-sm text-slate-300">{p.description}</p>}
+      {!compact && p.description && <p className="mt-3 line-clamp-2 text-sm text-slate-700">{p.description}</p>}
       {p.entities.length > 0 && (
         <p className="mt-3 flex flex-wrap gap-1.5">
-          {p.entities.slice(0, compact ? 3 : 6).map((e) => <span key={e.key} className="rounded-full bg-white/5 px-2 py-0.5 text-[11px] text-slate-300">{e.icon} {e.label}</span>)}
+          {p.entities.slice(0, compact ? 3 : 6).map((e) => <span key={e.key} className="rounded-full bg-slate-50 px-2 py-0.5 text-[11px] text-slate-700">{e.label}</span>)}
         </p>
       )}
       <p className="mt-3 text-xs text-slate-500">
@@ -94,19 +95,19 @@ export function ProjectCard({ project: p, delay = 0, compact = false }: { projec
       <div className="flex-1" />
       <div className="mt-4 grid grid-cols-3 gap-2">
         {hasPublished && p.status !== "suspended" ? (
-          <a href={`/apps/${p.slug}`} target="_blank" rel="noopener" className={`${btn} bg-white/10 text-white hover:bg-white/15`}>↗ Ouvrir</a>
+          <a href={`/apps/${p.slug}`} target="_blank" rel="noopener" className={`${btn} bg-slate-100 text-slate-900 hover:bg-slate-200`}><ExternalLink className="h-3.5 w-3.5" aria-hidden />Ouvrir</a>
         ) : (
-          <Link href={manage ? `/projets/${p.id}` : "#"} aria-disabled={!manage} className={`${btn} bg-white/10 text-white hover:bg-white/15 ${manage ? "" : "pointer-events-none opacity-50"}`}>↗ Ouvrir</Link>
+          <Link href={manage ? `/projets/${p.id}` : "#"} aria-disabled={!manage} className={`${btn} bg-slate-100 text-slate-900 hover:bg-slate-200 ${manage ? "" : "pointer-events-none opacity-50"}`}><ExternalLink className="h-3.5 w-3.5" aria-hidden />Ouvrir</Link>
         )}
         {manage ? (
           <>
-            <Link href={`/projets/${p.id}?onglet=assistant`} className={`${btn} bg-white/10 text-white hover:bg-white/15`}>✏️ Modifier</Link>
-            <Link href={`/projets/${p.id}?onglet=tests`} className={`${btn} bg-white/10 text-white hover:bg-white/15`}>🧪 Tester</Link>
-            <button onClick={publish} disabled={busy !== null || (hasPublished && !outdated && p.status !== "suspended")} className={`${btn} bg-gradient-to-r from-brand-500 to-[#4f8cff] text-white hover:brightness-110`}>
-              {busy === "publish" ? <span className="spinner" /> : "🚀"} {publishLabel}
+            <Link href={`/projets/${p.id}?onglet=assistant`} className={`${btn} bg-slate-100 text-slate-900 hover:bg-slate-200`}><Pencil className="h-3.5 w-3.5" aria-hidden />Modifier</Link>
+            <Link href={`/projets/${p.id}?onglet=tests`} className={`${btn} bg-slate-100 text-slate-900 hover:bg-slate-200`}><FlaskConical className="h-3.5 w-3.5" aria-hidden />Tester</Link>
+            <button onClick={publish} disabled={busy !== null || (hasPublished && !outdated && p.status !== "suspended")} className={`${btn} bg-blue-600 text-white hover:bg-blue-700`}>
+              {busy === "publish" ? <span className="spinner" /> : <Send className="h-3.5 w-3.5" aria-hidden />}{publishLabel}
             </button>
-            <button onClick={copy} disabled={busy !== null} className={`${btn} bg-white/10 text-white hover:bg-white/15`} title={hasPublished ? url : "Publiez d'abord le logiciel"}>🔗 Copier le lien</button>
-            <button onClick={() => (p.role === "owner" ? (setTyped(""), setConfirmDelete(true)) : toast("info", "Seul le propriétaire peut supprimer ce logiciel."))} disabled={busy !== null} className={`${btn} bg-red-500/10 text-red-200 hover:bg-red-500/20`}>🗑 Supprimer</button>
+            <button onClick={copy} disabled={busy !== null} className={`${btn} bg-slate-100 text-slate-900 hover:bg-slate-200`} title={hasPublished ? url : "Publiez d'abord le logiciel"}><Link2 className="h-3.5 w-3.5" aria-hidden />Copier le lien</button>
+            <button onClick={() => (p.role === "owner" ? (setTyped(""), setConfirmDelete(true)) : toast("info", "Seul le propriétaire peut supprimer ce logiciel."))} disabled={busy !== null} className={`${btn} bg-red-50 text-red-700 hover:bg-red-100`}><Trash2 className="h-3.5 w-3.5" aria-hidden />Supprimer</button>
           </>
         ) : (
           <p className="col-span-2 self-center text-xs text-slate-500">Accès {ROLE_LABELS[p.role].toLowerCase()} : utilisation uniquement.</p>
@@ -115,11 +116,11 @@ export function ProjectCard({ project: p, delay = 0, compact = false }: { projec
 
       {confirmDelete &&
         createPortal(
-          <div className="fixed inset-0 z-[80] grid place-items-center bg-black/60 p-4" role="alertdialog" aria-modal="true" aria-labelledby={`del-${p.id}`}>
-            <div className="w-full max-w-md rounded-2xl border border-white/10 bg-night-900 p-6 shadow-2xl" style={{ animation: "pop-in 0.18s ease-out" }}>
-              <h2 id={`del-${p.id}`} className="font-display text-lg font-semibold text-white">Supprimer « {p.name} » ?</h2>
-              <p className="mt-2 text-sm text-slate-300">Le logiciel, ses versions, ses sauvegardes et <strong>toutes ses données</strong> seront effacés définitivement. Ses membres perdront l&apos;accès.</p>
-              <p className="mt-3 text-sm text-slate-400">Pensez à exporter vos données avant (Mes données). Pour confirmer, saisissez <code className="rounded bg-white/10 px-1.5 py-0.5 text-white">{p.slug}</code> :</p>
+          <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-900/40 p-4" role="alertdialog" aria-modal="true" aria-labelledby={`del-${p.id}`}>
+            <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl" style={{ animation: "pop-in 0.18s ease-out" }}>
+              <h2 id={`del-${p.id}`} className="font-display text-lg font-semibold text-slate-900">Supprimer « {p.name} » ?</h2>
+              <p className="mt-2 text-sm text-slate-700">Le logiciel, ses versions, ses sauvegardes et <strong>toutes ses données</strong> seront effacés définitivement. Ses membres perdront l&apos;accès.</p>
+              <p className="mt-3 text-sm text-slate-600">Pensez à exporter vos données avant (Mes données). Pour confirmer, saisissez <code className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-900">{p.slug}</code> :</p>
               <input className="input mt-2" value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus aria-label="Identifiant du logiciel" />
               <div className="mt-5 flex gap-2">
                 <button className="btn btn-ghost flex-1" onClick={() => setConfirmDelete(false)}>Annuler</button>

@@ -86,21 +86,21 @@ export function AuthForm({ mode }: { mode: "login" | "signup" | "forgot" | "rese
           <input id="password" type="password" className="input" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={mode === "login" ? "current-password" : "new-password"} />
         </div>
       )}
-      {error && <p role="alert" className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</p>}
-      {info && <p role="status" className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">{info}</p>}
+      {error && <p role="alert" className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {info && <p role="status" className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{info}</p>}
       <button className="btn btn-primary w-full" disabled={loading}>
         {loading && <span className="spinner" />}
         {mode === "login" ? "Se connecter" : mode === "signup" ? "Créer mon compte" : mode === "forgot" ? "Envoyer le lien" : "Enregistrer"}
       </button>
-      <div className="flex flex-col gap-2 text-center text-sm text-slate-400">
+      <div className="flex flex-col gap-2 text-center text-sm text-slate-600">
         {mode === "login" && (
           <>
-            <Link href="/mot-de-passe-oublie" className="hover:text-white">Mot de passe oublié ?</Link>
-            <Link href={`/inscription?next=${encodeURIComponent(next)}`} className="hover:text-white">Pas encore de compte ? <span className="text-brand-300">Inscription</span></Link>
+            <Link href="/mot-de-passe-oublie" className="hover:text-slate-900">Mot de passe oublié ?</Link>
+            <Link href={`/inscription?next=${encodeURIComponent(next)}`} className="hover:text-slate-900">Pas encore de compte ? <span className="text-blue-700">Inscription</span></Link>
           </>
         )}
-        {mode === "signup" && <Link href={`/connexion?next=${encodeURIComponent(next)}`} className="hover:text-white">Déjà inscrit ? <span className="text-brand-300">Connexion</span></Link>}
-        {mode === "forgot" && <Link href="/connexion" className="hover:text-white">Retour à la connexion</Link>}
+        {mode === "signup" && <Link href={`/connexion?next=${encodeURIComponent(next)}`} className="hover:text-slate-900">Déjà inscrit ? <span className="text-blue-700">Connexion</span></Link>}
+        {mode === "forgot" && <Link href="/connexion" className="hover:text-slate-900">Retour à la connexion</Link>}
       </div>
     </form>
   );

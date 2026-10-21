@@ -20,7 +20,7 @@ export function WidgetCard({ spec, widget, rows, onOpen }: { spec: AppSpec; widg
       {r.kind === "number" && <p className="mt-2 text-2xl font-bold text-slate-900">{fmt(r.value, r.unit)}</p>}
       {r.kind === "series" &&
         (r.points.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-400">Pas encore de données.</p>
+          <p className="mt-3 text-sm text-slate-600">Pas encore de données.</p>
         ) : widget.type === "monthly" ? (
           <div className="mt-3">
             <div className="flex h-36 items-end gap-1.5" role="img" aria-label={`${widget.label} : ${r.points.map((p) => `${monthLabel(p.label)} ${fmt(p.value, r.unit)}`).join(", ")}`}>
@@ -33,7 +33,7 @@ export function WidgetCard({ spec, widget, rows, onOpen }: { spec: AppSpec; widg
                 );
               })}
             </div>
-            <div className="mt-1 flex gap-1.5 text-[10px] text-slate-400">
+            <div className="mt-1 flex gap-1.5 text-[10px] text-slate-600">
               {r.points.map((p) => (
                 <span key={p.label} className="flex-1 truncate text-center">{monthLabel(p.label)}</span>
               ))}
@@ -59,13 +59,13 @@ export function WidgetCard({ spec, widget, rows, onOpen }: { spec: AppSpec; widg
         ))}
       {r.kind === "list" &&
         (r.items.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-400">{widget.type === "low_stock" ? "Aucun élément sous le seuil. 👍" : "Aucune fiche pour l'instant."}</p>
+          <p className="mt-3 text-sm text-slate-600">{widget.type === "low_stock" ? "Aucun élément sous le seuil." : "Aucune fiche pour l'instant."}</p>
         ) : (
           <ul className="mt-3 divide-y divide-slate-100">
             {r.items.map((it) => (
               <li key={it.id} className="flex justify-between py-2 text-sm">
                 <button className="truncate text-left text-slate-800 hover:underline" onClick={() => onOpen?.(widget.entity)}>{it.label}</button>
-                <span className={widget.type === "low_stock" ? "font-medium text-red-600" : "text-slate-400"}>{it.detail}</span>
+                <span className={widget.type === "low_stock" ? "font-medium text-red-600" : "text-slate-600"}>{it.detail}</span>
               </li>
             ))}
           </ul>

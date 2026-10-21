@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { Entity, Field } from "@/lib/spec";
 import type { Rec } from "./useAppData";
@@ -56,7 +57,7 @@ export function RecordForm({
           <h2 id="form-title" className="text-lg font-semibold">
             {record ? "Modifier" : "Ajouter"} : {entity.label.toLowerCase()}
           </h2>
-          <button onClick={onClose} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Fermer">✕</button>
+          <button onClick={onClose} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Fermer"><X className="h-4 w-4" aria-hidden /></button>
         </div>
         <form onSubmit={submit} className="mt-4 space-y-4" noValidate>
           {entity.fields.map((f) => (
@@ -133,7 +134,7 @@ function FieldInput({ field, value, error, disabled, options, onChange }: { fiel
         <label htmlFor={id} className="mb-1 block text-sm font-medium text-slate-700">
           {field.label}
           {field.required && <span className="text-red-500"> *</span>}
-          {disabled && <span className="ml-2 text-xs font-normal text-slate-400">(non modifiable avec votre rôle)</span>}
+          {disabled && <span className="ml-2 text-xs font-normal text-slate-600">(non modifiable avec votre rôle)</span>}
         </label>
       ) : (
         <p className="mb-1 text-sm font-medium text-slate-700">{field.label}</p>

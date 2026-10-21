@@ -10,8 +10,8 @@ export function AcceptInvite({ token }: { token: string }) {
   const [error, setError] = useState("");
   return (
     <div className="space-y-4">
-      <p className="text-sm text-slate-300">En acceptant, vous aurez accès à ce logiciel avec le rôle choisi par son propriétaire.</p>
-      {error && <p role="alert" className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</p>}
+      <p className="text-sm text-slate-700">En acceptant, vous aurez accès à ce logiciel avec le rôle choisi par son propriétaire.</p>
+      {error && <p role="alert" className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700">{error}</p>}
       <button
         className="btn btn-primary w-full"
         disabled={busy}
@@ -30,7 +30,7 @@ export function AcceptInvite({ token }: { token: string }) {
         {busy && <span className="spinner" />}Accepter l&apos;invitation
       </button>
       <form action="/auth/signout" method="post">
-        <button className="w-full text-center text-sm text-slate-400 underline">Utiliser un autre compte</button>
+        <button className="w-full text-center text-sm text-slate-600 underline">Utiliser un autre compte</button>
       </form>
     </div>
   );

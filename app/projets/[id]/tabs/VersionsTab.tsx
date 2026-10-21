@@ -39,15 +39,15 @@ export function VersionsTab({ data, onChanged }: { data: WorkspaceData; onChange
       <Panel title="Historique des versions" subtitle="Restaurer une version modifie la structure du logiciel, jamais les données métier.">
         <ul className="space-y-3">
           {data.versions.map((v) => (
-            <li key={v.version} className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+            <li key={v.version} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
               <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
                 <div>
-                  <p className="font-medium text-white">
+                  <p className="font-medium text-slate-900">
                     v{v.version} — {v.summary}
-                    {v.version === data.project.draftVersion && <span className="ml-2 rounded-full bg-sky-500/20 px-2 py-0.5 text-xs text-sky-200">Brouillon actuel</span>}
-                    {v.version === data.project.publishedVersion && <span className="ml-2 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-200">En ligne</span>}
+                    {v.version === data.project.draftVersion && <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-800">Brouillon actuel</span>}
+                    {v.version === data.project.publishedVersion && <span className="ml-2 rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-700">En ligne</span>}
                   </p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-600">
                     {fmtDateTime(v.created_at)} · {v.author} · {SOURCE[v.source] ?? v.source}
                     {v.test_report && ` · tests ${v.test_report.summary.passed}/${v.test_report.summary.total}${v.test_report.summary.failed ? ` (${v.test_report.summary.failed} échec)` : ""}`}
                     {v.published && " · a été publiée"}
@@ -56,8 +56,8 @@ export function VersionsTab({ data, onChanged }: { data: WorkspaceData; onChange
                 {v.version !== data.project.draftVersion && <button className="btn btn-ghost" disabled={busy} onClick={() => restore(v.version)}>Restaurer</button>}
               </div>
               {v.changes?.length > 0 && (
-                <details className="mt-2 text-xs text-slate-300">
-                  <summary className="cursor-pointer text-slate-400">{v.changes.length} changement(s)</summary>
+                <details className="mt-2 text-xs text-slate-700">
+                  <summary className="cursor-pointer text-slate-600">{v.changes.length} changement(s)</summary>
                   <ul className="mt-2 space-y-1">{v.changes.map((c, i) => <li key={i}>{c.kind === "added" ? "+" : c.kind === "removed" ? "−" : "~"} {c.target} — {c.detail}</li>)}</ul>
                 </details>
               )}
@@ -76,9 +76,9 @@ export function VersionsTab({ data, onChanged }: { data: WorkspaceData; onChange
             </label>
           </div>
           <ul className="mt-4 space-y-1 text-sm">
-            {diff.length === 0 ? <li className="text-slate-400">Aucune différence.</li> : diff.map((c, i) => (
-              <li key={i} className={c.kind === "added" ? "text-emerald-300" : c.kind === "removed" ? "text-red-300" : "text-amber-200"}>
-                {c.kind === "added" ? "+" : c.kind === "removed" ? "−" : "~"} {c.target} — <span className="text-slate-300">{c.detail}</span>
+            {diff.length === 0 ? <li className="text-slate-600">Aucune différence.</li> : diff.map((c, i) => (
+              <li key={i} className={c.kind === "added" ? "text-green-700" : c.kind === "removed" ? "text-red-700" : "text-amber-800"}>
+                {c.kind === "added" ? "+" : c.kind === "removed" ? "−" : "~"} {c.target} — <span className="text-slate-700">{c.detail}</span>
               </li>
             ))}
           </ul>

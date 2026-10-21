@@ -1,5 +1,6 @@
 "use client";
 
+import { CircleCheck } from "lucide-react";
 import { useState } from "react";
 import { STATIC_SITE } from "@/lib/site-mode";
 
@@ -43,10 +44,10 @@ export function LeadForm({ source, defaultSector = "" }: { source: string; defau
 
   if (state === "sent")
     return (
-      <div role="status" className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-6 text-center">
-        <p className="text-3xl">✅</p>
-        <p className="mt-2 font-semibold text-white">Demande envoyée</p>
-        <p className="mt-1 text-sm text-emerald-100">Nous vous recontactons pour préparer une démonstration adaptée à votre activité.</p>
+      <div role="status" className="rounded-2xl border border-green-200 bg-green-50 p-6 text-center">
+        <CircleCheck className="mx-auto h-8 w-8 text-green-600" aria-hidden />
+        <p className="mt-2 font-semibold text-slate-900">Demande envoyée</p>
+        <p className="mt-1 text-sm text-green-700">Nous vous recontactons pour préparer une démonstration adaptée à votre activité.</p>
       </div>
     );
 
@@ -64,11 +65,11 @@ export function LeadForm({ source, defaultSector = "" }: { source: string; defau
       <label className="block sm:col-span-2"><span className="label">E-mail</span><input name="email" type="email" maxLength={200} className="input" autoComplete="email" /></label>
       <label className="block sm:col-span-2"><span className="label">Quel problème voulez-vous résoudre ?</span><textarea name="message" rows={3} maxLength={1500} className="input" placeholder="Ex. : je note mes commandes sur un cahier et je perds des ventes…" /></label>
       <input name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
-      <label className="flex items-start gap-2 text-sm text-slate-300 sm:col-span-2">
+      <label className="flex items-start gap-2 text-sm text-slate-700 sm:col-span-2">
         <input name="consent" type="checkbox" required className="mt-1 h-4 w-4" />
         J&apos;accepte d&apos;être recontacté par l&apos;équipe MiniSoft RCA au sujet de ma demande.
       </label>
-      {error && <p role="alert" className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200 sm:col-span-2">{error}</p>}
+      {error && <p role="alert" className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 sm:col-span-2">{error}</p>}
       <button className="btn btn-primary sm:col-span-2" disabled={state === "sending"}>
         {state === "sending" && <span className="spinner" />}Demander une démonstration gratuite
       </button>

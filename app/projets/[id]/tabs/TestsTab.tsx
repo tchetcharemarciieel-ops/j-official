@@ -1,5 +1,6 @@
 "use client";
 
+import { Wrench } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/components/Toaster";
 import { api } from "@/lib/fetcher";
@@ -55,13 +56,13 @@ export function TestsTab({ data, onChanged }: { data: WorkspaceData; onChanged: 
       subtitle={ranAt ? `Derniers tests : ${fmtDateTime(ranAt)} sur la version v${data.project.draftVersion}${full ? " (batterie complète, base de données incluse)" : " (tests de structure, lancez la batterie complète)"}.` : "Aucun test exécuté."}
       actions={
         <>
-          {failed.some((c) => c.autoFixable) && <button className="btn btn-ghost" disabled={busy} onClick={fix}>🔧 Corriger automatiquement</button>}
+          {failed.some((c) => c.autoFixable) && <button className="btn btn-ghost" disabled={busy} onClick={fix}><Wrench className="h-4 w-4" aria-hidden />Corriger automatiquement</button>}
           <button className="btn btn-primary" disabled={busy} onClick={run}>{busy && <span className="spinner" />}Lancer tous les tests</button>
         </>
       }
     >
-      <p className="mb-4 text-xs text-slate-400">Testés : navigation, formulaires et validations, calculs, permissions, ajout/modification/suppression en base, affichage mobile, isolation des données entre clients. Les corrections sont appliquées dans une nouvelle version du brouillon : rien n&apos;est publié sans votre action.</p>
-      {checks ? <ChecksList checks={checks} /> : <p className="text-sm text-slate-400">Lancez les tests pour vérifier votre logiciel.</p>}
+      <p className="mb-4 text-xs text-slate-600">Testés : navigation, formulaires et validations, calculs, permissions, ajout/modification/suppression en base, affichage mobile, isolation des données entre clients. Les corrections sont appliquées dans une nouvelle version du brouillon : rien n&apos;est publié sans votre action.</p>
+      {checks ? <ChecksList checks={checks} /> : <p className="text-sm text-slate-600">Lancez les tests pour vérifier votre logiciel.</p>}
     </Panel>
   );
 }

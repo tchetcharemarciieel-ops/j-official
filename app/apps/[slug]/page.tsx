@@ -37,7 +37,7 @@ function Notice({ title, text, children }: { title: string; text: string; childr
         <h1 className="text-xl font-bold">{title}</h1>
         <p className="mt-2 text-sm text-slate-500">{text}</p>
         {children}
-        <p className="mt-6 text-xs text-slate-400">Propulsé par <Link href="/" className="underline">MiniSoft RCA</Link></p>
+        <p className="mt-6 text-xs text-slate-600">Propulsé par <Link href="/" className="underline">MiniSoft RCA</Link></p>
       </div>
     </main>
   );

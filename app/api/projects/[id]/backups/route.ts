@@ -9,6 +9,6 @@ export const POST = route(async (req, { params }: Ctx) => {
   assertSameOrigin(req);
   const { id } = await params;
   const { profile, project } = await getAccess(id, ["owner", "admin"]);
-  await createBackup(id, `Sauvegarde manuelle du ${new Date().toLocaleString("fr-FR", { timeZone: "Africa/Douala" })}`, profile.id, project.published_version);
+  await createBackup(id, `Sauvegarde manuelle du ${new Date().toLocaleString("fr-FR", { timeZone: "Africa/Bangui" })}`, profile.id, project.published_version);
   return NextResponse.json({ ok: true });
 });

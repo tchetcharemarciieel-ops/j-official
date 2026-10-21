@@ -8,4 +8,4 @@ export const STATUS: Record<string, { label: string; cls: string }> = {
 };
 
 export const fmtDate = (d: string | null | undefined) => (d ? new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" }) : "—");
-export const fmtDateTime = (d: string | null | undefined) => (d ? new Date(d).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short", timeZone: "Africa/Douala" }) : "—");
+export const fmtDateTime = (d: string | null | undefined) => (d ? new Date(d).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short", timeZone: "Africa/Bangui" }) : "—");

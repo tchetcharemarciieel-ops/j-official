@@ -60,7 +60,7 @@ export function LeadForm({ source, defaultSector = "" }: { source: string; defau
           {SECTORS.map((s) => <option key={s}>{s}</option>)}
         </select>
       </label>
-      <label className="block"><span className="label">Téléphone / WhatsApp</span><input name="phone" type="tel" inputMode="tel" maxLength={30} className="input" autoComplete="tel" placeholder="+237 6…" /></label>
+      <label className="block"><span className="label">Téléphone / WhatsApp</span><input name="phone" type="tel" inputMode="tel" maxLength={30} className="input" autoComplete="tel" placeholder="+236 7…" /></label>
       <label className="block sm:col-span-2"><span className="label">E-mail</span><input name="email" type="email" maxLength={200} className="input" autoComplete="email" /></label>
       <label className="block sm:col-span-2"><span className="label">Quel problème voulez-vous résoudre ?</span><textarea name="message" rows={3} maxLength={1500} className="input" placeholder="Ex. : je note mes commandes sur un cahier et je perds des ventes…" /></label>
       <input name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />

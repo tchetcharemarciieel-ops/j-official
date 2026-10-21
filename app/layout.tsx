@@ -7,7 +7,7 @@ import { SITE_URL } from "@/lib/config";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  keywords: ["logiciel de gestion", "Cameroun", "Afrique centrale", "FCFA", "gestion de stock", "gestion de restaurant", "logiciel sur mesure", "PME"],
+  keywords: ["logiciel de gestion", "Centrafrique", "Bangui", "RCA", "Afrique centrale", "FCFA", "gestion de stock", "gestion de restaurant", "logiciel sur mesure", "PME"],
   openGraph: { type: "website", locale: "fr_FR", siteName: "MiniSoft RCA" },
   title: { default: "MiniSoft RCA — Votre problème mérite son propre logiciel", template: "%s · MiniSoft RCA" },
   description: "Décrivez votre problème. Notre IA conçoit un mini-logiciel adapté à votre entreprise, sans que vous ayez besoin de programmer.",

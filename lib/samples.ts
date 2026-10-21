@@ -1,10 +1,10 @@
 import type { Field } from "./spec";
 import type { RecordData } from "./records";
 
-/** Données d'exemple réalistes (Afrique centrale, FCFA) pour l'aperçu et la démo. */
+/** Données d'exemple réalistes (Centrafrique, FCFA) pour l'aperçu et la démo. */
 
-const PEOPLE = ["Aïcha Mbarga", "Jean-Paul Ndongo", "Mireille Fotso", "Ibrahim Bello", "Christelle Ngo Biyong", "Patrick Essomba", "Fatimé Hamadou", "Serge Tchoupo"];
-const QUARTIERS = ["Bastos, Yaoundé", "Akwa, Douala", "Bonapriso, Douala", "Mvog-Mbi, Yaoundé", "Bonamoussadi, Douala", "Biyem-Assi, Yaoundé"];
+const PEOPLE = ["Grâce Yakité", "Jean-Pierre Ngaïkoua", "Mireille Doko", "Ibrahim Mahamat", "Christelle Kossi", "Patrick Gbazoui", "Fatimé Abakar", "Serge Ndomaté"];
+const QUARTIERS = ["Centre-ville, Bangui", "PK5, Bangui", "Lakouanga, Bangui", "Sica 1, Bangui", "Galabadja, Bangui", "Boy-Rabe, Bangui"];
 
 const BY_ENTITY: Record<string, Record<string, string[]>> = {
   produits: { nom: ["Riz parfumé 25 kg", "Huile de palme 5 L", "Sucre 1 kg", "Lait en poudre 400 g", "Savon de Marseille", "Farine 50 kg"], categorie: ["Épicerie", "Épicerie", "Épicerie", "Produits laitiers", "Hygiène", "Épicerie"] },
@@ -17,13 +17,13 @@ const BY_ENTITY: Record<string, Record<string, string[]>> = {
   paiements: { payeur: PEOPLE, motif: ["Scolarité 1er trimestre", "Inscription", "Scolarité 2e trimestre", "Loyer octobre", "Cotisation", "Frais d'examen"] },
   chambres: { numero: ["101", "102", "103", "201", "202", "301"] },
   reservations: { client: PEOPLE },
-  biens: { designation: ["Studio meublé Bastos", "Appartement 3 pièces Akwa", "Villa Bonapriso", "Bureau 40 m² centre-ville", "Terrain 500 m² Odza", "Studio Mvog-Mbi"] },
+  biens: { designation: ["Studio meublé Lakouanga", "Appartement 3 pièces centre-ville", "Villa Sica 1", "Bureau 40 m² avenue Boganda", "Terrain 500 m² Galabadja", "Studio PK5"] },
   locataires: { nom: PEOPLE },
   livraisons: { destinataire: PEOPLE, chauffeur: ["Ali", "Emmanuel", "Boris", "Ali", "Emmanuel", "Boris"] },
   vehicules: { immatriculation: ["LT 401 AA", "CE 302 BB", "LT 777 CC", "OU 120 DD", "CE 645 EE", "LT 908 FF"], modele: ["Toyota Hiace", "Isuzu NPR", "Toyota Corolla", "Moto Haojue", "Renault Master", "Toyota Hilux"] },
   employes: { nom: PEOPLE, poste: ["Caissière", "Serveur", "Cuisinier", "Gérante", "Livreur", "Comptable"] },
   taches: { titre: ["Inventaire du stock", "Relancer les impayés", "Préparer la paie", "Réparer la vitrine", "Commande fournisseur", "Former le nouveau caissier"], responsable: PEOPLE },
-  fournisseurs: { nom: ["Brasseries du Cameroun", "Sodecoton", "Grossiste Mboppi", "Pharmacam", "Nestlé Cameroun", "SCDP Gaz"], contact: PEOPLE },
+  fournisseurs: { nom: ["Grossiste du PK5", "Dépôt de boissons Lakouanga", "Import-Export Oubangui", "Dépôt pharmaceutique Bangui", "Moulin de Bimbo", "Distributeur de gaz Bangui"], contact: PEOPLE },
 };
 
 const GENERIC: Record<string, string[]> = {
@@ -71,7 +71,7 @@ export function sampleValue(field: Field, i: number, entityKey = "", now = new D
     case "email":
       return `${(specific ? pick(specific, i) : `contact${i + 1}`).toLowerCase().normalize("NFD").replace(/[^a-z]+/g, ".").replace(/^\.|\.$/g, "")}@exemple.cm`;
     case "phone":
-      return `+237 6 ${70 + i} ${String(10 + i * 7).padStart(2, "0")} ${String(20 + i * 3).padStart(2, "0")} ${String(30 + i).padStart(2, "0")}`;
+      return `+236 7${i} ${String(10 + i * 7).padStart(2, "0")} ${String(20 + i * 3).padStart(2, "0")} ${String(30 + i).padStart(2, "0")}`;
     case "select":
       return field.options?.length ? pick(field.options, i) : null;
     case "relation":

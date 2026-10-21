@@ -10,7 +10,7 @@ import { SECTORS } from "@/lib/generator";
 import { getPlans, xaf } from "@/lib/plans";
 import { CREDIT_COSTS, SITE_URL } from "@/lib/config";
 import { LeadForm } from "@/components/LeadForm";
-import { PromoVideo } from "@/components/PromoVideo";
+import { ScrollStory } from "@/components/story/ScrollStory";
 
 export const dynamic = "force-dynamic";
 
@@ -98,12 +98,10 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* Vidéo de présentation animée */}
-        <section id="video" className="scroll-mt-20 px-4 pb-8 sm:px-6">
-          <Reveal>
-            <PromoVideo />
-          </Reveal>
-        </section>
+        {/* Histoire animée au défilement */}
+        <div id="video" className="scroll-mt-16">
+          <ScrollStory />
+        </div>
 
         {/* Avant / après */}
         <section className="px-4 py-16 sm:px-6">

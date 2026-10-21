@@ -7,3 +7,5 @@ out/
 *.tsbuildinfo
 next-env.d.ts
 coverage/
+out-static/
+.static-build/

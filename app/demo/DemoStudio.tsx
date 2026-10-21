@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AppRuntime } from "@/components/runtime/AppRuntime";
 import { VoiceButton } from "@/components/VoiceButton";
@@ -9,6 +10,7 @@ import { modifyWithRules } from "@/lib/modify-rules";
 import { runChecks, summarize } from "@/lib/checks";
 import { diffSpecs } from "@/lib/diff";
 import { parseSpec, type AppSpec } from "@/lib/spec";
+import { STATIC_SITE } from "@/lib/site-mode";
 
 const STORE = "msdemo:spec";
 const DATA = "msdemo:demo";
@@ -26,7 +28,8 @@ type Msg = { role: "user" | "assistant"; text: string };
  * Démo publique : diagnostic par règles, génération et modifications exécutés dans le navigateur
  * avec exactement les mêmes composants que les logiciels publiés. Rien n'est envoyé au serveur.
  */
-export function DemoStudio({ initialProblem }: { initialProblem: string }) {
+export function DemoStudio() {
+  const initialProblem = (useSearchParams().get("probleme") ?? "").slice(0, 2000);
   const [step, setStep] = useState<"describe" | "plan" | "app">("describe");
   const [problem, setProblem] = useState(initialProblem);
   const [name, setName] = useState("");
@@ -122,9 +125,9 @@ export function DemoStudio({ initialProblem }: { initialProblem: string }) {
     <div>
       <div className="mb-6 flex flex-col justify-between gap-3 rounded-2xl border border-sky-400/20 bg-sky-400/5 px-4 py-3 text-sm text-sky-100 sm:flex-row sm:items-center">
         <p>
-          <strong>Démo sans compte.</strong> Analyse par règles, logiciel et données conservés uniquement dans ce navigateur. Créez un compte pour l&apos;analyse IA, la sauvegarde, l&apos;équipe et la publication.
+          <strong>Démo sans compte.</strong> Analyse par règles, logiciel et données conservés uniquement dans ce navigateur.{STATIC_SITE ? " La version complète (analyse IA, sauvegarde, équipe, publication) arrive bientôt." : " Créez un compte pour l'analyse IA, la sauvegarde, l'équipe et la publication."}
         </p>
-        <Link href={`/inscription?next=${encodeURIComponent(`/creer?probleme=${encodeURIComponent(problem)}`)}`} className="btn btn-primary shrink-0">Créer mon compte</Link>
+        {!STATIC_SITE && <Link href={`/inscription?next=${encodeURIComponent(`/creer?probleme=${encodeURIComponent(problem)}`)}`} className="btn btn-primary shrink-0">Créer mon compte</Link>}
       </div>
 
       {step === "describe" && (
@@ -210,7 +213,11 @@ export function DemoStudio({ initialProblem }: { initialProblem: string }) {
                 <li>• Données sauvegardées, versions et restauration</li>
                 <li>• Lien permanent à partager avec votre équipe</li>
               </ul>
-              <Link href={`/inscription?next=${encodeURIComponent(`/creer?probleme=${encodeURIComponent(problem)}`)}`} className="btn btn-primary mt-4 w-full">Créer mon compte gratuit</Link>
+              {STATIC_SITE ? (
+                <p className="mt-4 rounded-xl bg-white/5 px-3 py-2 text-xs text-slate-300">Les comptes, la sauvegarde en ligne et la publication arrivent bientôt sur la version complète de la plateforme.</p>
+              ) : (
+                <Link href={`/inscription?next=${encodeURIComponent(`/creer?probleme=${encodeURIComponent(problem)}`)}`} className="btn btn-primary mt-4 w-full">Créer mon compte gratuit</Link>
+              )}
               <div className="mt-3 flex gap-2">
                 <button className="btn btn-ghost flex-1" onClick={resetData}>Données d&apos;exemple</button>
                 <button className="btn btn-ghost flex-1" onClick={restart}>Recommencer</button>

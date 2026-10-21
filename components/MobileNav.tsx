@@ -1,5 +1,6 @@
 "use client";
 
+import { siteHref, STATIC_SITE } from "@/lib/site-mode";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
@@ -41,10 +42,12 @@ export function MobileNav({ loggedIn, isAdmin }: { loggedIn: boolean; isAdmin: b
                 Administration
               </Link>
             )}
-            <Link href={loggedIn ? "/espace" : "/connexion"} className="rounded-xl px-4 py-3 text-lg text-slate-200 hover:bg-white/5">
-              {loggedIn ? "Mon espace" : "Connexion"}
-            </Link>
-            <Link href="/creer" className="btn btn-primary mt-4 text-base">
+            {!STATIC_SITE && (
+              <Link href={loggedIn ? "/espace" : "/connexion"} className="rounded-xl px-4 py-3 text-lg text-slate-200 hover:bg-white/5">
+                {loggedIn ? "Mon espace" : "Connexion"}
+              </Link>
+            )}
+            <Link href={siteHref("/creer")} className="btn btn-primary mt-4 text-base">
               Créer mon logiciel
             </Link>
           </nav>

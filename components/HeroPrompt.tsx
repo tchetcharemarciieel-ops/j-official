@@ -1,5 +1,6 @@
 "use client";
 
+import { siteHref, STATIC_SITE } from "@/lib/site-mode";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -11,7 +12,7 @@ export function HeroPrompt() {
   const go = (e: React.FormEvent) => {
     e.preventDefault();
     const q = text.trim();
-    router.push(q ? `/creer?probleme=${encodeURIComponent(q.slice(0, 2000))}` : "/creer");
+    router.push(q ? `${siteHref("/creer")}?probleme=${encodeURIComponent(q.slice(0, 2000))}` : "/creer");
   };
   return (
     <form onSubmit={go} className="glass glow-ring mx-auto mt-10 max-w-3xl rounded-2xl p-3 text-left sm:p-4">
@@ -35,11 +36,13 @@ export function HeroPrompt() {
           ))}
         </div>
         <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-          <button type="button" className="btn btn-ghost" onClick={() => router.push(`/demo${text.trim() ? `?probleme=${encodeURIComponent(text.trim().slice(0, 2000))}` : ""}`)}>
-            Essayer sans compte
-          </button>
+          {!STATIC_SITE && (
+            <button type="button" className="btn btn-ghost" onClick={() => router.push(`/demo${text.trim() ? `?probleme=${encodeURIComponent(text.trim().slice(0, 2000))}` : ""}`)}>
+              Essayer sans compte
+            </button>
+          )}
           <button type="submit" className="btn btn-primary">
-            ✨ Créer mon mini-logiciel avec l&apos;IA
+            {STATIC_SITE ? "✨ Créer mon mini-logiciel" : <>✨ Créer mon mini-logiciel avec l&apos;IA</>}
           </button>
         </div>
       </div>

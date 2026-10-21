@@ -1,3 +1,4 @@
+import { siteHref, STATIC_SITE } from "@/lib/site-mode";
 import Link from "next/link";
 import { Logo } from "./Logo";
 import { MobileNav } from "./MobileNav";
@@ -37,12 +38,12 @@ export async function SiteHeader() {
                 Mon espace
               </Link>
             </>
-          ) : (
+          ) : STATIC_SITE ? null : (
             <Link href="/connexion" className="rounded-lg px-3 py-2 text-sm text-slate-300 hover:text-white">
               Connexion
             </Link>
           )}
-          <Link href="/creer" className="btn btn-primary">
+          <Link href={siteHref("/creer")} className="btn btn-primary">
             Créer mon logiciel
           </Link>
         </div>

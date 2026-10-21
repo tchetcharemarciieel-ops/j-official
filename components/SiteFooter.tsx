@@ -1,3 +1,4 @@
+import { siteHref, STATIC_SITE } from "@/lib/site-mode";
 import Link from "next/link";
 import { Logo } from "./Logo";
 
@@ -12,7 +13,7 @@ export function SiteFooter() {
         <div>
           <h2 className="text-sm font-semibold text-white">Produit</h2>
           <ul className="mt-3 space-y-2 text-sm text-slate-400">
-            <li><Link href="/creer" className="hover:text-white">Créer un logiciel</Link></li>
+            <li><Link href={siteHref("/creer")} className="hover:text-white">Créer un logiciel</Link></li>
             <li><Link href="/modeles" className="hover:text-white">Bibliothèque de modèles</Link></li>
             <li><Link href="/#tarifs" className="hover:text-white">Tarifs</Link></li>
           </ul>
@@ -20,8 +21,9 @@ export function SiteFooter() {
         <div>
           <h2 className="text-sm font-semibold text-white">Compte</h2>
           <ul className="mt-3 space-y-2 text-sm text-slate-400">
-            <li><Link href="/connexion" className="hover:text-white">Connexion</Link></li>
-            <li><Link href="/inscription" className="hover:text-white">Inscription</Link></li>
+            {!STATIC_SITE && <li><Link href="/connexion" className="hover:text-white">Connexion</Link></li>}
+            {!STATIC_SITE && <li><Link href="/inscription" className="hover:text-white">Inscription</Link></li>}
+            <li><Link href="/demo" className="hover:text-white">Démo sans compte</Link></li>
             <li><Link href="/#faq" className="hover:text-white">Questions fréquentes</Link></li>
           </ul>
         </div>

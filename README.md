@@ -32,3 +32,11 @@ npm run dev     # http://localhost:3000
 npm test        # tests unitaires du moteur
 npm run lint    # vérification TypeScript
 ```
+
+## Version statique (Neocities ou tout hébergeur sans serveur)
+
+```bash
+node scripts/build-static.mjs ./out-static
+```
+
+Produit l'accueil, la démo sans compte et la bibliothèque de modèles en fichiers HTML/JS/CSS. Les liens vers les comptes renvoient vers la démo. Déposez le **contenu** du dossier à la racine du site Neocities.

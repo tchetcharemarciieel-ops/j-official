@@ -1,3 +1,4 @@
+import { siteHref, STATIC_SITE } from "@/lib/site-mode";
 import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -145,6 +146,7 @@ export default async function Home() {
           <div className="mx-auto max-w-7xl">
             <Reveal className="text-center">
               <h2 className="font-display text-3xl font-bold sm:text-4xl">Tarifs</h2>
+              {STATIC_SITE && <p className="mx-auto mt-3 max-w-2xl rounded-xl border border-sky-400/30 bg-sky-400/10 px-4 py-2 text-sm text-sky-100">Les comptes et les formules ouvriront avec la version complète. En attendant, la démo est gratuite et sans inscription.</p>}
               <p className="mx-auto mt-3 max-w-2xl text-slate-400">Prix mensuels en FCFA (XAF). Les crédits servent aux opérations IA ; une opération IA échouée est remboursée.</p>
             </Reveal>
             <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -164,7 +166,7 @@ export default async function Home() {
                     <li>{p.can_publish ? "✓ Publication avec lien permanent" : "✗ Pas de publication (aperçu uniquement)"}</li>
                     <li>✓ Tests automatiques, versions, exports</li>
                   </ul>
-                  <Link href={p.price_xaf === 0 ? "/inscription" : "/espace/abonnement"} className={`btn mt-6 ${p.id === "pro" ? "btn-primary" : "btn-ghost"}`}>
+                  <Link href={siteHref(p.price_xaf === 0 ? "/inscription" : "/espace/abonnement")} className={`btn mt-6 ${p.id === "pro" ? "btn-primary" : "btn-ghost"}`}>
                     {p.price_xaf === 0 ? "Commencer gratuitement" : "Choisir cette formule"}
                   </Link>
                 </Reveal>
@@ -202,7 +204,7 @@ export default async function Home() {
           <Reveal className="glass glow-ring mx-auto max-w-4xl rounded-3xl p-8 text-center sm:p-12">
             <h2 className="font-display text-3xl font-bold">Prêt à créer votre logiciel ?</h2>
             <p className="mt-3 text-slate-300">Décrivez votre problème : le diagnostic est prêt en quelques instants.</p>
-            <Link href="/creer" className="btn btn-primary mt-6">
+            <Link href={siteHref("/creer")} className="btn btn-primary mt-6">
               Créer mon mini-logiciel avec l&apos;IA
             </Link>
           </Reveal>

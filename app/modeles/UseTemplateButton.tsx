@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "@/lib/fetcher";
+import { STATIC_SITE } from "@/lib/site-mode";
 import { useToast } from "@/components/Toaster";
 
 export function UseTemplateButton({ templateId, defaultName, loggedIn }: { templateId: string; defaultName: string; loggedIn: boolean }) {
@@ -11,6 +12,7 @@ export function UseTemplateButton({ templateId, defaultName, loggedIn }: { templ
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(defaultName);
   const [busy, setBusy] = useState(false);
+  if (STATIC_SITE) return <a href={`/demo?probleme=${encodeURIComponent(`Je veux ${defaultName.toLowerCase()}`)}`} className="btn btn-primary">Essayer ce modèle</a>;
   if (!loggedIn) return <a href={`/connexion?next=/modeles%23${templateId}`} className="btn btn-primary">Utiliser ce modèle</a>;
   if (!open) return <button className="btn btn-primary" onClick={() => setOpen(true)}>Utiliser ce modèle</button>;
   return (

@@ -174,3 +174,26 @@ describe("utilitaires", () => {
   it("slug", () => expect(slugify("Garage Ndi & Fils !")).toBe("garage-ndi-fils"));
   it("rejette une spec invalide", () => expect(parseSpec({ name: "" }).ok).toBe(false));
 });
+
+describe("données d'exemple", () => {
+  it("toutes les fiches d'exemple des modules sont valides", async () => {
+    const { sampleRecord } = await import("@/lib/checks");
+    for (const m of MODULES)
+      for (let i = 0; i < 6; i++) {
+        const r = validateRecord(m.entity, sampleRecord(m.entity, i));
+        expect(r.ok, `${m.id} #${i} ${JSON.stringify(r)}`).toBe(true);
+      }
+  });
+});
+
+describe("import CSV", () => {
+  it("lit un CSV au point-virgule et détecte les types", async () => {
+    const { parseCsv, detectColumns, prepareValue } = await import("@/lib/csv");
+    const rows = parseCsv('Nom;Prix;Date\n"Riz; 25 kg";12 500;03/10/2026\nSucre;800;04/10/2026\n');
+    expect(rows).toEqual([["Nom", "Prix", "Date"], ["Riz; 25 kg", "12 500", "03/10/2026"], ["Sucre", "800", "04/10/2026"]]);
+    const cols = detectColumns(rows[0]!, rows.slice(1));
+    expect(cols.map((c) => c.type)).toEqual(["text", "money", "date"]);
+    expect(prepareValue("date", "03/10/2026")).toBe("2026-10-03");
+    expect(prepareValue("money", "12 500")).toBe("12500");
+  });
+});

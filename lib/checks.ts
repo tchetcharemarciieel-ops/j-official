@@ -1,7 +1,8 @@
-import { appSpecSchema, ROLES, type AppSpec, type Entity, type Field } from "./spec";
+import { appSpecSchema, ROLES, type AppSpec, type Entity } from "./spec";
 import { validateRecord, type RecordData } from "./records";
 import { computeWidget, type Row } from "./stats";
 import { permsFor } from "./permissions";
+import { sampleValue } from "./samples";
 
 export type CheckStatus = "pass" | "warn" | "fail";
 export type CheckResult = {
@@ -14,36 +15,11 @@ export type CheckResult = {
   autoFixable?: boolean;
 };
 
-export function sampleValue(field: Field, i: number): RecordData[string] {
-  switch (field.type) {
-    case "text":
-      return `${field.label} ${i + 1}`;
-    case "longtext":
-      return `Note de démonstration ${i + 1}`;
-    case "number":
-      return (i * 7) % 20;
-    case "money":
-      return 5000 + i * 2500;
-    case "date": {
-      const d = new Date(Date.UTC(2026, (i * 2) % 12, 1 + (i % 27)));
-      return d.toISOString().slice(0, 10);
-    }
-    case "boolean":
-      return i % 2 === 0;
-    case "email":
-      return `contact${i + 1}@exemple.cm`;
-    case "phone":
-      return `+237 6${String(70000000 + i * 1111).slice(0, 8)}`;
-    case "select":
-      return field.options?.[i % (field.options.length || 1)] ?? null;
-    case "relation":
-      return null;
-  }
-}
+export { sampleValue };
 
 export function sampleRecord(entity: Entity, i: number): RecordData {
   const data: RecordData = {};
-  for (const f of entity.fields) data[f.key] = sampleValue(f, i);
+  for (const f of entity.fields) data[f.key] = sampleValue(f, i, entity.key);
   return data;
 }
 

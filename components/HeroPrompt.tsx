@@ -34,9 +34,14 @@ export function HeroPrompt() {
             </button>
           ))}
         </div>
-        <button type="submit" className="btn btn-primary shrink-0">
-          ✨ Créer mon mini-logiciel avec l&apos;IA
-        </button>
+        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+          <button type="button" className="btn btn-ghost" onClick={() => router.push(`/demo${text.trim() ? `?probleme=${encodeURIComponent(text.trim().slice(0, 2000))}` : ""}`)}>
+            Essayer sans compte
+          </button>
+          <button type="submit" className="btn btn-primary">
+            ✨ Créer mon mini-logiciel avec l&apos;IA
+          </button>
+        </div>
       </div>
     </form>
   );

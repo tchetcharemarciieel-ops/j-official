@@ -27,7 +27,7 @@ export function WidgetCard({ spec, widget, rows, onOpen }: { spec: AppSpec; widg
               {r.points.map((p) => {
                 const max = Math.max(...r.points.map((x) => x.value), 1);
                 return (
-                  <div key={p.label} className="group relative flex flex-1 flex-col items-center justify-end" title={`${monthLabel(p.label)} : ${fmt(p.value, r.unit)}`}>
+                  <div key={p.label} className="group relative flex h-full flex-1 flex-col items-center justify-end" title={`${monthLabel(p.label)} : ${fmt(p.value, r.unit)}`}>
                     <div className="w-full rounded-t-md" style={{ height: `${Math.max(4, (p.value / max) * 100)}%`, background: "var(--app-primary)" }} />
                   </div>
                 );

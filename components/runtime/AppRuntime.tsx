@@ -3,10 +3,11 @@
 import { useMemo, useState } from "react";
 import { can } from "@/lib/permissions";
 import { api } from "@/lib/fetcher";
+import { executePlan, planWithRules } from "@/lib/query";
 import { ROLE_LABELS, type AppSpec, type Role } from "@/lib/spec";
 import type { Row } from "@/lib/stats";
 import { useToast } from "@/components/Toaster";
-import { useAppData } from "./useAppData";
+import { useAppData, type DataMode, type Rec } from "./useAppData";
 import { WidgetCard } from "./Widgets";
 import { EntityView } from "./EntityView";
 
@@ -16,8 +17,8 @@ type Answer = { answer: string; facts: string[]; period: string; basis: string; 
  * Moteur d'exécution : interprète une AppSpec avec des composants validés.
  * Toutes les actions passent par l'API, qui revérifie le rôle à chaque requête.
  */
-export function AppRuntime({ projectId, spec, mode, role, compact = false }: { projectId: string; spec: AppSpec; mode: "demo" | "live"; role: Role; compact?: boolean }) {
-  const data = useAppData(projectId, mode);
+export function AppRuntime({ projectId, spec, mode, role, compact = false }: { projectId: string; spec: AppSpec; mode: DataMode; role: Role; compact?: boolean }) {
+  const data = useAppData(projectId, mode, spec);
   const notify = useToast();
   const entities = spec.entities.filter((e) => can(e, role, "read"));
   const [page, setPage] = useState<string>("__dashboard");
@@ -44,7 +45,7 @@ export function AppRuntime({ projectId, spec, mode, role, compact = false }: { p
         <p className="text-xs text-slate-400">
           Rôle : {ROLE_LABELS[role]}
           <br />
-          {mode === "demo" ? "Aperçu — données de démonstration" : "Données réelles"}
+          {mode === "live" ? "Données réelles" : mode === "local" ? "Démo — données dans ce navigateur" : "Aperçu — données de démonstration"}
         </p>
       </aside>
 
@@ -56,11 +57,12 @@ export function AppRuntime({ projectId, spec, mode, role, compact = false }: { p
           </div>
           <h1 className="hidden truncate text-sm font-medium text-slate-500 lg:block">{current ? current.labelPlural : "Tableau de bord"}</h1>
           <div className="flex items-center gap-2 text-xs">
-            {mode === "demo" && <span className="rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-800">Démo</span>}
+            {mode !== "live" && <span className="rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-800">Démo</span>}
             {data.pending > 0 && <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-800">{data.pending} en attente d&apos;envoi</span>}
             <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 ${data.online ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`} role="status">
               <span className={`h-2 w-2 rounded-full ${data.online ? "bg-emerald-500" : "bg-red-500"}`} />
-              {data.online ? "En ligne" : "Hors ligne"}
+              <span className="hidden sm:inline">{data.online ? "En ligne" : "Hors ligne"}</span>
+              <span className="sr-only sm:hidden">{data.online ? "En ligne" : "Hors ligne"}</span>
             </span>
           </div>
         </header>
@@ -93,7 +95,7 @@ export function AppRuntime({ projectId, spec, mode, role, compact = false }: { p
                     ))}
                 </div>
               )}
-              {spec.features.dataAssistant && <DataAssistant projectId={projectId} mode={mode} />}
+              {spec.features.dataAssistant && <DataAssistant projectId={projectId} mode={mode} spec={spec} localRecords={mode === "local" ? data.records : undefined} />}
             </div>
           )}
         </main>
@@ -128,7 +130,7 @@ function NavItem({ active, onClick, icon, label, count }: { active: boolean; onC
   );
 }
 
-function DataAssistant({ projectId, mode }: { projectId: string; mode: "demo" | "live" }) {
+function DataAssistant({ projectId, mode, spec, localRecords }: { projectId: string; mode: DataMode; spec: AppSpec; localRecords?: Record<string, Rec[]> }) {
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
   const [answer, setAnswer] = useState<Answer | null>(null);
@@ -139,6 +141,13 @@ function DataAssistant({ projectId, mode }: { projectId: string; mode: "demo" | 
     setLoading(true);
     setError("");
     try {
+      if (mode === "local") {
+        // Démo : même calcul que le serveur, exécuté sur les données du navigateur.
+        const plan = planWithRules(spec, q);
+        const rows = (localRecords?.[plan.entity] ?? []).map((r) => ({ id: r.id, data: r.data, created_at: r.created_at }));
+        setAnswer({ ...executePlan(spec, plan, rows), mode: "Données de démonstration", engine: "rules" });
+        return;
+      }
       setAnswer(await api<Answer>(`/api/apps/${projectId}/ask`, { body: { mode, question: q } }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur");

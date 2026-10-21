@@ -5,7 +5,7 @@ export function supabaseConfigured(): boolean {
 }
 
 export function serverConfigured(): boolean {
-  return supabaseConfigured() && Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  return supabaseConfigured() && Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_GATEWAY_KEY);
 }
 
 /** Coût en crédits des opérations IA (configurable par variables d'environnement). */

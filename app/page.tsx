@@ -8,7 +8,8 @@ import { Reveal } from "@/components/Reveal";
 import { TEMPLATES } from "@/lib/templates";
 import { SECTORS } from "@/lib/generator";
 import { getPlans, xaf } from "@/lib/plans";
-import { CREDIT_COSTS } from "@/lib/config";
+import { CREDIT_COSTS, SITE_URL } from "@/lib/config";
+import { LeadForm } from "@/components/LeadForm";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,30 @@ export default async function Home() {
   const plans = await getPlans();
   return (
     <div className="bg-aurora">
+      <script
+        type="application/ld+json"
+        // Données structurées : logiciel + questions fréquentes (affichage enrichi dans Google)
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify([
+            {
+              "@context": "https://schema.org",
+              "@type": "SoftwareApplication",
+              name: "MiniSoft RCA",
+              applicationCategory: "BusinessApplication",
+              operatingSystem: "Web",
+              url: SITE_URL,
+              description: "Plateforme qui crée des mini-logiciels de gestion sur mesure pour les entreprises : commandes, stocks, clients, rendez-vous, factures.",
+              inLanguage: "fr",
+              offers: plans.map((p) => ({ "@type": "Offer", name: p.name, price: p.price_xaf, priceCurrency: "XAF" })),
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "FAQPage",
+              mainEntity: FAQ.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+            },
+          ]).replace(/</g, "\\u003c"),
+        }}
+      />
       <SiteHeader />
       <main id="contenu">
         {/* Section principale */}
@@ -63,8 +88,36 @@ export default async function Home() {
             </Reveal>
             <Reveal delay={150}>
               <HeroPrompt />
-              <p className="mt-4 text-sm text-slate-400">Simple, personnalisé et accessible depuis votre navigateur.</p>
+              <ul className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-slate-300" aria-label="Points clés">
+                {["Gratuit pour commencer", "Sans carte bancaire", "En français", "Montants en FCFA", "Téléphone et ordinateur"].map((t) => (
+                  <li key={t} className="flex items-center gap-1.5"><span className="text-emerald-400">✓</span>{t}</li>
+                ))}
+              </ul>
             </Reveal>
+          </div>
+        </section>
+
+        {/* Avant / après */}
+        <section className="px-4 py-16 sm:px-6">
+          <div className="mx-auto max-w-6xl">
+            <Reveal className="text-center">
+              <h2 className="font-display text-3xl font-bold sm:text-4xl">Du cahier au logiciel</h2>
+              <p className="mx-auto mt-3 max-w-2xl text-slate-400">Ce qui change dans votre journée, concrètement.</p>
+            </Reveal>
+            <div className="mt-10 grid gap-4 md:grid-cols-2">
+              <Reveal className="rounded-2xl border border-red-400/20 bg-red-500/5 p-6">
+                <h3 className="font-semibold text-red-200">Aujourd&apos;hui</h3>
+                <ul className="mt-4 space-y-3 text-slate-300">
+                  {["Les commandes et les ventes sont notées sur un cahier qui se perd ou s'abîme.", "Vous découvrez une rupture de stock quand le client est devant vous.", "Pour connaître le chiffre du mois, il faut tout recompter à la main.", "Vos employés vous appellent pour savoir où en est un dossier.", "Les logiciels du marché sont chers, en anglais ou trop compliqués."].map((t) => <li key={t} className="flex gap-2"><span className="text-red-300">✗</span>{t}</li>)}
+                </ul>
+              </Reveal>
+              <Reveal delay={100} className="rounded-2xl border border-emerald-400/20 bg-emerald-500/5 p-6">
+                <h3 className="font-semibold text-emerald-200">Avec MiniSoft RCA</h3>
+                <ul className="mt-4 space-y-3 text-slate-300">
+                  {["Chaque fiche est enregistrée en ligne, retrouvable en une recherche.", "Les produits sous le seuil apparaissent sur le tableau de bord.", "Les totaux du mois en FCFA sont calculés automatiquement.", "Chaque employé consulte ce dont il a besoin, avec des droits limités.", "Un logiciel en français, fait pour votre métier, modifiable en le demandant."].map((t) => <li key={t} className="flex gap-2"><span className="text-emerald-300">✓</span>{t}</li>)}
+                </ul>
+              </Reveal>
+            </div>
           </div>
         </section>
 
@@ -120,8 +173,8 @@ export default async function Home() {
           <div className="mx-auto max-w-7xl">
             <Reveal className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
               <div>
-                <h2 className="font-display text-3xl font-bold sm:text-4xl">Exemples de logiciels</h2>
-                <p className="mt-3 text-slate-400">Des points de départ que l&apos;IA adapte à votre entreprise.</p>
+                <h2 className="font-display text-3xl font-bold sm:text-4xl">Un logiciel pour votre métier</h2>
+                <p className="mt-3 text-slate-400">Choisissez votre secteur pour voir ce que votre logiciel contiendra.</p>
               </div>
               <Link href="/modeles" className="btn btn-ghost">
                 Voir tous les modèles →
@@ -130,11 +183,34 @@ export default async function Home() {
             <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
               {TEMPLATES.map((t, i) => (
                 <Reveal key={t.id} delay={(i % 5) * 60}>
-                  <Link href={`/modeles#${t.id}`} className="glass block h-full rounded-2xl p-4 transition hover:-translate-y-1 hover:border-brand-400/40">
+                  <Link href={`/secteurs/${t.id}`} className="glass block h-full rounded-2xl p-4 transition hover:-translate-y-1 hover:border-brand-400/40">
                     <span className="text-2xl">{SECTORS[t.sector]?.icon}</span>
                     <h3 className="mt-2 text-sm font-semibold text-white">{t.name}</h3>
                     <p className="mt-1 text-xs text-slate-400">{t.description}</p>
                   </Link>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Sécurité */}
+        <section className="px-4 py-16 sm:px-6">
+          <div className="mx-auto max-w-6xl">
+            <Reveal className="text-center">
+              <h2 className="font-display text-3xl font-bold sm:text-4xl">Vos données restent les vôtres</h2>
+            </Reveal>
+            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                ["🔒", "Séparées par entreprise", "Chaque logiciel a ses propres données. Un autre client ne peut pas les voir, même en modifiant une adresse web."],
+                ["👤", "Accès sur invitation", "Seules les personnes que vous invitez accèdent à votre logiciel, avec le rôle que vous choisissez."],
+                ["💾", "Sauvegardes", "Une sauvegarde est faite avant chaque changement important, et vous pouvez en créer à tout moment."],
+                ["📤", "Export libre", "Exportez vos fiches en Excel (CSV) ou en PDF quand vous voulez."],
+              ].map(([icon, title, text], i) => (
+                <Reveal key={title} delay={i * 80} className="glass rounded-2xl p-5">
+                  <p className="text-2xl">{icon}</p>
+                  <h3 className="mt-2 font-semibold text-white">{title}</h3>
+                  <p className="mt-1 text-sm text-slate-400">{text}</p>
                 </Reveal>
               ))}
             </div>
@@ -199,6 +275,25 @@ export default async function Home() {
             </div>
           </div>
         </section>
+
+        {!STATIC_SITE && (
+          <section id="demonstration" className="scroll-mt-20 px-4 py-16 sm:px-6">
+            <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-[1fr_1.3fr]">
+              <Reveal>
+                <h2 className="font-display text-3xl font-bold">Parlons de votre entreprise</h2>
+                <p className="mt-3 text-slate-300">Laissez vos coordonnées : nous vous montrons en direct le logiciel adapté à votre activité. Gratuit et sans engagement.</p>
+                <ul className="mt-5 space-y-2 text-sm text-slate-400">
+                  <li>✓ Démonstration avec vos propres exemples</li>
+                  <li>✓ Aide à l&apos;import de vos fichiers Excel</li>
+                  <li>✓ Conseils pour équiper vos employés</li>
+                </ul>
+              </Reveal>
+              <Reveal delay={100} className="glass rounded-2xl p-6">
+                <LeadForm source="accueil" />
+              </Reveal>
+            </div>
+          </section>
+        )}
 
         <section className="px-4 pb-24 sm:px-6">
           <Reveal className="glass glow-ring mx-auto max-w-4xl rounded-3xl p-8 text-center sm:p-12">

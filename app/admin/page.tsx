@@ -5,7 +5,7 @@ import { STATUS, fmtDate, fmtDateTime } from "@/lib/status";
 import { TEMPLATES } from "@/lib/templates";
 import { aiAvailable } from "@/lib/ai";
 import { getPlans, xaf } from "@/lib/plans";
-import { AdminUsers, AdminProjects } from "./AdminTables";
+import { AdminUsers, AdminProjects, AdminLeads } from "./AdminTables";
 
 export const metadata = { title: "Administration" };
 export const dynamic = "force-dynamic";
@@ -15,7 +15,7 @@ export default async function Admin() {
   await requireAdmin();
   const db = adminClient();
   const since = new Date(Date.now() - 30 * 86400000).toISOString();
-  const [users, projects, usage, errors, records, plans, views] = await Promise.all([
+  const [users, projects, usage, errors, records, plans, views, leads] = await Promise.all([
     db.from("profiles").select("id,email,full_name,plan,credits,is_admin,suspended,created_at").order("created_at", { ascending: false }).limit(200),
     db.from("projects").select("id,name,slug,status,owner_id,template_id,created_at,published_version").order("created_at", { ascending: false }).limit(200),
     db.from("ai_usage").select("operation,engine,model,input_tokens,output_tokens,cost_xaf,credits,status,error,created_at,user_id").gte("created_at", since).order("created_at", { ascending: false }).limit(500),
@@ -23,6 +23,7 @@ export default async function Admin() {
     db.from("records").select("id", { count: "exact", head: true }).eq("is_demo", false),
     getPlans(),
     db.from("app_views").select("views").gte("day", since.slice(0, 10)),
+    db.from("leads").select("id,name,company,sector,phone,email,message,source,status,created_at").order("created_at", { ascending: false }).limit(200),
   ]);
   const u = usage.data ?? [];
   const totalCost = u.reduce((a, x) => a + (x.cost_xaf ?? 0), 0);
@@ -51,6 +52,11 @@ export default async function Admin() {
           <div key={String(l)} className="glass rounded-2xl p-4"><p className="text-xs text-slate-400">{l}</p><p className="mt-1 text-xl font-semibold text-white">{v}</p></div>
         ))}
       </div>
+
+      <section className="mt-10">
+        <h2 className="font-display text-xl font-semibold text-white">Demandes de démonstration ({(leads.data ?? []).filter((l) => l.status === "nouveau").length} nouvelle(s))</h2>
+        <AdminLeads leads={(leads.data ?? []).map((l) => ({ ...l, created: fmtDateTime(l.created_at) }))} />
+      </section>
 
       <section className="mt-10">
         <h2 className="font-display text-xl font-semibold text-white">Comptes, abonnements et quotas</h2>

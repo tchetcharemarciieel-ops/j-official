@@ -1,3 +1,4 @@
+import { SECTOR_PAGES } from "@/lib/marketing";
 import { siteHref, STATIC_SITE } from "@/lib/site-mode";
 import Link from "next/link";
 import { Logo } from "./Logo";
@@ -16,6 +17,7 @@ export function SiteFooter() {
             <li><Link href={siteHref("/creer")} className="hover:text-white">Créer un logiciel</Link></li>
             <li><Link href="/modeles" className="hover:text-white">Bibliothèque de modèles</Link></li>
             <li><Link href="/#tarifs" className="hover:text-white">Tarifs</Link></li>
+            {!STATIC_SITE && <li><Link href="/#demonstration" className="hover:text-white">Demander une démonstration</Link></li>}
           </ul>
         </div>
         <div>
@@ -28,6 +30,12 @@ export function SiteFooter() {
           </ul>
         </div>
       </div>
+      <nav aria-label="Logiciels par secteur" className="mx-auto max-w-7xl px-4 pb-8 sm:px-6">
+        <h2 className="text-sm font-semibold text-white">Logiciels par secteur</h2>
+        <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-400">
+          {SECTOR_PAGES.map((p) => <li key={p.slug}><Link href={`/secteurs/${p.slug}`} className="hover:text-white">{p.seoTitle.replace(/ en FCFA$/, "")}</Link></li>)}
+        </ul>
+      </nav>
       <p className="border-t border-white/5 py-6 text-center text-xs text-slate-500">© {new Date().getFullYear()} MiniSoft RCA. Prix en FCFA (XAF).</p>
     </footer>
   );

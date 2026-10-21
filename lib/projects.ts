@@ -2,6 +2,7 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import { adminClient } from "./supabase/admin";
 import { audit } from "./audit";
+import { notifyProject } from "./notify";
 import { autoFix, runChecks, summarize, type CheckResult } from "./checks";
 import { diffSpecs } from "./diff";
 import { HttpError, type ProjectRow } from "./access";
@@ -67,6 +68,9 @@ export async function saveVersion(
   // Un projet non publié repasse « en test » quand ses tests passent.
   if (s.failed === 0) await db.from("projects").update({ status: "test" }).eq("id", project.id).in("status", ["preparation", "generation", "failed"]);
   await audit("version.saved", { projectId: project.id, actorId: opts.authorId, details: { version, source: opts.source, ...s } });
+  await notifyProject(project.id, s.failed > 0
+    ? { type: "error", title: `${spec.name} : ${s.failed} test(s) en échec (v${version})`, body: "Ouvrez l'onglet Tests pour voir l'explication et la correction proposée.", link: `/projets/${project.id}?onglet=tests` }
+    : { type: "update", title: `${spec.name} : version v${version} prête`, body: opts.summary.slice(0, 300), link: `/projets/${project.id}?onglet=versions` });
   return { version, checks, spec, fixed };
 }
 

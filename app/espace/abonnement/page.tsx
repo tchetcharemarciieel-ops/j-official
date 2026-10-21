@@ -1,6 +1,4 @@
-import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
-import { AppShell } from "@/components/AppShell";
 import { getPlans, paymentsConfigured, xaf } from "@/lib/plans";
 import { CREDIT_COSTS } from "@/lib/config";
 
@@ -12,8 +10,7 @@ export default async function Abonnement() {
   const plans = await getPlans();
   const payments = paymentsConfigured();
   return (
-    <AppShell>
-      <Link href="/espace" className="text-sm text-slate-400 hover:text-white">← Mon espace</Link>
+    <div>
       <h1 className="mt-2 font-display text-3xl font-bold text-white">Abonnement et crédits</h1>
       <p className="mt-2 text-sm text-slate-400">Solde actuel : <strong className="text-white">{profile.credits} crédits</strong>. Coûts : diagnostic {CREDIT_COSTS.diagnose}, modification {CREDIT_COSTS.modify}, question {CREDIT_COSTS.ask}. Une opération IA échouée est remboursée automatiquement ; l&apos;analyse par règles est gratuite.</p>
       {!payments && (
@@ -41,6 +38,6 @@ export default async function Abonnement() {
           );
         })}
       </div>
-    </AppShell>
+    </div>
   );
 }

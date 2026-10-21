@@ -1,128 +1,106 @@
 import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
 import { adminClient } from "@/lib/supabase/admin";
-import { AppShell } from "@/components/AppShell";
-import { STATUS, fmtDate, fmtDateTime } from "@/lib/status";
-import { ROLE_LABELS, type Role } from "@/lib/spec";
-import { LOW_CREDIT_THRESHOLD, SITE_URL } from "@/lib/config";
-import { CopyButton } from "@/components/CopyButton";
+import { loadActivity, loadProjects } from "@/lib/espace";
+import { fmtDateTime } from "@/lib/status";
+import { LOW_CREDIT_THRESHOLD } from "@/lib/config";
+import { StatCard } from "@/components/espace/StatCard";
+import { ProjectCard } from "@/components/espace/ProjectCard";
 
-export const metadata = { title: "Mon espace" };
+export const metadata = { title: "Vue d'ensemble" };
 export const dynamic = "force-dynamic";
 
-export default async function Espace() {
+const IN_PROGRESS = ["preparation", "generation", "test", "failed"];
+
+export default async function Overview() {
   const profile = await requireProfile("/espace");
+  const projects = await loadProjects(profile);
+  const ids = projects.map((p) => p.id);
+  const managed = projects.filter((p) => p.role === "owner" || p.role === "admin").map((p) => p.id);
   const db = adminClient();
-  const { data: memberships } = await db.from("project_members").select("role,project_id").eq("user_id", profile.id);
-  const ids = (memberships ?? []).map((m) => m.project_id);
-  const [{ data: projects }, { data: usage }, { data: plan }, { data: views }] = await Promise.all([
-    ids.length ? db.from("projects").select("id,name,slug,status,sector,created_at,updated_at,published_version,draft_version,published_at").in("id", ids).order("updated_at", { ascending: false }) : Promise.resolve({ data: [] }),
-    db.from("ai_usage").select("operation,engine,credits,status,created_at,error").eq("user_id", profile.id).order("created_at", { ascending: false }).limit(10),
-    db.from("plans").select("name,monthly_credits").eq("id", profile.plan).single(),
-    ids.length ? db.from("app_views").select("project_id,views").in("project_id", ids).gte("day", new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)) : Promise.resolve({ data: [] }),
+  const since = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const [activity, { data: views }, { count: records }] = await Promise.all([
+    loadActivity(ids, 12),
+    ids.length ? db.from("app_views").select("views").in("project_id", ids).gte("day", since) : Promise.resolve({ data: [] as { views: number }[] }),
+    managed.length ? db.from("records").select("id", { count: "exact", head: true }).in("project_id", managed).eq("is_demo", false) : Promise.resolve({ count: 0 }),
   ]);
-  const roleOf = (id: string) => (memberships ?? []).find((m) => m.project_id === id)?.role as Role;
-  const viewsOf = (id: string) => (views ?? []).filter((v) => v.project_id === id).reduce((a, v) => a + v.views, 0);
+  const name = (id: string | null) => projects.find((p) => p.id === id)?.name ?? "—";
+  const published = projects.filter((p) => p.status === "published").length;
+  const inProgress = projects.filter((p) => IN_PROGRESS.includes(p.status)).length;
+  const failed = projects.filter((p) => p.status === "failed").length;
 
   return (
-    <AppShell>
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+    <div className="space-y-8">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end animate-fade-up">
         <div>
-          <h1 className="font-display text-3xl font-bold text-white">Bonjour{profile.full_name ? `, ${profile.full_name}` : ""} 👋</h1>
-          <p className="mt-1 text-sm text-slate-400">{profile.email}</p>
+          <p className="text-sm text-slate-400">Vue d&apos;ensemble</p>
+          <h1 className="font-display text-3xl font-bold text-white">Bonjour{profile.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""} 👋</h1>
+          {profile.company_name && <p className="mt-1 text-sm text-slate-400">{profile.company_name}{profile.company_sector ? ` · ${profile.company_sector}` : ""}</p>}
         </div>
         <div className="flex gap-2">
           <Link href="/modeles" className="btn btn-ghost">Partir d&apos;un modèle</Link>
-          <Link href="/creer" className="btn btn-primary">+ Nouveau logiciel</Link>
+          <Link href="/creer" className="btn btn-primary">✨ Créer un logiciel</Link>
         </div>
       </div>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-3">
-        <div className="glass rounded-2xl p-5">
-          <p className="text-sm text-slate-400">Formule</p>
-          <p className="mt-1 text-xl font-semibold text-white">{plan?.name ?? profile.plan}</p>
-          <Link href="/espace/abonnement" className="mt-2 inline-block text-sm text-brand-300 hover:underline">Gérer l&apos;abonnement →</Link>
-        </div>
-        <div className={`glass rounded-2xl p-5 ${profile.credits <= LOW_CREDIT_THRESHOLD ? "border-amber-400/50" : ""}`}>
-          <p className="text-sm text-slate-400">Crédits IA disponibles</p>
-          <p className="mt-1 text-xl font-semibold text-white">{profile.credits}</p>
-          {profile.credits <= LOW_CREDIT_THRESHOLD && <p className="mt-1 text-xs text-amber-300">⚠ Crédits presque épuisés.</p>}
-        </div>
-        <div className="glass rounded-2xl p-5">
-          <p className="text-sm text-slate-400">Mes logiciels</p>
-          <p className="mt-1 text-xl font-semibold text-white">{projects?.length ?? 0}</p>
-        </div>
-      </div>
-
-      <h2 className="mt-10 font-display text-xl font-semibold text-white">Mes mini-logiciels</h2>
-      {!projects?.length ? (
-        <div className="glass mt-4 rounded-2xl p-10 text-center">
-          <p className="text-4xl">🧩</p>
-          <p className="mt-3 font-medium text-white">Aucun logiciel pour l&apos;instant</p>
-          <p className="mt-1 text-sm text-slate-400">Décrivez votre problème pour créer le premier.</p>
-          <Link href="/creer" className="btn btn-primary mt-5">Créer mon premier logiciel</Link>
-        </div>
-      ) : (
-        <ul className="mt-4 grid gap-4 md:grid-cols-2">
-          {projects.map((p) => {
-            const st = STATUS[p.status] ?? STATUS.preparation!;
-            const role = roleOf(p.id);
-            const manage = role === "owner" || role === "admin";
-            const url = `${SITE_URL}/apps/${p.slug}`;
-            return (
-              <li key={p.id} className="glass flex flex-col rounded-2xl p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="truncate font-semibold text-white">{p.name}</h3>
-                    <p className="text-xs text-slate-400">{p.sector} · {ROLE_LABELS[role]}</p>
-                  </div>
-                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs ${st.cls}`}>{st.label}</span>
-                </div>
-                <dl className="mt-4 grid grid-cols-3 gap-2 text-xs">
-                  <div><dt className="text-slate-500">Créé le</dt><dd className="text-slate-200">{fmtDate(p.created_at)}</dd></div>
-                  <div><dt className="text-slate-500">Version</dt><dd className="text-slate-200">v{p.draft_version}{p.published_version ? ` (en ligne : v${p.published_version})` : ""}</dd></div>
-                  <div><dt className="text-slate-500">Visites 30 j</dt><dd className="text-slate-200">{p.published_version ? viewsOf(p.id) : "—"}</dd></div>
-                </dl>
-                {p.published_version && (
-                  <div className="mt-4 flex items-center gap-2 rounded-xl bg-night-950/60 px-3 py-2 text-xs">
-                    <span className="truncate text-slate-300">{url}</span>
-                    <CopyButton text={url} />
-                  </div>
-                )}
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {manage && <Link href={`/projets/${p.id}`} className="btn btn-ghost flex-1">Gérer</Link>}
-                  {p.published_version && <a href={`/apps/${p.slug}`} target="_blank" rel="noopener" className="btn btn-primary flex-1">Ouvrir mon logiciel</a>}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+      {!profile.company_name && (
+        <Link href="/espace/parametres" className="flex items-center justify-between gap-3 rounded-2xl border border-sky-400/30 bg-sky-400/10 px-5 py-4 text-sm text-sky-100 transition hover:bg-sky-400/15 animate-fade-up">
+          <span>🏢 Complétez le profil de votre entreprise (nom, logo, secteur, coordonnées).</span>
+          <span aria-hidden>→</span>
+        </Link>
+      )}
+      {profile.credits <= LOW_CREDIT_THRESHOLD && (
+        <Link href="/espace/abonnement" className="block rounded-2xl border border-amber-400/30 bg-amber-400/10 px-5 py-4 text-sm text-amber-100">
+          ⚠ Il vous reste {profile.credits} crédit{profile.credits > 1 ? "s" : ""} IA. L&apos;analyse par règles reste gratuite.
+        </Link>
       )}
 
-      <h2 className="mt-10 font-display text-xl font-semibold text-white">Consommation récente</h2>
-      <div className="glass mt-4 overflow-x-auto rounded-2xl">
-        {!usage?.length ? (
-          <p className="p-6 text-sm text-slate-400">Aucune opération pour l&apos;instant.</p>
-        ) : (
-          <table className="w-full text-left text-sm">
-            <thead className="text-xs uppercase text-slate-500"><tr><th className="px-4 py-3">Date</th><th className="px-4">Opération</th><th className="px-4">Moteur</th><th className="px-4">Crédits</th><th className="px-4">Statut</th></tr></thead>
-            <tbody>
-              {usage.map((u, i) => (
-                <tr key={i} className="border-t border-white/5 text-slate-300">
-                  <td className="px-4 py-2">{fmtDateTime(u.created_at)}</td>
-                  <td className="px-4">{{ diagnose: "Diagnostic", modify: "Modification", ask: "Question", generate: "Génération" }[u.operation as string] ?? u.operation}</td>
-                  <td className="px-4">{u.engine === "ai" ? "IA" : "Règles"}</td>
-                  <td className="px-4">{u.credits}</td>
-                  <td className="px-4">{u.status === "success" ? "✓ Réussi" : u.status === "refunded" ? "↩ Échec remboursé" : "✗ Échec"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-      <form action="/auth/signout" method="post" className="mt-10">
-        <button className="text-sm text-slate-400 underline hover:text-white">Se déconnecter</button>
-      </form>
-    </AppShell>
+      <section aria-label="Indicateurs" className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        <StatCard label="Logiciels" value={projects.length} icon="🧩" hint={`${projects.filter((p) => p.role === "owner").length} créé(s) par vous`} href="/espace/logiciels" delay={0} />
+        <StatCard label="En cours" value={inProgress} icon="🛠️" hint={failed ? `dont ${failed} à corriger` : "préparation, génération ou test"} href="/espace/logiciels?statut=en-cours" tone="amber" delay={80} />
+        <StatCard label="Publiés" value={published} icon="🚀" hint="accessibles par leur lien" href="/espace/logiciels?statut=published" tone="green" delay={160} />
+        <StatCard label="Visites (30 jours)" value={(views ?? []).reduce((a, v) => a + v.views, 0)} icon="👀" hint={`${(records ?? 0).toLocaleString("fr-FR")} fiche(s) réelle(s) enregistrée(s)`} href="/espace/statistiques" tone="sky" delay={240} />
+      </section>
+
+      {projects.length === 0 ? (
+        <section className="glass rounded-3xl p-10 text-center animate-fade-up">
+          <p className="text-5xl">🧩</p>
+          <h2 className="mt-4 font-display text-2xl font-bold text-white">Créez votre premier logiciel</h2>
+          <p className="mx-auto mt-2 max-w-md text-sm text-slate-400">Décrivez votre problème en une phrase : votre logiciel est prêt à tester en quelques minutes.</p>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <Link href="/creer" className="btn btn-primary">Créer mon premier logiciel</Link>
+            <Link href="/demo" className="btn btn-ghost">Voir la démo</Link>
+          </div>
+        </section>
+      ) : (
+        <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
+          <section aria-labelledby="recents">
+            <div className="flex items-center justify-between">
+              <h2 id="recents" className="font-display text-xl font-semibold text-white">Logiciels récents</h2>
+              <Link href="/espace/logiciels" className="text-sm text-brand-300 hover:underline">Tout voir →</Link>
+            </div>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              {projects.slice(0, 4).map((p, i) => <ProjectCard key={p.id} project={p} delay={i * 70} compact />)}
+            </div>
+          </section>
+          <section aria-labelledby="activite" className="glass h-fit rounded-2xl p-5 animate-fade-up" style={{ animationDelay: "200ms" }}>
+            <h2 id="activite" className="font-display text-lg font-semibold text-white">Dernières activités</h2>
+            {activity.length === 0 ? (
+              <p className="mt-4 text-sm text-slate-400">Aucune activité pour l&apos;instant.</p>
+            ) : (
+              <ol className="relative mt-4 space-y-4 border-l border-white/10 pl-5">
+                {activity.map((a, i) => (
+                  <li key={i} className="relative">
+                    <span className={`absolute -left-[25px] top-1.5 h-2.5 w-2.5 rounded-full ring-4 ring-night-950 ${a.level === "error" ? "bg-red-400" : a.level === "warning" ? "bg-amber-400" : "bg-brand-400"}`} />
+                    <p className="text-sm text-white">{a.label}</p>
+                    <p className="text-xs text-slate-500">{name(a.project_id)} · {fmtDateTime(a.created_at)}</p>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+        </div>
+      )}
+    </div>
   );
 }

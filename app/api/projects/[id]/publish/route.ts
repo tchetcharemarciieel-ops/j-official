@@ -6,6 +6,7 @@ import { adminClient } from "@/lib/supabase/admin";
 import { runChecks, summarize } from "@/lib/checks";
 import { audit } from "@/lib/audit";
 import { SITE_URL } from "@/lib/config";
+import { notifyProject } from "@/lib/notify";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -20,6 +21,7 @@ export const POST = route(async (req, { params }: Ctx) => {
     if (project.status !== "published") throw new HttpError(409, "Le logiciel n'est pas publié.");
     await db.from("projects").update({ status: "suspended", updated_at: new Date().toISOString() }).eq("id", id);
     await audit("publish.suspended", { projectId: id, actorId: profile.id, level: "warning" });
+    await notifyProject(id, { type: "publish", title: `${project.name} : publication suspendue`, body: "Les membres n'y ont plus accès ; les données sont conservées.", link: `/projets/${id}?onglet=publication` });
     return NextResponse.json({ status: "suspended" });
   }
 
@@ -27,6 +29,7 @@ export const POST = route(async (req, { params }: Ctx) => {
     if (project.status !== "suspended" || !project.published_spec) throw new HttpError(409, "Aucune publication suspendue à réactiver.");
     await db.from("projects").update({ status: "published", updated_at: new Date().toISOString() }).eq("id", id);
     await audit("publish.resumed", { projectId: id, actorId: profile.id });
+    await notifyProject(id, { type: "publish", title: `${project.name} : publication réactivée`, link: `/projets/${id}?onglet=publication` });
     return NextResponse.json({ status: "published", url: `${SITE_URL}/apps/${project.slug}` });
   }
 
@@ -38,6 +41,7 @@ export const POST = route(async (req, { params }: Ctx) => {
   const s = summarize(runChecks(spec));
   if (s.failed > 0) {
     await db.from("projects").update({ status: "failed", last_error: "Publication bloquée : des tests échouent." }).eq("id", id);
+    await notifyProject(id, { type: "error", title: `${project.name} : publication bloquée`, body: `${s.failed} test(s) en échec. Corrigez-les dans l'onglet Tests.`, link: `/projets/${id}?onglet=tests` });
     throw new HttpError(422, `Publication bloquée : ${s.failed} test(s) en échec. Corrigez-les dans l'onglet Tests.`);
   }
   const now = new Date().toISOString();
@@ -48,6 +52,7 @@ export const POST = route(async (req, { params }: Ctx) => {
     .eq("draft_version", project.draft_version);
   if (error) {
     await audit("publish.failed", { projectId: id, actorId: profile.id, level: "error", details: { message: error.message } });
+    await notifyProject(id, { type: "error", title: `${project.name} : échec de la publication`, body: "Aucune modification n'a été mise en ligne. Réessayez.", link: `/projets/${id}?onglet=publication` });
     throw new HttpError(500, "Échec de la publication. Aucune modification n'a été mise en ligne.");
   }
   await db.from("project_versions").update({ published: true }).eq("project_id", id).eq("version", project.draft_version);
@@ -56,5 +61,6 @@ export const POST = route(async (req, { params }: Ctx) => {
   const { data: check } = await db.from("projects").select("status,published_version").eq("id", id).single();
   if (check?.status !== "published" || check.published_version !== project.draft_version) throw new HttpError(500, "La publication n'a pas pu être vérifiée. Réessayez.");
   await audit("publish.done", { projectId: id, actorId: profile.id, details: { version: project.draft_version } });
+  await notifyProject(id, { type: "publish", title: `${project.name} : version v${project.draft_version} publiée`, body: `En ligne sur ${SITE_URL}/apps/${project.slug}`, link: `/projets/${id}?onglet=publication` });
   return NextResponse.json({ status: "published", version: project.draft_version, url: `${SITE_URL}/apps/${project.slug}` });
 });

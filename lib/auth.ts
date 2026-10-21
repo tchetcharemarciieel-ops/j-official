@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "./supabase/server";
 import { adminClient } from "./supabase/admin";
@@ -12,6 +13,12 @@ export type Profile = {
   credits: number;
   is_admin: boolean;
   suspended: boolean;
+  company_name: string;
+  company_logo_url: string;
+  company_sector: string;
+  company_phone: string;
+  company_email: string;
+  company_address: string;
 };
 
 export async function getUser() {
@@ -22,15 +29,16 @@ export async function getUser() {
   return data.user ?? null;
 }
 
-export async function getProfile(): Promise<Profile | null> {
+/** Mis en cache le temps d'une requête : la mise en page et la page partagent le même profil. */
+export const getProfile = cache(async (): Promise<Profile | null> => {
   const user = await getUser();
   if (!user) return null;
-  const { data } = await adminClient().from("profiles").select("id,email,full_name,plan,credits,is_admin,suspended").eq("id", user.id).maybeSingle();
+  const { data } = await adminClient().from("profiles").select("id,email,full_name,plan,credits,is_admin,suspended,company_name,company_logo_url,company_sector,company_phone,company_email,company_address").eq("id", user.id).maybeSingle();
   if (!data) return null;
   // Les administrateurs sont désignés par variable d'environnement (jamais depuis le navigateur).
   const admins = (process.env.ADMIN_EMAILS || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
   return { ...(data as Profile), is_admin: Boolean(data.is_admin) || admins.includes(String(data.email).toLowerCase()) };
-}
+});
 
 export async function requireProfile(next = "/espace"): Promise<Profile> {
   if (!serverConfigured()) redirect("/configuration");

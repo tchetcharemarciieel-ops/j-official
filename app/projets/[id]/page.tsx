@@ -11,8 +11,9 @@ import { Workspace, type WorkspaceData } from "./Workspace";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Mon logiciel" };
 
-export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProjectPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ onglet?: string }> }) {
   const { id } = await params;
+  const { onglet } = await searchParams;
   const profile = await requireProfile(`/projets/${id}`);
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const db = adminClient();
@@ -64,7 +65,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   };
   return (
     <AppShell wide>
-      <Workspace data={data} />
+      <Workspace data={data} initialTab={onglet} />
     </AppShell>
   );
 }

@@ -197,3 +197,17 @@ button:focus-visible {
   .print-area table { border-collapse: collapse; width: 100%; }
   .print-area th, .print-area td { border: 1px solid #999; padding: 4px 6px; color: black !important; }
 }
+
+@keyframes slide-in {
+  from { transform: translateX(-100%); }
+  to { transform: none; }
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.animate-fade-up { animation: fade-up 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both; }

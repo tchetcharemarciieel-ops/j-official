@@ -6,6 +6,7 @@ import { getProfile } from "@/lib/auth";
 import { adminClient } from "@/lib/supabase/admin";
 import { audit } from "@/lib/audit";
 import { hashToken } from "@/lib/tokens";
+import { notifyProject } from "@/lib/notify";
 
 export const POST = route(async (req) => {
   assertSameOrigin(req);
@@ -21,6 +22,7 @@ export const POST = route(async (req) => {
   if (!existing) await db.from("project_members").insert({ project_id: inv.project_id, user_id: profile.id, role: inv.role, invited_by: inv.created_by });
   await db.from("invitations").update({ accepted_at: new Date().toISOString() }).eq("id", inv.id);
   await audit("member.joined", { projectId: inv.project_id, actorId: profile.id, details: { role: inv.role } });
+  if (!existing) await notifyProject(inv.project_id, { type: "team", title: `${profile.full_name || profile.email} a rejoint votre logiciel`, body: `Rôle : ${inv.role}`, link: `/projets/${inv.project_id}?onglet=equipe`, exceptUserId: profile.id });
   const { data: project } = await db.from("projects").select("slug").eq("id", inv.project_id).single();
   return NextResponse.json({ slug: project?.slug, projectId: inv.project_id });
 });

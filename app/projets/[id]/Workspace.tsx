@@ -65,9 +65,9 @@ const TABS = [
 ] as const;
 export type TabId = (typeof TABS)[number][0];
 
-export function Workspace({ data }: { data: WorkspaceData }) {
+export function Workspace({ data, initialTab }: { data: WorkspaceData; initialTab?: string }) {
   const router = useRouter();
-  const [tab, setTab] = useState<TabId>("apercu");
+  const [tab, setTab] = useState<TabId>(() => (TABS.some(([id]) => id === initialTab) ? (initialTab as TabId) : "apercu"));
   const refresh = () => router.refresh();
   const st = STATUS[data.project.status] ?? STATUS.preparation!;
   const latest = data.versions[0];

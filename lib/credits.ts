@@ -3,6 +3,7 @@ import { adminClient } from "./supabase/admin";
 import { aiAvailable, AiError, type AiUsage } from "./ai";
 import { audit } from "./audit";
 import { HttpError } from "./access";
+import { notifyUser } from "./notify";
 
 /**
  * Règle de facturation annoncée : les crédits sont réservés avant l'appel IA
@@ -53,6 +54,8 @@ export async function withCredits<T>(
       error: message.slice(0, 500),
     });
     await audit(`${opts.operation}.failed`, { projectId: opts.projectId, actorId: opts.userId, level: "error", details: { message: message.slice(0, 500), refunded: cost } });
+    const label = { diagnose: "L'analyse de votre besoin", modify: "La modification demandée", ask: "La question à l'assistant", generate: "La génération" }[opts.operation] ?? "L'opération";
+    await notifyUser(opts.userId, { type: "error", title: `${label} a échoué`, body: `${message.slice(0, 300)}${cost > 0 ? ` — ${cost} crédit(s) remboursé(s).` : ""}`, projectId: opts.projectId, link: opts.projectId ? `/projets/${opts.projectId}` : "/espace" });
     if (err instanceof HttpError) throw err;
     throw new HttpError(502, `${message}${cost > 0 ? ` Vos ${cost} crédit(s) ont été remboursés.` : ""}`);
   }

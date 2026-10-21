@@ -44,12 +44,13 @@ export function AuthForm({ mode }: { mode: "login" | "signup" | "forgot" | "rese
         router.replace(next);
         router.refresh();
       } else if (mode === "signup") {
-        const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name }, emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}` } });
+        const res = await fetch("/api/auth/signup", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password, fullName: name }) });
+        const body = (await res.json().catch(() => ({}))) as { error?: string; details?: string[] };
+        if (!res.ok) return setError(body.details?.[0]?.split(" : ").pop() ?? body.error ?? "Inscription impossible.");
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) return setError(frError(error.message));
-        if (data.session) {
-          router.replace(next);
-          router.refresh();
-        } else setInfo("Compte créé. Ouvrez le lien de confirmation envoyé à votre adresse e-mail pour continuer.");
+        router.replace(next);
+        router.refresh();
       } else if (mode === "forgot") {
         const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${origin}/auth/callback?next=/reinitialiser` });
         if (error) return setError(frError(error.message));

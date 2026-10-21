@@ -11,6 +11,8 @@ import { formatValue } from "@/lib/records";
 import { sampleRecord } from "@/lib/checks";
 import { siteHref } from "@/lib/site-mode";
 
+export const dynamic = "force-dynamic";
+
 type Props = { params: Promise<{ slug: string }> };
 
 export function generateStaticParams() {

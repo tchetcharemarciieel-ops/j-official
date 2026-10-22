@@ -3,6 +3,7 @@ import { siteHref, STATIC_SITE } from "@/lib/site-mode";
 import Link from "next/link";
 import { LifeBuoy, MessageCircle } from "lucide-react";
 import { Logo } from "./Logo";
+import { getSite } from "@/lib/site";
 
 /** Numéro affiché lisiblement : +236 74 33 26 19. */
 function formatPhone(raw: string) {
@@ -11,8 +12,9 @@ function formatPhone(raw: string) {
   return raw.trim();
 }
 
-export function SiteFooter() {
-  const phone = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "";
+export async function SiteFooter() {
+  const { contact, branding, templates } = await getSite();
+  const phone = contact.whatsapp || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "";
   const digits = phone.replace(/\D/g, "");
   return (
     <footer className="no-print border-t border-slate-200 bg-slate-50">
@@ -56,17 +58,22 @@ export function SiteFooter() {
                 </Link>
               </li>
             )}
-            <li>République centrafricaine</li>
+            {contact.email && (
+              <li>
+                <a href={`mailto:${contact.email}`} className="hover:text-blue-600">{contact.email}</a>
+              </li>
+            )}
+            <li>{contact.address || "République centrafricaine"}</li>
           </ul>
         </div>
       </div>
       <nav aria-label="Logiciels par secteur" className="mx-auto max-w-7xl border-t border-slate-200 px-4 py-8 sm:px-6">
         <h2 className="text-sm font-semibold text-slate-900">Logiciels par secteur</h2>
         <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-600">
-          {SECTOR_PAGES.map((p) => <li key={p.slug}><Link href={`/secteurs/${p.slug}`} className="hover:text-blue-600">{p.seoTitle.replace(/ en FCFA$/, "")}</Link></li>)}
+          {SECTOR_PAGES.filter((p) => !templates.disabled.includes(p.slug)).map((p) => <li key={p.slug}><Link href={`/secteurs/${p.slug}`} className="hover:text-blue-600">{p.seoTitle.replace(/ en FCFA$/, "")}</Link></li>)}
         </ul>
       </nav>
-      <p className="border-t border-slate-200 px-4 py-6 text-center text-xs text-slate-500">© {new Date().getFullYear()} MiniSoft RCA · Prix en francs CFA (XAF)</p>
+      <p className="border-t border-slate-200 px-4 py-6 text-center text-xs text-slate-500">© {new Date().getFullYear()} {branding.name} · Prix en francs CFA (XAF)</p>
     </footer>
   );
 }

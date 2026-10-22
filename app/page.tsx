@@ -10,6 +10,7 @@ import { getModule } from "@/lib/modules";
 import { getPlans, xaf } from "@/lib/plans";
 import { CREDIT_COSTS, SITE_URL } from "@/lib/config";
 import { LeadForm } from "@/components/LeadForm";
+import { getSite } from "@/lib/site";
 import { ScrollStory } from "@/components/story/ScrollStory";
 import { TiltOnScroll } from "@/components/TiltOnScroll";
 
@@ -72,7 +73,10 @@ function SectionTitle({ eyebrow, title, text, center = true }: { eyebrow?: strin
 }
 
 export default async function Home() {
-  const plans = await getPlans();
+  const [plans, site] = await Promise.all([getPlans(), getSite()]);
+  // Textes et FAQ réglables dans l'administration ; à défaut, les textes d'origine.
+  const faq = site.faq.items.length ? site.faq.items : FAQ;
+  const solutions = SECTOR_PAGES.filter((s) => !site.templates.disabled.includes(s.slug));
   return (
     <div className="bg-white">
       <script
@@ -94,7 +98,7 @@ export default async function Home() {
             {
               "@context": "https://schema.org",
               "@type": "FAQPage",
-              mainEntity: FAQ.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+              mainEntity: faq.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
             },
           ]).replace(/</g, "\\u003c"),
         }}
@@ -108,8 +112,8 @@ export default async function Home() {
               <p className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-700">
                 Restaurants, pharmacies, garages, commerces, écoles
               </p>
-              <h1 className="mt-6 text-4xl font-bold leading-tight tracking-tight text-slate-900 sm:text-5xl lg:text-[3.4rem]">Des logiciels simples pour développer votre entreprise</h1>
-              <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-600">Décrivez vos besoins et obtenez un mini-logiciel adapté à votre activité. En français, avec vos montants en FCFA.</p>
+              <h1 className="mt-6 text-4xl font-bold leading-tight tracking-tight text-slate-900 sm:text-5xl lg:text-[3.4rem]">{site.home.heroTitle || "Des logiciels simples pour développer votre entreprise"}</h1>
+              <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-600">{site.home.heroSubtitle || "Décrivez vos besoins et obtenez un mini-logiciel adapté à votre activité. En français, avec vos montants en FCFA."}</p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link href={siteHref("/creer")} className="btn btn-primary px-6 text-base">
                   Créer mon logiciel
@@ -165,7 +169,7 @@ export default async function Home() {
               </Link>
             </div>
             <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {SECTOR_PAGES.map((s, i) => (
+              {solutions.map((s, i) => (
                 <Reveal key={s.slug} delay={(i % 3) * 60}>
                   <Link href={`/secteurs/${s.slug}`} className="group flex h-full flex-col rounded-xl border border-slate-200 bg-white p-6 transition-colors hover:border-blue-300">
                     <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{s.template.category}</p>
@@ -289,7 +293,7 @@ export default async function Home() {
           <div className="mx-auto max-w-3xl">
             <SectionTitle eyebrow="FAQ" title="Questions fréquentes" />
             <div className="mt-10 divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
-              {FAQ.map((f) => (
+              {faq.map((f) => (
                 <details key={f.q} className="group px-5 py-4 [&_summary::-webkit-details-marker]:hidden">
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium text-slate-900">
                     {f.q}

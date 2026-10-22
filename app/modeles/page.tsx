@@ -3,6 +3,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { Reveal } from "@/components/Reveal";
 import { TEMPLATES } from "@/lib/templates";
 import { getProfile } from "@/lib/auth";
+import { getSetting } from "@/lib/settings";
 import { UseTemplateButton } from "./UseTemplateButton";
 
 export const metadata = { title: "Modèles de logiciels" };
@@ -10,7 +11,9 @@ export const dynamic = "force-dynamic";
 
 export default async function Modeles() {
   const profile = await getProfile().catch(() => null);
-  const categories = Array.from(new Set(TEMPLATES.map((t) => t.category)));
+  const { disabled } = await getSetting("templates");
+  const available = TEMPLATES.filter((t) => !disabled.includes(t.id));
+  const categories = Array.from(new Set(available.map((t) => t.category)));
   return (
     <div className="min-h-dvh bg-white">
       <SiteHeader />
@@ -18,10 +21,10 @@ export default async function Modeles() {
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Modèles de logiciels</h1>
         <p className="mt-3 max-w-2xl text-slate-600">Choisissez un modèle et adaptez-le à votre entreprise. Vous obtenez votre propre logiciel : vos données ne sont jamais partagées avec d&apos;autres clients.</p>
         <nav className="mt-6 flex flex-wrap gap-2" aria-label="Catégories">
-          {categories.map((c) => <a key={c} href={`#${TEMPLATES.find((t) => t.category === c)!.id}`} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 hover:border-blue-300 hover:text-blue-700">{c}</a>)}
+          {categories.map((c) => <a key={c} href={`#${available.find((t) => t.category === c)!.id}`} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 hover:border-blue-300 hover:text-blue-700">{c}</a>)}
         </nav>
         <div className="mt-10 grid gap-6 md:grid-cols-2">
-          {TEMPLATES.map((t, i) => {
+          {available.map((t, i) => {
             const spec = t.build();
             return (
               <Reveal key={t.id} delay={(i % 2) * 80}>

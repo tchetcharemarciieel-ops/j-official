@@ -6,6 +6,7 @@ import { getProfile } from "@/lib/auth";
 import { adminClient } from "@/lib/supabase/admin";
 import { composeSpec, diagnosisSchema } from "@/lib/generator";
 import { getTemplate } from "@/lib/templates";
+import { getSetting } from "@/lib/settings";
 import { saveVersion, uniqueSlug } from "@/lib/projects";
 import { audit } from "@/lib/audit";
 
@@ -38,7 +39,7 @@ export const POST = route(async (req) => {
     sector = input.diagnosis.sectorLabel;
   } else {
     const tpl = getTemplate(input.templateId);
-    if (!tpl) throw new HttpError(404, "Modèle introuvable.");
+    if (!tpl || (await getSetting("templates")).disabled.includes(tpl.id)) throw new HttpError(404, "Modèle introuvable ou désactivé.");
     spec = { ...tpl.build(), name: input.name };
     problem = tpl.problems.join(" ");
     diagnosis = null;

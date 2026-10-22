@@ -10,6 +10,7 @@ import { Check } from "lucide-react";
 import { formatValue } from "@/lib/records";
 import { sampleRecord } from "@/lib/checks";
 import { siteHref } from "@/lib/site-mode";
+import { getSetting } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function SectorPage({ params }: Props) {
   const page = getSectorPage((await params).slug);
-  if (!page) notFound();
+  if (!page || (await getSetting("templates")).disabled.includes(page.slug)) notFound();
   const spec = page.template.build();
   const main = spec.entities[0]!;
   const cols = main.fields.filter((f) => f.showInTable).slice(0, 4);

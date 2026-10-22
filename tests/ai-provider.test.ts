@@ -119,18 +119,18 @@ describe("fournisseur IA", () => {
     process.env.AI_PROVIDER = "gemini";
     process.env.GEMINI_API_KEY = KEY;
     const fetchMock = mockFetch(200, {
-      modelVersion: "gemini-2.5-flash",
+      modelVersion: "gemini-3.8-flash",
       usageMetadata: { promptTokenCount: 1000, candidatesTokenCount: 700, thoughtsTokenCount: 300 },
       candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify(validDiagnosis) }] } }],
     });
     const { aiConfig, aiDiagnose } = await import("@/lib/ai");
-    expect(aiConfig()).toMatchObject({ provider: "gemini", model: "gemini-2.5-flash", label: "Google Gemini" });
+    expect(aiConfig()).toMatchObject({ provider: "gemini", model: "gemini-3.8-flash", label: "Google Gemini" });
     const { diagnosis, usage } = await aiDiagnose({ problem: "Ma pharmacie a des médicaments périmés." });
     expect(diagnosis.source).toBe("ai");
     expect(diagnosis.causes.length).toBeGreaterThan(0);
     expect(usage.outputTokens).toBe(1000);
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toBe("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent");
+    expect(url).toBe("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent");
     expect(url).not.toContain(KEY);
     expect((init.headers as Record<string, string>)["x-goog-api-key"]).toBe(KEY);
     const sent = JSON.parse(String(init.body));

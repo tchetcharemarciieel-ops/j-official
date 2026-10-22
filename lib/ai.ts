@@ -19,10 +19,10 @@ const KEY_VARS: Record<ProviderName, string> = { openai: "OPENAI_API_KEY", anthr
 const DEFAULTS: Record<ProviderName, { model: string; priceIn: number; priceOut: number; label: string }> = {
   openai: { model: "gpt-5-mini", priceIn: 0.25, priceOut: 2, label: "OpenAI" },
   anthropic: { model: "claude-opus-5-5", priceIn: 4, priceOut: 20, label: "Anthropic" },
-  gemini: { model: "gemini-2.5-flash", priceIn: 0.3, priceOut: 2.5, label: "Google Gemini" },
+  gemini: { model: "gemini-3.8-flash", priceIn: 0.3, priceOut: 2.5, label: "Google Gemini" },
 };
 const USD_TO_XAF = Number(process.env.USD_TO_XAF || 600);
-const TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS || 90_000);
+const TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS || 110_000);
 
 export type AiConfig = { provider: ProviderName; label: string; model: string; priceIn: number; priceOut: number };
 
@@ -210,7 +210,13 @@ async function callGemini<T extends z.ZodType>(cfg: AiConfig, system: string, us
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: "user", parts: [...(image ? [{ inlineData: { mimeType: image.mediaType, data: image.data } }] : []), { text: user }] }],
-        generationConfig: { responseMimeType: "application/json", responseJsonSchema: jsonSchema, maxOutputTokens: maxTokens },
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseJsonSchema: jsonSchema,
+          maxOutputTokens: maxTokens,
+          // Réflexion courte par défaut sur Gemini 3 : réponses plus rapides et moins coûteuses.
+          ...(/^gemini-3/.test(cfg.model) ? { thinkingConfig: { thinkingLevel: process.env.AI_REASONING_EFFORT || "low" } } : {}),
+        },
       }),
     });
   } catch (err) {

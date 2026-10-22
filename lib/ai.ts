@@ -11,12 +11,15 @@ import { FIELD_TYPES, ROLES, WIDGET_TYPES, appSpecSchema, toKey, type AppSpec, t
  * Le modèle ne produit que des données structurées (AppSpec), jamais du code exécuté.
  */
 
-type ProviderName = "openai" | "anthropic";
+type ProviderName = "openai" | "anthropic" | "gemini";
+const PROVIDERS: ProviderName[] = ["openai", "anthropic", "gemini"];
+const KEY_VARS: Record<ProviderName, string> = { openai: "OPENAI_API_KEY", anthropic: "ANTHROPIC_API_KEY", gemini: "GEMINI_API_KEY" };
 
 /** Modèle et prix par défaut de chaque fournisseur (USD par million de jetons). */
 const DEFAULTS: Record<ProviderName, { model: string; priceIn: number; priceOut: number; label: string }> = {
   openai: { model: "gpt-5-mini", priceIn: 0.25, priceOut: 2, label: "OpenAI" },
   anthropic: { model: "claude-opus-5-5", priceIn: 4, priceOut: 20, label: "Anthropic" },
+  gemini: { model: "gemini-2.5-flash", priceIn: 0.3, priceOut: 2.5, label: "Google Gemini" },
 };
 const USD_TO_XAF = Number(process.env.USD_TO_XAF || 600);
 const TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS || 90_000);
@@ -25,15 +28,15 @@ export type AiConfig = { provider: ProviderName; label: string; model: string; p
 
 /**
  * Fournisseur choisi par variables d'environnement serveur :
- * AI_PROVIDER = openai | anthropic (sinon : celui dont la clé est présente),
- * OPENAI_API_KEY / ANTHROPIC_API_KEY, AI_MODEL facultatif.
+ * AI_PROVIDER = openai | anthropic | gemini (sinon : celui dont la clé est présente),
+ * OPENAI_API_KEY / ANTHROPIC_API_KEY / GEMINI_API_KEY, AI_MODEL facultatif.
  */
 export function aiConfig(): AiConfig | null {
   const wanted = (process.env.AI_PROVIDER || "").trim().toLowerCase();
-  const keyOf = (p: ProviderName) => (p === "openai" ? process.env.OPENAI_API_KEY : process.env.ANTHROPIC_API_KEY);
+  const keyOf = (p: ProviderName) => process.env[KEY_VARS[p]]?.trim();
   let provider: ProviderName | null = null;
-  if (wanted === "openai" || wanted === "anthropic") provider = keyOf(wanted) ? wanted : null;
-  else if (!wanted) provider = keyOf("openai") ? "openai" : keyOf("anthropic") ? "anthropic" : null;
+  if ((PROVIDERS as string[]).includes(wanted)) provider = keyOf(wanted as ProviderName) ? (wanted as ProviderName) : null;
+  else if (!wanted) provider = PROVIDERS.find((p) => keyOf(p)) ?? null;
   if (!provider) return null;
   const d = DEFAULTS[provider];
   const num = (v: string | undefined, fallback: number) => (v && Number.isFinite(Number(v)) ? Number(v) : fallback);
@@ -188,7 +191,58 @@ function usageOf(cfg: AiConfig, model: string, inputTokens: number, outputTokens
 async function call<T extends z.ZodType>(system: string, user: string, schema: T, maxTokens = 16000, image?: ImageInput): Promise<{ data: z.infer<T>; usage: AiUsage }> {
   const cfg = aiConfig();
   if (!cfg) throw new AiError("Aucun fournisseur IA n'est configuré sur le serveur.");
-  return cfg.provider === "openai" ? callOpenAi(cfg, system, user, schema, maxTokens, image) : callAnthropic(cfg, system, user, schema, maxTokens, image);
+  if (cfg.provider === "openai") return callOpenAi(cfg, system, user, schema, maxTokens, image);
+  if (cfg.provider === "gemini") return callGemini(cfg, system, user, schema, maxTokens, image);
+  return callAnthropic(cfg, system, user, schema, maxTokens, image);
+}
+
+/** Appel à l'API Google Gemini (generateContent) avec sortie JSON imposée par un schéma. */
+async function callGemini<T extends z.ZodType>(cfg: AiConfig, system: string, user: string, schema: T, maxTokens: number, image?: ImageInput): Promise<{ data: z.infer<T>; usage: AiUsage }> {
+  const { $schema: _ignored, ...jsonSchema } = z.toJSONSchema(schema) as Record<string, unknown>;
+  const base = (process.env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com/v1beta").replace(/\/$/, "");
+  let res: Response;
+  try {
+    res = await fetch(`${base}/models/${encodeURIComponent(cfg.model)}:generateContent`, {
+      method: "POST",
+      // Clé transmise en en-tête (jamais dans l'URL, qui peut apparaître dans des journaux).
+      headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY ?? "" },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] },
+        contents: [{ role: "user", parts: [...(image ? [{ inlineData: { mimeType: image.mediaType, data: image.data } }] : []), { text: user }] }],
+        generationConfig: { responseMimeType: "application/json", responseJsonSchema: jsonSchema, maxOutputTokens: maxTokens },
+      }),
+    });
+  } catch (err) {
+    const timeout = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
+    throw new AiError(timeout ? "L'IA n'a pas répondu à temps." : "Impossible de joindre le fournisseur IA.");
+  }
+  if (!res.ok) {
+    const detail = (await res.json().catch(() => null)) as { error?: { status?: string; message?: string; details?: { reason?: string }[] } } | null;
+    const invalidKey = detail?.error?.details?.some((d) => d.reason === "API_KEY_INVALID") || /api key not valid/i.test(detail?.error?.message ?? "");
+    throw new AiError(providerErrorMessage(cfg, invalidKey ? 401 : res.status, detail?.error?.status === "RESOURCE_EXHAUSTED" ? "rate_limit" : undefined));
+  }
+  const json = (await res.json()) as {
+    modelVersion?: string;
+    promptFeedback?: { blockReason?: string };
+    usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
+    candidates?: { finishReason?: string; content?: { parts?: { text?: string; thought?: boolean }[] } }[];
+  };
+  const u = json.usageMetadata;
+  const usage = usageOf(cfg, json.modelVersion || cfg.model, u?.promptTokenCount ?? 0, (u?.candidatesTokenCount ?? 0) + (u?.thoughtsTokenCount ?? 0));
+  const cand = json.candidates?.[0];
+  if (json.promptFeedback?.blockReason || cand?.finishReason === "SAFETY" || cand?.finishReason === "PROHIBITED_CONTENT") throw new AiError("La demande a été refusée par le modèle IA.", usage);
+  if (cand?.finishReason === "MAX_TOKENS") throw new AiError("La réponse de l'IA a été tronquée. Simplifiez la demande.", usage);
+  const text = (cand?.content?.parts ?? []).filter((p) => !p.thought && p.text).map((p) => p.text).join("");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new AiError("Réponse IA illisible.", usage);
+  }
+  const checked = schema.safeParse(parsed);
+  if (!checked.success) throw new AiError("Réponse IA incomplète ou mal formée.", usage);
+  return { data: checked.data as z.infer<T>, usage };
 }
 
 async function callAnthropic<T extends z.ZodType>(cfg: AiConfig, system: string, user: string, schema: T, maxTokens: number, image?: ImageInput): Promise<{ data: z.infer<T>; usage: AiUsage }> {

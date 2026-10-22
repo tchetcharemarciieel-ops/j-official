@@ -25,7 +25,7 @@ export default function Page() {
       <ul className="space-y-4 text-sm">
         <Row ok={supabaseConfigured()} label="Base de données et comptes (Supabase)" help="Ajoutez NEXT_PUBLIC_SUPABASE_URL et NEXT_PUBLIC_SUPABASE_ANON_KEY dans les variables d'environnement de l'hébergeur (Render)." />
         <Row ok={serverConfigured()} label="Accès serveur sécurisé" help="Ajoutez SUPABASE_SERVICE_ROLE_KEY dans Render › Environment (clé « secret » de Supabase, commence par sb_secret_)." />
-        <Row ok={aiConfig() !== null} label={aiConfig() ? `Fournisseur IA : clé présente (${aiConfig()!.label}, connexion testable dans l'administration)` : "Fournisseur IA (facultatif)"} help="Ajoutez AI_PROVIDER=openai et OPENAI_API_KEY (ou ANTHROPIC_API_KEY) dans Render › Environment. Sans clé, l'analyse passe par le système de secours et la plateforme l'indique clairement." />
+        <Row ok={aiConfig() !== null} label={aiConfig() ? `Fournisseur IA : clé présente (${aiConfig()!.label}, connexion testable dans l'administration)` : "Fournisseur IA (facultatif)"} help="Ajoutez AI_PROVIDER (gemini, openai ou anthropic) et la clé correspondante (GEMINI_API_KEY, OPENAI_API_KEY ou ANTHROPIC_API_KEY) dans Render › Environment. Sans clé, l'analyse passe par le système de secours et la plateforme l'indique clairement." />
         <Row ok={false} label="Paiement en ligne" help="Aucun prestataire de paiement n'est branché : aucune facturation n'est possible." />
       </ul>
     </AuthShell>

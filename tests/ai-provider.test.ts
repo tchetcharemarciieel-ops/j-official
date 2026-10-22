@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 const KEY = "test-cle-factice";
-const ENV = ["AI_PROVIDER", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "AI_MODEL", "OPENAI_BASE_URL"];
+const ENV = ["AI_PROVIDER", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "AI_MODEL", "OPENAI_BASE_URL", "GEMINI_BASE_URL"];
 
 function mockFetch(status: number, body: unknown) {
   const fn = vi.fn(async () => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } }));
@@ -113,5 +113,35 @@ describe("fournisseur IA", () => {
     mockFetch(200, { choices: [{ finish_reason: "stop", message: { content: "{\"businessName\": 3}" } }] });
     const { aiDiagnose } = await import("@/lib/ai");
     await expect(aiDiagnose({ problem: "Gérer mon stock" })).rejects.toThrow("mal formée");
+  });
+
+  it("Gemini : clé en en-tête, schéma JSON et diagnostic IA", async () => {
+    process.env.AI_PROVIDER = "gemini";
+    process.env.GEMINI_API_KEY = KEY;
+    const fetchMock = mockFetch(200, {
+      modelVersion: "gemini-2.5-flash",
+      usageMetadata: { promptTokenCount: 1000, candidatesTokenCount: 700, thoughtsTokenCount: 300 },
+      candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify(validDiagnosis) }] } }],
+    });
+    const { aiConfig, aiDiagnose } = await import("@/lib/ai");
+    expect(aiConfig()).toMatchObject({ provider: "gemini", model: "gemini-2.5-flash", label: "Google Gemini" });
+    const { diagnosis, usage } = await aiDiagnose({ problem: "Ma pharmacie a des médicaments périmés." });
+    expect(diagnosis.source).toBe("ai");
+    expect(diagnosis.causes.length).toBeGreaterThan(0);
+    expect(usage.outputTokens).toBe(1000);
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent");
+    expect(url).not.toContain(KEY);
+    expect((init.headers as Record<string, string>)["x-goog-api-key"]).toBe(KEY);
+    const sent = JSON.parse(String(init.body));
+    expect(sent.generationConfig.responseMimeType).toBe("application/json");
+    expect(sent.generationConfig.responseJsonSchema.type).toBe("object");
+  });
+
+  it("Gemini : clé invalide signalée clairement", async () => {
+    process.env.GEMINI_API_KEY = KEY;
+    mockFetch(400, { error: { status: "INVALID_ARGUMENT", message: "API key not valid. Please pass a valid API key.", details: [{ reason: "API_KEY_INVALID" }] } });
+    const { aiDiagnose } = await import("@/lib/ai");
+    await expect(aiDiagnose({ problem: "Gérer mon stock" })).rejects.toThrow("clé API Google Gemini est refusée");
   });
 });

@@ -169,3 +169,22 @@ export function TemplateToggles({ templates, disabled }: { templates: { id: stri
     </div>
   );
 }
+
+/** Réponse à une demande d'assistance. */
+export function ReplyForm({ ticketId }: { ticketId: string }) {
+  const { busy, submit } = useSubmit();
+  const [body, setBody] = useState("");
+  return (
+    <form
+      className="space-y-2"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (await submit(`/api/admin/support/${ticketId}`, "POST", { body }, "Réponse envoyée au client.")) setBody("");
+      }}
+    >
+      <label className="label" htmlFor="reply">Répondre</label>
+      <textarea id="reply" className="input" rows={4} maxLength={4000} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Votre réponse au client…" />
+      <button className="btn btn-primary" disabled={busy || body.trim().length < 2}>{busy && <span className="spinner" />}Envoyer la réponse</button>
+    </form>
+  );
+}

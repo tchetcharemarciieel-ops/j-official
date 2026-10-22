@@ -2,6 +2,8 @@ import Link from "next/link";
 import { MessageCircle } from "lucide-react";
 import { requireProfile } from "@/lib/auth";
 import { SupportForm } from "@/components/espace/SupportForm";
+import { adminClient } from "@/lib/supabase/admin";
+import { fmtDateTime } from "@/lib/status";
 
 export const metadata = { title: "Assistance" };
 export const dynamic = "force-dynamic";
@@ -16,6 +18,11 @@ const GUIDES = [
 export default async function Assistance() {
   const p = await requireProfile("/espace/assistance");
   const wa = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "").replace(/\D/g, "");
+  const db = adminClient();
+  const { data: tickets } = await db.from("support_tickets").select("id,subject,status,created_at").eq("user_id", p.id).order("created_at", { ascending: false }).limit(20);
+  const ids = (tickets ?? []).map((t) => t.id);
+  const { data: replies } = ids.length ? await db.from("support_messages").select("ticket_id,body,from_admin,created_at").in("ticket_id", ids).order("created_at") : { data: [] as { ticket_id: string; body: string; from_admin: boolean; created_at: string }[] };
+  const STATUS_LABEL: Record<string, string> = { nouveau: "Envoyée", en_cours: "En cours de traitement", resolu: "Résolue" };
   return (
     <div className="stagger space-y-6">
       <div className="animate-fade-up">
@@ -26,6 +33,22 @@ export default async function Assistance() {
         <section className="glass rounded-2xl p-6 animate-fade-up" aria-labelledby="ecrire">
           <h2 id="ecrire" className="font-display text-lg font-semibold text-slate-900">Écrire à l&apos;équipe</h2>
           <div className="mt-4"><SupportForm phone={p.company_phone} /></div>
+          {(tickets ?? []).length > 0 && (
+            <div className="mt-6 border-t border-slate-100 pt-4">
+              <h3 className="font-semibold text-slate-900">Mes demandes</h3>
+              <ul className="mt-3 space-y-3">
+                {tickets!.map((t) => (
+                  <li key={t.id} className="rounded-xl border border-slate-200 p-3 text-sm">
+                    <p className="flex flex-wrap justify-between gap-2"><span className="font-medium text-slate-900">{t.subject}</span><span className={t.status === "resolu" ? "text-green-700" : "text-slate-500"}>{STATUS_LABEL[t.status] ?? t.status}</span></p>
+                    <p className="text-xs text-slate-500">{fmtDateTime(t.created_at)}</p>
+                    {(replies ?? []).filter((r) => r.ticket_id === t.id && r.from_admin).map((r, i) => (
+                      <p key={i} className="mt-2 whitespace-pre-line rounded-lg bg-blue-50 px-3 py-2 text-slate-800"><span className="block text-xs font-medium text-blue-700">Réponse de l&apos;équipe · {fmtDateTime(r.created_at)}</span>{r.body}</p>
+                    ))}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
         <div className="space-y-4">
           {wa.length >= 8 && (

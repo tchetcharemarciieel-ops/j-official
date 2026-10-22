@@ -18,7 +18,7 @@ export const POST = route(async (req) => {
   try {
     const { usage, ms } = await aiPing();
     await db.from("ai_usage").insert({ user_id: admin.id, operation: "test", engine: "ai", model: usage.model, input_tokens: usage.inputTokens, output_tokens: usage.outputTokens, cost_xaf: usage.costXaf, credits: 0, status: "success" });
-    return NextResponse.json({ ok: true, message: `Connexion réussie : ${cfg.label} a répondu en ${(ms / 1000).toFixed(1)} s (modèle ${usage.model}).` });
+    return NextResponse.json({ ok: true, message: `Connexion réussie : ${usage.provider ?? cfg.label} a répondu en ${(ms / 1000).toFixed(1)} s (modèle ${usage.model}${usage.fallback ? ", modèle de secours : le modèle principal a atteint sa limite" : ""}).` });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erreur inconnue";
     const usage = err instanceof AiError ? err.usage : undefined;

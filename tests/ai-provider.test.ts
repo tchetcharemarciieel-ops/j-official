@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 const KEY = "test-cle-factice";
-const ENV = ["AI_PROVIDER", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "AI_MODEL", "OPENAI_BASE_URL", "GEMINI_BASE_URL"];
+const ENV = ["AI_PROVIDER", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "AI_MODEL", "OPENAI_BASE_URL", "GEMINI_BASE_URL", "AI_FALLBACK_MODELS", "AI_COMPAT_API_KEY", "AI_COMPAT_BASE_URL", "AI_COMPAT_MODEL"];
 
 function mockFetch(status: number, body: unknown) {
   const fn = vi.fn(async () => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } }));
@@ -157,5 +157,54 @@ describe("fournisseur IA", () => {
     const { diagnosis } = await aiDiagnose({ problem: "Gérer mon stock" });
     expect(fn).toHaveBeenCalledTimes(2);
     expect(diagnosis.source).toBe("ai");
+  });
+
+  it("passe automatiquement au modèle gratuit suivant quand la limite est atteinte (429)", async () => {
+    process.env.AI_PROVIDER = "gemini";
+    process.env.GEMINI_API_KEY = KEY;
+    const ok = { modelVersion: "gemini-3.5-flash", candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify(validDiagnosis) }] } }] };
+    const fn = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { status: "RESOURCE_EXHAUSTED" } }), { status: 429 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(ok), { status: 200 }));
+    vi.stubGlobal("fetch", fn);
+    const { aiChain, aiDiagnose } = await import("@/lib/ai");
+    expect(aiChain().map((c) => c.model)).toEqual(["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]);
+    const { usage } = await aiDiagnose({ problem: "Gérer mon stock" });
+    expect(fn).toHaveBeenCalledTimes(2);
+    expect(String((fn.mock.calls[1] as unknown as [string])[0])).toContain("gemini-3.5-flash:generateContent");
+    expect(usage.fallback).toBe(true);
+    expect(usage.model).toBe("gemini-3.5-flash");
+  });
+
+  it("termine par le service compatible OpenAI (FreeLLMAPI…) en format JSON simple", async () => {
+    process.env.AI_PROVIDER = "gemini";
+    process.env.GEMINI_API_KEY = KEY;
+    process.env.AI_FALLBACK_MODELS = "compat:auto";
+    process.env.AI_COMPAT_API_KEY = "freellmapi-test";
+    process.env.AI_COMPAT_BASE_URL = "https://llm.exemple.cf/v1";
+    const fn = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { status: "RESOURCE_EXHAUSTED" } }), { status: 429 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ model: "llama-free", choices: [{ finish_reason: "stop", message: { content: JSON.stringify(validDiagnosis) } }] }), { status: 200 }));
+    vi.stubGlobal("fetch", fn);
+    const { aiDiagnose } = await import("@/lib/ai");
+    const { usage } = await aiDiagnose({ problem: "Gérer mon stock" });
+    const [url, init] = fn.mock.calls[1] as unknown as [string, RequestInit];
+    expect(url).toBe("https://llm.exemple.cf/v1/chat/completions");
+    expect((init.headers as Record<string, string>).authorization).toBe("Bearer freellmapi-test");
+    const sent = JSON.parse(String(init.body));
+    expect(sent.model).toBe("auto");
+    expect(sent.response_format).toEqual({ type: "json_object" });
+    expect(usage.costXaf).toBe(0);
+    expect(usage.fallback).toBe(true);
+  });
+
+  it("ne change pas de modèle quand la demande est refusée pour son contenu", async () => {
+    process.env.GEMINI_API_KEY = KEY;
+    const fn = mockFetch(200, { promptFeedback: { blockReason: "SAFETY" } });
+    const { aiDiagnose } = await import("@/lib/ai");
+    await expect(aiDiagnose({ problem: "Gérer mon stock" })).rejects.toThrow("refusée");
+    expect(fn).toHaveBeenCalledTimes(1);
   });
 });

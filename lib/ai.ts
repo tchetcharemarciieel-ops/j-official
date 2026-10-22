@@ -11,16 +11,24 @@ import { FIELD_TYPES, ROLES, WIDGET_TYPES, appSpecSchema, toKey, type AppSpec, t
  * Le modèle ne produit que des données structurées (AppSpec), jamais du code exécuté.
  */
 
-type ProviderName = "openai" | "anthropic" | "gemini";
-const PROVIDERS: ProviderName[] = ["openai", "anthropic", "gemini"];
-const KEY_VARS: Record<ProviderName, string> = { openai: "OPENAI_API_KEY", anthropic: "ANTHROPIC_API_KEY", gemini: "GEMINI_API_KEY" };
+type ProviderName = "openai" | "anthropic" | "gemini" | "compat";
+const PROVIDERS: ProviderName[] = ["openai", "anthropic", "gemini", "compat"];
+const KEY_VARS: Record<ProviderName, string> = { openai: "OPENAI_API_KEY", anthropic: "ANTHROPIC_API_KEY", gemini: "GEMINI_API_KEY", compat: "AI_COMPAT_API_KEY" };
 
 /** Modèle et prix par défaut de chaque fournisseur (USD par million de jetons). */
 const DEFAULTS: Record<ProviderName, { model: string; priceIn: number; priceOut: number; label: string }> = {
   openai: { model: "gpt-5-mini", priceIn: 0.25, priceOut: 2, label: "OpenAI" },
   anthropic: { model: "claude-opus-5-5", priceIn: 4, priceOut: 20, label: "Anthropic" },
   gemini: { model: "gemini-3.8-flash", priceIn: 0.3, priceOut: 2.5, label: "Google Gemini" },
+  // Service compatible OpenAI (FreeLLMAPI, OpenRouter, Groq…) : modèles gratuits, coût compté à 0.
+  compat: { model: "auto", priceIn: 0, priceOut: 0, label: process.env.AI_COMPAT_LABEL || "Service compatible OpenAI" },
 };
+
+/** Modèles gratuits de secours, essayés dans l'ordre quand le précédent atteint sa limite. */
+const DEFAULT_FALLBACKS: Partial<Record<ProviderName, string[]>> = {
+  gemini: ["gemini:gemini-3.5-flash", "gemini:gemini-3.5-flash-lite", "gemini:gemini-3.1-flash-lite"],
+};
+const CHAIN_BUDGET_MS = Number(process.env.AI_CHAIN_BUDGET_MS || 80_000);
 const USD_TO_XAF = Number(process.env.USD_TO_XAF || 600);
 const TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS || 110_000);
 
@@ -43,10 +51,41 @@ export function aiConfig(): AiConfig | null {
   return {
     provider,
     label: d.label,
-    model: process.env.AI_MODEL?.trim() || d.model,
+    model: process.env.AI_MODEL?.trim() || (provider === "compat" && process.env.AI_COMPAT_MODEL?.trim()) || d.model,
     priceIn: num(process.env.AI_PRICE_INPUT_USD, d.priceIn),
     priceOut: num(process.env.AI_PRICE_OUTPUT_USD, d.priceOut),
   };
+}
+
+/**
+ * Chaîne complète : modèle principal puis modèles de secours.
+ * AI_FALLBACK_MODELS = liste « fournisseur:modèle » séparée par des virgules (ou « aucun »).
+ * Sans réglage : modèles gratuits du même fournisseur, puis le service compatible OpenAI
+ * (FreeLLMAPI…) si AI_COMPAT_BASE_URL et AI_COMPAT_API_KEY sont définis.
+ */
+export function aiChain(): AiConfig[] {
+  const primary = aiConfig();
+  if (!primary) return [];
+  const raw = process.env.AI_FALLBACK_MODELS?.trim();
+  let entries: string[];
+  if (raw && /^(aucun|none)$/i.test(raw)) entries = [];
+  else if (raw) entries = raw.split(",").map((x) => x.trim()).filter(Boolean);
+  else {
+    entries = [...(DEFAULT_FALLBACKS[primary.provider] ?? [])];
+    if (primary.provider !== "compat") entries.push(`compat:${process.env.AI_COMPAT_MODEL?.trim() || "auto"}`);
+  }
+  const chain: AiConfig[] = [primary];
+  for (const e of entries) {
+    const [p, ...rest] = e.includes(":") ? e.split(":") : [primary.provider, e];
+    const provider = p as ProviderName;
+    const model = rest.join(":");
+    if (!PROVIDERS.includes(provider) || !model || !process.env[KEY_VARS[provider]]?.trim()) continue;
+    if (provider === "compat" && !process.env.AI_COMPAT_BASE_URL) continue;
+    if (chain.some((c) => c.provider === provider && c.model === model)) continue;
+    const d = DEFAULTS[provider];
+    chain.push({ provider, label: d.label, model, priceIn: d.priceIn, priceOut: d.priceOut });
+  }
+  return chain;
 }
 
 export function aiAvailable(): boolean {
@@ -59,12 +98,14 @@ function getAnthropic(): Anthropic {
   return client;
 }
 
-export type AiUsage = { inputTokens: number; outputTokens: number; costXaf: number; model: string };
+export type AiUsage = { inputTokens: number; outputTokens: number; costXaf: number; model: string; provider?: string; fallback?: boolean };
 
 export class AiError extends Error {
   constructor(
     message: string,
     public readonly usage?: AiUsage,
+    /** true : inutile d'essayer un autre modèle (demande refusée pour son contenu). */
+    public readonly final = false,
   ) {
     super(message);
   }
@@ -185,13 +226,32 @@ function fromAiSpec(a: AiSpec, base?: AppSpec): AppSpec {
 export type ImageInput = { mediaType: "image/jpeg" | "image/png" | "image/webp" | "image/gif"; data: string };
 
 function usageOf(cfg: AiConfig, model: string, inputTokens: number, outputTokens: number): AiUsage {
-  return { inputTokens, outputTokens, model, costXaf: Math.round(((inputTokens * cfg.priceIn + outputTokens * cfg.priceOut) / 1_000_000) * USD_TO_XAF) };
+  return { inputTokens, outputTokens, model, provider: cfg.label, costXaf: Math.round(((inputTokens * cfg.priceIn + outputTokens * cfg.priceOut) / 1_000_000) * USD_TO_XAF) };
 }
 
 async function call<T extends z.ZodType>(system: string, user: string, schema: T, maxTokens = 16000, image?: ImageInput): Promise<{ data: z.infer<T>; usage: AiUsage }> {
-  const cfg = aiConfig();
-  if (!cfg) throw new AiError("Aucun fournisseur IA n'est configuré sur le serveur.");
-  if (cfg.provider === "openai") return callOpenAi(cfg, system, user, schema, maxTokens, image);
+  const chain = aiChain();
+  if (!chain.length) throw new AiError("Aucun fournisseur IA n'est configuré sur le serveur.");
+  const t0 = Date.now();
+  let last: AiError | null = null;
+  for (const [i, cfg] of chain.entries()) {
+    // Au-delà du budget de temps, on laisse la main au système de secours par mots-clés.
+    if (i > 0 && Date.now() - t0 > CHAIN_BUDGET_MS) break;
+    try {
+      const res = await callOne(cfg, system, user, schema, maxTokens, image);
+      if (i > 0) res.usage.fallback = true;
+      return res;
+    } catch (err) {
+      last = err instanceof AiError ? err : new AiError(`Erreur du fournisseur ${cfg.label}.`);
+      if (last.final) throw last;
+      console.warn(`[ia] ${cfg.label} ${cfg.model} indisponible : ${last.message}${i + 1 < chain.length ? " — passage au modèle suivant" : ""}`);
+    }
+  }
+  throw new AiError(chain.length > 1 ? `Aucun des ${chain.length} modèles IA n'a pu répondre (dernière erreur : ${last?.message ?? "inconnue"})` : (last?.message ?? "Erreur IA."), last?.usage);
+}
+
+function callOne<T extends z.ZodType>(cfg: AiConfig, system: string, user: string, schema: T, maxTokens: number, image?: ImageInput): Promise<{ data: z.infer<T>; usage: AiUsage }> {
+  if (cfg.provider === "openai" || cfg.provider === "compat") return callOpenAi(cfg, system, user, schema, maxTokens, image);
   if (cfg.provider === "gemini") return callGemini(cfg, system, user, schema, maxTokens, image);
   return callAnthropic(cfg, system, user, schema, maxTokens, image);
 }
@@ -245,7 +305,7 @@ async function callGemini<T extends z.ZodType>(cfg: AiConfig, system: string, us
   const u = json.usageMetadata;
   const usage = usageOf(cfg, json.modelVersion || cfg.model, u?.promptTokenCount ?? 0, (u?.candidatesTokenCount ?? 0) + (u?.thoughtsTokenCount ?? 0));
   const cand = json.candidates?.[0];
-  if (json.promptFeedback?.blockReason || cand?.finishReason === "SAFETY" || cand?.finishReason === "PROHIBITED_CONTENT") throw new AiError("La demande a été refusée par le modèle IA.", usage);
+  if (json.promptFeedback?.blockReason || cand?.finishReason === "SAFETY" || cand?.finishReason === "PROHIBITED_CONTENT") throw new AiError("La demande a été refusée par le modèle IA.", usage, true);
   if (cand?.finishReason === "MAX_TOKENS") throw new AiError("La réponse de l'IA a été tronquée. Simplifiez la demande.", usage);
   const text = (cand?.content?.parts ?? []).filter((p) => !p.thought && p.text).map((p) => p.text).join("");
   let parsed: unknown;
@@ -286,7 +346,7 @@ async function callAnthropic<T extends z.ZodType>(cfg: AiConfig, system: string,
     throw new AiError(providerErrorMessage(cfg, status));
   }
   const usage = usageOf(cfg, res.model, res.usage.input_tokens, res.usage.output_tokens);
-  if (res.stop_reason === "refusal") throw new AiError("La demande a été refusée par le modèle IA.", usage);
+  if (res.stop_reason === "refusal") throw new AiError("La demande a été refusée par le modèle IA.", usage, true);
   if (res.stop_reason === "max_tokens") throw new AiError("La réponse de l'IA a été tronquée. Simplifiez la demande.", usage);
   if (!res.parsed_output) throw new AiError("Réponse IA illisible.", usage);
   return { data: res.parsed_output as z.infer<T>, usage };
@@ -295,20 +355,28 @@ async function callAnthropic<T extends z.ZodType>(cfg: AiConfig, system: string,
 /** Appel à l'API OpenAI (Chat Completions) avec sortie JSON imposée par un schéma strict. */
 async function callOpenAi<T extends z.ZodType>(cfg: AiConfig, system: string, user: string, schema: T, maxTokens: number, image?: ImageInput): Promise<{ data: z.infer<T>; usage: AiUsage }> {
   const { $schema: _ignored, ...jsonSchema } = z.toJSONSchema(schema) as Record<string, unknown>;
-  const reasoning = /^(gpt-5|o\d)/.test(cfg.model) ? { reasoning_effort: process.env.AI_REASONING_EFFORT || "low" } : {};
+  const compat = cfg.provider === "compat";
+  const reasoning = !compat && /^(gpt-5|o\d)/.test(cfg.model) ? { reasoning_effort: process.env.AI_REASONING_EFFORT || "low" } : {};
+  const base = compat ? process.env.AI_COMPAT_BASE_URL ?? "" : process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
+  const key = compat ? process.env.AI_COMPAT_API_KEY : process.env.OPENAI_API_KEY;
+  // Services compatibles (FreeLLMAPI…) : le format JSON simple est le plus largement accepté ;
+  // le schéma est alors donné dans les consignes et la réponse est vérifiée ici.
+  const format = compat
+    ? { max_tokens: maxTokens, response_format: { type: "json_object" } }
+    : { max_completion_tokens: maxTokens, response_format: { type: "json_schema", json_schema: { name: "reponse", strict: true, schema: jsonSchema } } };
+  const systemText = compat ? `${system}\n\nRéponds uniquement par un objet JSON valide conforme à ce schéma JSON :\n${JSON.stringify(jsonSchema)}` : system;
   let res: Response;
   try {
-    res = await fetchRetry(`${(process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "")}/chat/completions`, {
+    res = await fetchRetry(`${base.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+      headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
       signal: AbortSignal.timeout(TIMEOUT_MS),
       body: JSON.stringify({
         model: cfg.model,
-        max_completion_tokens: maxTokens,
+        ...format,
         ...reasoning,
-        response_format: { type: "json_schema", json_schema: { name: "reponse", strict: true, schema: jsonSchema } },
         messages: [
-          { role: "system", content: system },
+          { role: "system", content: systemText },
           {
             role: "user",
             content: image
@@ -337,7 +405,7 @@ async function callOpenAi<T extends z.ZodType>(cfg: AiConfig, system: string, us
   };
   const usage = usageOf(cfg, json.model || cfg.model, json.usage?.prompt_tokens ?? 0, json.usage?.completion_tokens ?? 0);
   const choice = json.choices?.[0];
-  if (choice?.message?.refusal) throw new AiError("La demande a été refusée par le modèle IA.", usage);
+  if (choice?.message?.refusal) throw new AiError("La demande a été refusée par le modèle IA.", usage, true);
   if (choice?.finish_reason === "length") throw new AiError("La réponse de l'IA a été tronquée. Simplifiez la demande.", usage);
   let parsed: unknown;
   try {

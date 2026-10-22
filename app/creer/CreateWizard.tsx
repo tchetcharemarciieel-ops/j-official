@@ -352,7 +352,7 @@ function EngineNotice({ result, canRetry, loading, onRetry }: { result: Omit<Dia
   if (result.engine === "ai" && result.provider)
     return (
       <p className="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-2.5 text-sm text-green-800">
-        Analyse réalisée par l&apos;IA ({result.provider.name} · {result.provider.model}){result.creditsUsed > 0 ? ` · ${result.creditsUsed} crédits utilisés` : ""}.
+        Analyse réalisée par l&apos;IA ({result.provider.name} · {result.provider.model}){result.provider.fallback ? ", modèle de secours gratuit : le modèle principal avait atteint sa limite" : ""}{result.creditsUsed > 0 ? ` · ${result.creditsUsed} crédits utilisés` : ""}.
       </p>
     );
   return (

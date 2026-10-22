@@ -5,7 +5,7 @@ import { HttpError } from "@/lib/access";
 import { getProfile } from "@/lib/auth";
 import { CREDIT_COSTS } from "@/lib/config";
 import { withCredits } from "@/lib/credits";
-import { aiConfig, aiDiagnose } from "@/lib/ai";
+import { aiConfig, aiDiagnose, type AiUsage } from "@/lib/ai";
 import { burstLimited, checkAiQuota } from "@/lib/ai-quota";
 import { diagnoseWithRules, type Diagnosis, type DiagnoseResponse } from "@/lib/generator";
 
@@ -48,14 +48,16 @@ export const POST = route(async (req) => {
 
   if (cfg && !fallbackReason) {
     try {
+      const answered: { usage: AiUsage | null } = { usage: null };
       const { result, creditsUsed } = await withCredits<Diagnosis>(
         { userId: profile.id, operation: "diagnose", credits: CREDIT_COSTS.diagnose, engine: "ai", notifyOnFailure: false },
         async () => {
           const { diagnosis, usage } = await aiDiagnose(input, input.image);
+          answered.usage = usage;
           return { result: diagnosis, usage };
         },
       );
-      return NextResponse.json({ diagnosis: result, engine: "ai", provider: { name: cfg.label, model: cfg.model }, fallbackReason: null, creditsUsed } satisfies DiagnoseResponse);
+      return NextResponse.json({ diagnosis: result, engine: "ai", provider: { name: answered.usage?.provider ?? cfg.label, model: answered.usage?.model ?? cfg.model, fallback: answered.usage?.fallback ?? false }, fallbackReason: null, creditsUsed } satisfies DiagnoseResponse);
     } catch (err) {
       // Crédits déjà remboursés par withCredits : on bascule sur le système de secours.
       fallbackReason =

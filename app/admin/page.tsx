@@ -3,7 +3,7 @@ import { adminClient } from "@/lib/supabase/admin";
 import { AppShell } from "@/components/AppShell";
 import { STATUS, fmtDate, fmtDateTime } from "@/lib/status";
 import { TEMPLATES } from "@/lib/templates";
-import { aiConfig } from "@/lib/ai";
+import { aiChain, aiConfig } from "@/lib/ai";
 import { lastAiSuccess } from "@/lib/ai-quota";
 import { AiTestButton } from "./AiTestButton";
 import { getPlans, xaf } from "@/lib/plans";
@@ -55,6 +55,7 @@ export default async function Admin() {
         <h2 id="ia" className="font-semibold text-slate-900">Fournisseur IA</h2>
         <p className="mt-1 text-sm text-slate-700">
           {cfg ? `Configuré : ${cfg.label} · modèle ${cfg.model}.` : "Non configuré : toutes les analyses passent par le système de secours (mots-clés)."}{" "}
+          {cfg && aiChain().length > 1 && `Modèles de secours si la limite est atteinte : ${aiChain().slice(1).map((c) => `${c.label} ${c.model}`).join(" → ")}.`}{" "}
           {cfg && (lastOk ? `Dernière réponse réelle réussie : ${fmtDateTime(lastOk.at)}${lastOk.model ? ` (${lastOk.model})` : ""}.` : "Aucune requête IA réussie pour l'instant : la connexion n'est pas encore vérifiée.")}
         </p>
         {cfg && <div className="mt-3"><AiTestButton /></div>}

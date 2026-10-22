@@ -48,7 +48,8 @@ export type DiagnoseResponse = {
   diagnosis: Diagnosis;
   engine: "ai" | "rules";
   /** Fournisseur et modèle ayant réellement répondu (uniquement si engine = "ai"). */
-  provider: { name: string; model: string } | null;
+  /** fallback = true si le modèle principal avait atteint sa limite et qu'un modèle de secours a répondu. */
+  provider: { name: string; model: string; fallback?: boolean } | null;
   /** Pourquoi le système de secours a été utilisé (null si l'IA a répondu). */
   fallbackReason: string | null;
   creditsUsed: number;

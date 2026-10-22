@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { MODULES, getModule } from "./modules";
 import { appSpecSchema, entitySchema, widgetSchema, type AppSpec, type Entity, type Widget } from "./spec";
+import { buildWorkspace } from "./workspace";
 
 export const SECTORS: Record<string, { label: string; keywords: string[]; modules: string[]; color: string; icon: string }> = {
   restaurant: { label: "Restauration", keywords: ["restaurant", "maquis", "snack", "cafe", "bar", "traiteur", "cuisine", "plat"], modules: ["commandes", "produits", "depenses", "clients"], color: "#f97316", icon: "🍽️" },
@@ -226,5 +227,7 @@ export function composeSpec(diagnosis: Diagnosis): AppSpec {
     dashboard: validWidgets.slice(0, 12),
     automations: [],
     features: { csvExport: true, pdfExport: true, dataAssistant: true },
+    // Bureau virtuel adapté au métier, chaque poste relié à un module du logiciel.
+    workspace: buildWorkspace({ sector: `${diagnosis.sector} ${diagnosis.sectorLabel}`, entities }),
   });
 }

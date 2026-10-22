@@ -220,6 +220,8 @@ function fromAiSpec(a: AiSpec, base?: AppSpec): AppSpec {
     })),
     automations: base?.automations ?? [],
     features: a.features,
+    // L'espace 3D est conservé ; il est réajusté aux tables modifiées par les tests automatiques.
+    workspace: base?.workspace,
   });
 }
 

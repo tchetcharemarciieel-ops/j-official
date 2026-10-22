@@ -1,7 +1,7 @@
 "use client";
 
-import { LayoutDashboard, Menu, MessageSquare, Table2, TriangleAlert, type LucideIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Building2, LayoutDashboard, Menu, MessageSquare, Table2, TriangleAlert, type LucideIcon } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { can } from "@/lib/permissions";
 import { api } from "@/lib/fetcher";
 import { executePlan, planWithRules } from "@/lib/query";
@@ -11,6 +11,9 @@ import { useToast } from "@/components/Toaster";
 import { useAppData, type DataMode, type Rec } from "./useAppData";
 import { WidgetCard } from "./Widgets";
 import { EntityView } from "./EntityView";
+import { usePrefs } from "./usePrefs";
+import { WorkspaceView } from "./workspace/WorkspaceView";
+import { effectiveWorkspace } from "@/lib/workspace";
 
 type Answer = { answer: string; facts: string[]; period: string; basis: string; missing: string[]; mode: string; engine: string };
 
@@ -23,17 +26,39 @@ export function AppRuntime({ projectId, spec, mode, role, compact = false }: { p
   const notify = useToast();
   const entities = spec.entities.filter((e) => can(e, role, "read"));
   const [page, setPage] = useState<string>("__dashboard");
+  const [openRecord, setOpenRecord] = useState<string | undefined>();
   const [menuOpen, setMenuOpen] = useState(false);
   const current = entities.find((e) => e.key === page);
+  const ws = useMemo(() => effectiveWorkspace(spec), [spec]);
+  const { prefs, loaded, save } = usePrefs(projectId, mode);
+
+  // Vue d'ouverture : l'espace de travail, sauf si l'utilisateur a choisi l'interface classique.
+  const initial = useRef(false);
+  useEffect(() => {
+    if (!loaded || initial.current) return;
+    initial.current = true;
+    if (ws.enabled && prefs.view !== "classic") setPage("__workspace");
+  }, [loaded, prefs.view, ws.enabled]);
+
+  const go = (target: string, recordId?: string) => {
+    if (target === "__workspace" || target === "__dashboard") {
+      setPage(target);
+      if (ws.enabled) save({ view: target === "__workspace" ? "workspace" : "classic" });
+    } else if (entities.some((e) => e.key === target)) setPage(target);
+    else notify("error", "Votre rôle ne permet pas d'ouvrir ce module.");
+    setOpenRecord(recordId);
+    setMenuOpen(false);
+  };
 
   const rowsFor = (key: string): Row[] => (data.records[key] ?? []).map((r) => ({ id: r.id, data: r.data, created_at: r.created_at }));
   const style = useMemo(() => ({ "--app-primary": spec.theme.primary, "--app-accent": spec.theme.accent }) as React.CSSProperties, [spec.theme]);
 
   const nav = (
     <nav aria-label={`Menu de ${spec.name}`} className="space-y-1">
-      <NavItem active={page === "__dashboard"} onClick={() => (setPage("__dashboard"), setMenuOpen(false))} icon={LayoutDashboard} label="Tableau de bord" />
+      {ws.enabled && <NavItem active={page === "__workspace"} onClick={() => go("__workspace")} icon={Building2} label="Espace de travail" />}
+      <NavItem active={page === "__dashboard"} onClick={() => go("__dashboard")} icon={LayoutDashboard} label="Tableau de bord" />
       {entities.map((e) => (
-        <NavItem key={e.key} active={page === e.key} onClick={() => (setPage(e.key), setMenuOpen(false))} icon={Table2} label={e.labelPlural} count={data.records[e.key]?.length} />
+        <NavItem key={e.key} active={page === e.key} onClick={() => go(e.key)} icon={Table2} label={e.labelPlural} count={data.records[e.key]?.length} />
       ))}
     </nav>
   );
@@ -56,7 +81,7 @@ export function AppRuntime({ projectId, spec, mode, role, compact = false }: { p
             <button className="rounded-lg border border-slate-200 px-3 py-2" onClick={() => setMenuOpen((o) => !o)} aria-expanded={menuOpen} aria-label="Menu"><Menu className="h-4 w-4" aria-hidden /></button>
             <Brand spec={spec} small />
           </div>
-          <h1 className="hidden truncate text-sm font-medium text-slate-500 lg:block">{current ? current.labelPlural : "Tableau de bord"}</h1>
+          <h1 className="hidden truncate text-sm font-medium text-slate-500 lg:block">{current ? current.labelPlural : page === "__workspace" ? "Espace de travail" : "Tableau de bord"}</h1>
           <div className="flex items-center gap-2 text-xs">
             {mode !== "live" && <span className="rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-800">Démo</span>}
             {data.pending > 0 && <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-800">{data.pending} en attente d&apos;envoi</span>}
@@ -78,7 +103,9 @@ export function AppRuntime({ projectId, spec, mode, role, compact = false }: { p
           )}
           {!data.online && <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Vous êtes hors ligne. Les nouvelles fiches seront envoyées au retour du réseau ; la modification, la suppression et l&apos;assistant nécessitent Internet.</p>}
           {current ? (
-            <EntityView key={current.key} spec={spec} entity={current} role={role} data={data} notify={notify} />
+            <EntityView key={`${current.key}:${openRecord ?? ""}`} spec={spec} entity={current} role={role} data={data} notify={notify} openRecordId={openRecord} />
+          ) : page === "__workspace" && ws.enabled ? (
+            <WorkspaceView projectId={projectId} spec={spec} ws={ws} mode={mode} readable={entities.map((e) => e.key)} records={data.records} loading={data.loading} reload={data.reload} prefs={prefs} savePrefs={save} onOpen={go} onClassic={() => go("__dashboard")} />
           ) : (
             <div className="space-y-6">
               <div>
@@ -92,7 +119,7 @@ export function AppRuntime({ projectId, spec, mode, role, compact = false }: { p
                   {spec.dashboard
                     .filter((w) => entities.some((e) => e.key === w.entity))
                     .map((w, i) => (
-                      <WidgetCard key={`${w.label}-${i}`} spec={spec} widget={w} rows={rowsFor(w.entity)} onOpen={setPage} />
+                      <WidgetCard key={`${w.label}-${i}`} spec={spec} widget={w} rows={rowsFor(w.entity)} onOpen={(k) => go(k)} />
                     ))}
                 </div>
               )}

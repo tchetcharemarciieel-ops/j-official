@@ -6,6 +6,7 @@ import { useToast } from "@/components/Toaster";
 import { api } from "@/lib/fetcher";
 import type { AppSpec } from "@/lib/spec";
 import { Panel, type WorkspaceData } from "../Workspace";
+import { WorkspaceSettings } from "./WorkspaceSettings";
 
 export function SettingsTab({ data, spec, onChanged }: { data: WorkspaceData; spec: AppSpec; onChanged: () => void }) {
   const toast = useToast();
@@ -68,6 +69,7 @@ export function SettingsTab({ data, spec, onChanged }: { data: WorkspaceData; sp
         </form>
       </Panel>
       <div className="space-y-6">
+        <WorkspaceSettings key={data.project.draftVersion} data={data} spec={spec} onChanged={onChanged} />
         <Panel title="Cahier des charges initial">
           <p className="text-sm text-slate-700">{data.project.problem || "—"}</p>
           {data.diagnosis && (

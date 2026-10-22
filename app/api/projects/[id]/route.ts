@@ -5,6 +5,8 @@ import { draftSpec, getAccess, HttpError } from "@/lib/access";
 import { adminClient } from "@/lib/supabase/admin";
 import { saveVersion } from "@/lib/projects";
 import { audit } from "@/lib/audit";
+import { workspaceSchema } from "@/lib/spec";
+import { buildWorkspace, sanitizeWorkspace } from "@/lib/workspace";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -19,6 +21,8 @@ const settings = z.object({
       logoUrl: z.string().url().startsWith("https://").max(500).optional().or(z.literal("")),
     })
     .optional(),
+  /** Espace de travail 3D ; « reset » le recalcule selon le métier et les modules. */
+  workspace: workspaceSchema.or(z.literal("reset")).optional(),
 });
 
 /** Modifications manuelles (couleurs, logo, textes) : nouvelle version testée. */
@@ -33,7 +37,9 @@ export const PATCH = route(async (req, { params }: Ctx) => {
   if (input.name) next.name = input.name;
   if (input.welcome !== undefined) next.welcome = input.welcome;
   if (input.theme) next.theme = { ...input.theme, logoUrl: input.theme.logoUrl || undefined };
-  const saved = await saveVersion(project, next, { summary: "Personnalisation (couleurs, logo, textes)", source: "manual", authorId: profile.id });
+  if (input.workspace) next.workspace = input.workspace === "reset" ? buildWorkspace(next) : sanitizeWorkspace(input.workspace, next);
+  const summary = input.workspace ? "Espace de travail 3D (disposition, postes, modules visibles)" : "Personnalisation (couleurs, logo, textes)";
+  const saved = await saveVersion(project, next, { summary, source: "manual", authorId: profile.id });
   return NextResponse.json({ version: saved.version, checks: saved.checks });
 });
 

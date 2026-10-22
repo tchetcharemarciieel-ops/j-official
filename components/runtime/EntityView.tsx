@@ -1,7 +1,7 @@
 "use client";
 
 import { Download, FileText, Printer } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatValue, toCsv } from "@/lib/records";
 import { can, readonlyFields } from "@/lib/permissions";
 import { ApiError } from "@/lib/fetcher";
@@ -11,13 +11,26 @@ import type { Rec, useAppData } from "./useAppData";
 
 type Data = ReturnType<typeof useAppData>;
 
-export function EntityView({ spec, entity, role, data, notify }: { spec: AppSpec; entity: Entity; role: Role; data: Data; notify: (kind: "success" | "error" | "info", msg: string) => void }) {
+export function EntityView({ spec, entity, role, data, notify, openRecordId }: { spec: AppSpec; entity: Entity; role: Role; data: Data; notify: (kind: "success" | "error" | "info", msg: string) => void; openRecordId?: string }) {
   const rows = data.records[entity.key] ?? [];
   const [q, setQ] = useState("");
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 } | null>(null);
   const [editing, setEditing] = useState<Rec | "new" | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Rec | null>(null);
+  // Fiche demandée depuis l'espace de travail : ouverte dès que les données sont chargées.
+  const [opened, setOpened] = useState(false);
+  useEffect(() => {
+    if (!openRecordId || opened) return;
+    const rec = rows.find((r) => r.id === openRecordId);
+    if (!rec) return;
+    setOpened(true);
+    if (can(entity, role, "update")) setEditing(rec);
+    else {
+      const title = entity.fields.find((f) => f.type === "text") ?? entity.fields[0];
+      if (title) setQ(String(rec.data[title.key] ?? ""));
+    }
+  }, [openRecordId, opened, rows, entity, role]);
 
   const columns = entity.fields.filter((f) => f.showInTable);
   const filterable = entity.fields.filter((f) => f.type === "select" || f.type === "boolean");

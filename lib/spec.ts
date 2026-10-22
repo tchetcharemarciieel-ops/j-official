@@ -111,6 +111,32 @@ export const automationSchema = z.object({
 });
 export type Automation = z.infer<typeof automationSchema>;
 
+/** Espace de travail 3D : postes du bureau virtuel, chacun relié à un module réel du logiciel. */
+export const STATION_KINDS = ["stats_board", "cashier", "kitchen", "dining", "stock", "counter", "repair_bay", "vehicle", "desk", "reception", "meeting", "bed", "salon_chair", "classroom"] as const;
+export type StationKind = (typeof STATION_KINDS)[number];
+export const WORKSPACE_LAYOUTS = ["restaurant", "garage", "pharmacie", "boutique", "bureau", "services", "ecole", "hotel", "transport"] as const;
+export type WorkspaceLayout = (typeof WORKSPACE_LAYOUTS)[number];
+
+export const stationSchema = z.object({
+  id: key,
+  kind: z.enum(STATION_KINDS),
+  label: z.string().trim().min(1).max(40),
+  /** Module ouvert au clic : clé d'une table, ou « __dashboard » pour les statistiques. */
+  target: z.string().regex(/^(__dashboard|[a-z][a-z0-9_]*)$/).max(40),
+});
+export type Station = z.infer<typeof stationSchema>;
+
+export const workspaceSchema = z.object({
+  enabled: z.boolean().default(true),
+  layout: z.enum(WORKSPACE_LAYOUTS),
+  /** Nom affiché sur le mur (vide : nom du logiciel). */
+  title: z.string().trim().max(60).default(""),
+  stations: z.array(stationSchema).max(12).default([]),
+  /** Modules masqués dans l'espace 3D (ils restent disponibles dans le menu). */
+  hiddenEntities: z.array(key).max(15).default([]),
+});
+export type Workspace = z.infer<typeof workspaceSchema>;
+
 export const appSpecSchema = z.object({
   name: z.string().min(1).max(80),
   sector: z.string().min(1).max(60),
@@ -134,6 +160,8 @@ export const appSpecSchema = z.object({
       dataAssistant: z.boolean().default(true),
     })
     .default({ csvExport: true, pdfExport: false, dataAssistant: true }),
+  /** Absent sur les logiciels créés avant l'espace 3D : un espace par défaut est alors calculé. */
+  workspace: workspaceSchema.optional(),
 });
 export type AppSpec = z.infer<typeof appSpecSchema>;
 

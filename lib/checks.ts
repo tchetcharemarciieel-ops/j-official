@@ -3,6 +3,7 @@ import { validateRecord, type RecordData } from "./records";
 import { computeWidget, type Row } from "./stats";
 import { permsFor } from "./permissions";
 import { sampleValue } from "./samples";
+import { buildWorkspace, sanitizeWorkspace } from "./workspace";
 
 export type CheckStatus = "pass" | "warn" | "fail";
 export type CheckResult = {
@@ -218,6 +219,18 @@ export function runChecks(spec: AppSpec, previous?: AppSpec): CheckResult[] {
     });
   }
 
+  // Espace de travail 3D : chaque poste doit ouvrir un module qui existe.
+  if (spec.workspace) {
+    const keys = new Set(spec.entities.map((e) => e.key));
+    const broken = spec.workspace.stations.filter((st) => st.target !== "__dashboard" && !keys.has(st.target));
+    add(
+      broken.length
+        ? { id: "workspace", category: "Navigation", name: "Espace de travail 3D", status: "fail", message: `Postes reliés à des modules absents : ${broken.map((b) => b.label).join(", ")}.`, fix: "Retirer ces postes et ajouter ceux des nouveaux modules.", autoFixable: true }
+        : { id: "workspace", category: "Navigation", name: "Espace de travail 3D", status: "pass", message: `${spec.workspace.stations.length} poste(s), chacun relié à un module existant.` },
+    );
+  } else {
+    add({ id: "workspace", category: "Navigation", name: "Espace de travail 3D", status: "pass", message: "Espace par défaut calculé à partir des modules du logiciel." });
+  }
   return results;
 }
 
@@ -248,6 +261,7 @@ export function autoFix(spec: AppSpec): AppSpec {
     if (["sum", "low_stock"].includes(w.type) && (!field || !["number", "money"].includes(field.type))) return false;
     return true;
   });
+  s.workspace = s.workspace ? sanitizeWorkspace(s.workspace, s) : buildWorkspace(s);
   return s;
 }
 

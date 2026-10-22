@@ -59,7 +59,7 @@ export function AssistantTab({ data, spec, onApplied }: { data: WorkspaceData; s
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,420px)_1fr]">
-      <Panel title="Assistant de modification" subtitle={data.ai ? `IA activée · ${data.costs.modify} crédits par demande (remboursés en cas d'échec) · solde ${data.credits}` : "Mode sans IA : demandes courantes reconnues par règles (gratuit)."}>
+      <Panel title="Assistant de modification" subtitle={data.ai ? `IA configurée · ${data.costs.modify} crédits par demande (remboursés en cas d'échec) · solde ${data.credits}` : "Mode sans IA : demandes courantes reconnues par règles (gratuit)."}>
         <div className="max-h-[480px] space-y-3 overflow-y-auto pr-1" aria-live="polite">
           {msgs.length === 0 && (
             <div className="space-y-2">

@@ -3,7 +3,9 @@ import { adminClient } from "@/lib/supabase/admin";
 import { AppShell } from "@/components/AppShell";
 import { STATUS, fmtDate, fmtDateTime } from "@/lib/status";
 import { TEMPLATES } from "@/lib/templates";
-import { aiAvailable } from "@/lib/ai";
+import { aiConfig } from "@/lib/ai";
+import { lastAiSuccess } from "@/lib/ai-quota";
+import { AiTestButton } from "./AiTestButton";
 import { getPlans, xaf } from "@/lib/plans";
 import { AdminUsers, AdminProjects, AdminLeads } from "./AdminTables";
 
@@ -25,6 +27,8 @@ export default async function Admin() {
     db.from("app_views").select("views").gte("day", since.slice(0, 10)),
     db.from("leads").select("id,name,company,sector,phone,email,message,source,status,created_at").order("created_at", { ascending: false }).limit(200),
   ]);
+  const cfg = aiConfig();
+  const lastOk = cfg ? await lastAiSuccess().catch(() => null) : null;
   const u = usage.data ?? [];
   const totalCost = u.reduce((a, x) => a + (x.cost_xaf ?? 0), 0);
   const generations = u.filter((x) => x.operation === "diagnose").length;
@@ -46,7 +50,15 @@ export default async function Admin() {
   return (
     <AppShell wide>
       <h1 className="font-display text-3xl font-bold text-slate-900">Administration MiniSoft RCA</h1>
-      <p className="mt-1 text-sm text-slate-600">Fournisseur IA : {aiAvailable() ? `configuré (${process.env.AI_MODEL || "claude-opus-5-5"})` : "non configuré — analyse par règles"} · Paiement : non configuré</p>
+      <p className="mt-1 text-sm text-slate-600">Paiement : non configuré</p>
+      <section className="glass mt-6 rounded-xl p-5" aria-labelledby="ia">
+        <h2 id="ia" className="font-semibold text-slate-900">Fournisseur IA</h2>
+        <p className="mt-1 text-sm text-slate-700">
+          {cfg ? `Configuré : ${cfg.label} · modèle ${cfg.model}.` : "Non configuré : toutes les analyses passent par le système de secours (mots-clés)."}{" "}
+          {cfg && (lastOk ? `Dernière réponse réelle réussie : ${fmtDateTime(lastOk.at)}${lastOk.model ? ` (${lastOk.model})` : ""}.` : "Aucune requête IA réussie pour l'instant : la connexion n'est pas encore vérifiée.")}
+        </p>
+        {cfg && <div className="mt-3"><AiTestButton /></div>}
+      </section>
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {tiles.map(([l, v]) => (
           <div key={String(l)} className="glass rounded-2xl p-4"><p className="text-xs text-slate-600">{l}</p><p className="mt-1 text-xl font-semibold text-slate-900">{v}</p></div>

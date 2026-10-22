@@ -145,7 +145,7 @@ export function DemoStudio() {
           <div className="mt-3"><VoiceButton onText={(t) => setProblem((p) => (p ? `${p} ${t}` : t))} /></div>
           <label htmlFor="d-name" className="label mt-6">Nom de votre entreprise (facultatif)</label>
           <input id="d-name" className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
-          <button className="btn btn-primary mt-6 w-full sm:w-auto" disabled={problem.trim().length < 5} onClick={analyse}>Analyser mon besoin</button>
+          <button className="btn btn-primary mt-6 w-full sm:w-auto" disabled={problem.trim().length < 5} onClick={analyse}>Analyser mon problème</button>
         </section>
       )}
 

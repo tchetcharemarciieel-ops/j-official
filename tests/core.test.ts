@@ -49,7 +49,7 @@ describe("générateur", () => {
   it("chaque module de la bibliothèque passe les tests", () => {
     for (const m of MODULES) {
       const spec = composeSpec({
-        source: "rules", businessName: "Test", sector: "interne", sectorLabel: "Test", mainProblem: "x",
+        source: "rules", businessName: "Test", sector: "interne", sectorLabel: "Test", mainProblem: "x", causes: [], solutions: [],
         manualTasks: [], dataToKeep: [], users: "", automations: [], limits: [], questions: [],
         features: [{ id: m.id, title: m.title, description: "", selected: true }],
       });

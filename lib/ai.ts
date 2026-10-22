@@ -11,19 +11,48 @@ import { FIELD_TYPES, ROLES, WIDGET_TYPES, appSpecSchema, toKey, type AppSpec, t
  * Le modèle ne produit que des données structurées (AppSpec), jamais du code exécuté.
  */
 
-const MODEL = process.env.AI_MODEL || "claude-opus-5-5";
-// Prix publics Anthropic pour claude-opus-5-5, en USD par million de jetons.
-const PRICE_IN = 4;
-const PRICE_OUT = 20;
+type ProviderName = "openai" | "anthropic";
+
+/** Modèle et prix par défaut de chaque fournisseur (USD par million de jetons). */
+const DEFAULTS: Record<ProviderName, { model: string; priceIn: number; priceOut: number; label: string }> = {
+  openai: { model: "gpt-5-mini", priceIn: 0.25, priceOut: 2, label: "OpenAI" },
+  anthropic: { model: "claude-opus-5-5", priceIn: 4, priceOut: 20, label: "Anthropic" },
+};
 const USD_TO_XAF = Number(process.env.USD_TO_XAF || 600);
+const TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS || 90_000);
+
+export type AiConfig = { provider: ProviderName; label: string; model: string; priceIn: number; priceOut: number };
+
+/**
+ * Fournisseur choisi par variables d'environnement serveur :
+ * AI_PROVIDER = openai | anthropic (sinon : celui dont la clé est présente),
+ * OPENAI_API_KEY / ANTHROPIC_API_KEY, AI_MODEL facultatif.
+ */
+export function aiConfig(): AiConfig | null {
+  const wanted = (process.env.AI_PROVIDER || "").trim().toLowerCase();
+  const keyOf = (p: ProviderName) => (p === "openai" ? process.env.OPENAI_API_KEY : process.env.ANTHROPIC_API_KEY);
+  let provider: ProviderName | null = null;
+  if (wanted === "openai" || wanted === "anthropic") provider = keyOf(wanted) ? wanted : null;
+  else if (!wanted) provider = keyOf("openai") ? "openai" : keyOf("anthropic") ? "anthropic" : null;
+  if (!provider) return null;
+  const d = DEFAULTS[provider];
+  const num = (v: string | undefined, fallback: number) => (v && Number.isFinite(Number(v)) ? Number(v) : fallback);
+  return {
+    provider,
+    label: d.label,
+    model: process.env.AI_MODEL?.trim() || d.model,
+    priceIn: num(process.env.AI_PRICE_INPUT_USD, d.priceIn),
+    priceOut: num(process.env.AI_PRICE_OUTPUT_USD, d.priceOut),
+  };
+}
 
 export function aiAvailable(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
+  return aiConfig() !== null;
 }
 
 let client: Anthropic | null = null;
-function getClient(): Anthropic {
-  if (!client) client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 120_000, maxRetries: 2 });
+function getAnthropic(): Anthropic {
+  if (!client) client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: TIMEOUT_MS, maxRetries: 1 });
   return client;
 }
 
@@ -152,38 +181,122 @@ function fromAiSpec(a: AiSpec, base?: AppSpec): AppSpec {
 
 export type ImageInput = { mediaType: "image/jpeg" | "image/png" | "image/webp" | "image/gif"; data: string };
 
+function usageOf(cfg: AiConfig, model: string, inputTokens: number, outputTokens: number): AiUsage {
+  return { inputTokens, outputTokens, model, costXaf: Math.round(((inputTokens * cfg.priceIn + outputTokens * cfg.priceOut) / 1_000_000) * USD_TO_XAF) };
+}
+
 async function call<T extends z.ZodType>(system: string, user: string, schema: T, maxTokens = 16000, image?: ImageInput): Promise<{ data: z.infer<T>; usage: AiUsage }> {
-  const res = await getClient().beta.messages.parse({
-    model: MODEL,
-    max_tokens: maxTokens,
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
-    system,
-    messages: [
-      {
-        role: "user",
-        content: image
-          ? [
-              { type: "image", source: { type: "base64", media_type: image.mediaType, data: image.data } },
-              { type: "text", text: user },
-            ]
-          : user,
-      },
-    ],
-    output_config: { effort: "medium", format: betaZodOutputFormat(schema) },
-  });
-  const inputTokens = res.usage.input_tokens;
-  const outputTokens = res.usage.output_tokens;
-  const usage: AiUsage = {
-    inputTokens,
-    outputTokens,
-    model: res.model,
-    costXaf: Math.round(((inputTokens * PRICE_IN + outputTokens * PRICE_OUT) / 1_000_000) * USD_TO_XAF),
-  };
+  const cfg = aiConfig();
+  if (!cfg) throw new AiError("Aucun fournisseur IA n'est configuré sur le serveur.");
+  return cfg.provider === "openai" ? callOpenAi(cfg, system, user, schema, maxTokens, image) : callAnthropic(cfg, system, user, schema, maxTokens, image);
+}
+
+async function callAnthropic<T extends z.ZodType>(cfg: AiConfig, system: string, user: string, schema: T, maxTokens: number, image?: ImageInput): Promise<{ data: z.infer<T>; usage: AiUsage }> {
+  let res;
+  try {
+    res = await getAnthropic().beta.messages.parse({
+      model: cfg.model,
+      max_tokens: maxTokens,
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      system,
+      messages: [
+        {
+          role: "user",
+          content: image
+            ? [
+                { type: "image", source: { type: "base64", media_type: image.mediaType, data: image.data } },
+                { type: "text", text: user },
+              ]
+            : user,
+        },
+      ],
+      output_config: { effort: "medium", format: betaZodOutputFormat(schema) },
+    });
+  } catch (err) {
+    const status = err instanceof Anthropic.APIError ? err.status : undefined;
+    throw new AiError(providerErrorMessage(cfg, status));
+  }
+  const usage = usageOf(cfg, res.model, res.usage.input_tokens, res.usage.output_tokens);
   if (res.stop_reason === "refusal") throw new AiError("La demande a été refusée par le modèle IA.", usage);
   if (res.stop_reason === "max_tokens") throw new AiError("La réponse de l'IA a été tronquée. Simplifiez la demande.", usage);
   if (!res.parsed_output) throw new AiError("Réponse IA illisible.", usage);
   return { data: res.parsed_output as z.infer<T>, usage };
+}
+
+/** Appel à l'API OpenAI (Chat Completions) avec sortie JSON imposée par un schéma strict. */
+async function callOpenAi<T extends z.ZodType>(cfg: AiConfig, system: string, user: string, schema: T, maxTokens: number, image?: ImageInput): Promise<{ data: z.infer<T>; usage: AiUsage }> {
+  const { $schema: _ignored, ...jsonSchema } = z.toJSONSchema(schema) as Record<string, unknown>;
+  const reasoning = /^(gpt-5|o\d)/.test(cfg.model) ? { reasoning_effort: process.env.AI_REASONING_EFFORT || "low" } : {};
+  let res: Response;
+  try {
+    res = await fetch(`${(process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "")}/chat/completions`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      body: JSON.stringify({
+        model: cfg.model,
+        max_completion_tokens: maxTokens,
+        ...reasoning,
+        response_format: { type: "json_schema", json_schema: { name: "reponse", strict: true, schema: jsonSchema } },
+        messages: [
+          { role: "system", content: system },
+          {
+            role: "user",
+            content: image
+              ? [
+                  { type: "image_url", image_url: { url: `data:${image.mediaType};base64,${image.data}` } },
+                  { type: "text", text: user },
+                ]
+              : user,
+          },
+        ],
+      }),
+    });
+  } catch (err) {
+    const timeout = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
+    throw new AiError(timeout ? "L'IA n'a pas répondu à temps." : "Impossible de joindre le fournisseur IA.");
+  }
+  if (!res.ok) {
+    // Le corps d'erreur n'est jamais renvoyé tel quel au navigateur.
+    const detail = (await res.json().catch(() => null)) as { error?: { code?: string } } | null;
+    throw new AiError(providerErrorMessage(cfg, res.status, detail?.error?.code));
+  }
+  const json = (await res.json()) as {
+    model?: string;
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
+    choices?: { finish_reason?: string; message?: { content?: string | null; refusal?: string | null } }[];
+  };
+  const usage = usageOf(cfg, json.model || cfg.model, json.usage?.prompt_tokens ?? 0, json.usage?.completion_tokens ?? 0);
+  const choice = json.choices?.[0];
+  if (choice?.message?.refusal) throw new AiError("La demande a été refusée par le modèle IA.", usage);
+  if (choice?.finish_reason === "length") throw new AiError("La réponse de l'IA a été tronquée. Simplifiez la demande.", usage);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(choice?.message?.content ?? "");
+  } catch {
+    throw new AiError("Réponse IA illisible.", usage);
+  }
+  const checked = schema.safeParse(parsed);
+  if (!checked.success) throw new AiError("Réponse IA incomplète ou mal formée.", usage);
+  return { data: checked.data as z.infer<T>, usage };
+}
+
+function providerErrorMessage(cfg: AiConfig, status?: number, code?: string): string {
+  if (status === 401 || status === 403) return `La clé API ${cfg.label} est refusée (invalide ou révoquée).`;
+  if (status === 404) return `Le modèle « ${cfg.model} » est introuvable chez ${cfg.label}.`;
+  if (status === 429) return code === "insufficient_quota" ? `Le compte ${cfg.label} n'a plus de crédit.` : `Le fournisseur ${cfg.label} limite temporairement les requêtes.`;
+  if (status && status >= 500) return `Le fournisseur ${cfg.label} est temporairement indisponible.`;
+  if (status === 400) return `Requête refusée par ${cfg.label} (paramètres du modèle).`;
+  return `Erreur du fournisseur ${cfg.label}.`;
+}
+
+/** Petit appel réel servant à vérifier la configuration (page d'administration). */
+export async function aiPing(): Promise<{ ok: true; usage: AiUsage; ms: number }> {
+  const t0 = Date.now();
+  const { data, usage } = await call("Réponds uniquement par le JSON demandé.", "Renvoie ok = true.", z.object({ ok: z.boolean() }), 2000);
+  if (!data.ok) throw new AiError("Réponse inattendue du fournisseur IA.", usage);
+  return { ok: true, usage, ms: Date.now() - t0 };
 }
 
 const CONTEXT = `Tu es l'architecte logiciel de MiniSoft RCA, une plateforme qui crée des mini-logiciels de gestion pour les entreprises d'Afrique centrale (montants en FCFA XAF).
@@ -199,6 +312,8 @@ export async function aiDiagnose(input: DiagnoseInput, image?: ImageInput): Prom
     sector: z.enum(Object.keys(SECTORS) as [string, ...string[]]),
     sectorLabel: z.string(),
     mainProblem: z.string(),
+    causes: z.array(z.string()).describe("2 à 5 causes probables du problème, propres à ce client"),
+    solutions: z.array(z.string()).describe("2 à 6 solutions concrètes que le mini-logiciel apporte, ou bonnes pratiques à adopter"),
     manualTasks: z.array(z.string()),
     dataToKeep: z.array(z.string()),
     users: z.string(),
@@ -213,7 +328,7 @@ export async function aiDiagnose(input: DiagnoseInput, image?: ImageInput): Prom
     ...(input.answers ?? []).map((a) => `Question : ${a.question}\nRéponse : ${a.answer.slice(0, 1000)}`),
     image ? "Le client a joint une image (photo de cahier, formulaire, facture ou capture d'un ancien logiciel) : déduis-en les tables et champs utiles. N'en recopie pas les données personnelles." : "",
     input.csvColumns?.length ? `Colonnes d'un fichier joint par le client : ${input.csvColumns.map((c) => `${c.name} (${c.type})`).join(", ")}` : "",
-    `Produis le diagnostic : problème principal, tâches manuelles à améliorer, données à conserver, utilisateurs, automatisations possibles, limites techniques, et 3 à 8 fonctionnalités (chacune = une table avec ses champs et ses indicateurs), adaptées précisément à CE client. Coche (selected=true) les fonctionnalités indispensables, propose les autres décochées.`,
+    `Produis le diagnostic : problème principal, causes probables, solutions proposées, tâches manuelles à améliorer, données à conserver, utilisateurs, automatisations possibles, limites techniques, et 3 à 8 fonctionnalités (chacune = une table avec ses champs et ses indicateurs), adaptées précisément à CE client. Coche (selected=true) les fonctionnalités indispensables, propose les autres décochées.`,
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -224,6 +339,8 @@ export async function aiDiagnose(input: DiagnoseInput, image?: ImageInput): Prom
     sector: data.sector,
     sectorLabel: data.sectorLabel.slice(0, 60),
     mainProblem: data.mainProblem.slice(0, 400),
+    causes: data.causes.slice(0, 6).map((s) => s.slice(0, 300)),
+    solutions: data.solutions.slice(0, 8).map((s) => s.slice(0, 300)),
     manualTasks: data.manualTasks.slice(0, 10).map((s) => s.slice(0, 200)),
     dataToKeep: data.dataToKeep.slice(0, 15).map((s) => s.slice(0, 200)),
     users: data.users.slice(0, 200),

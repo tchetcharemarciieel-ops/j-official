@@ -10,11 +10,11 @@ import { notifyUser } from "./notify";
  * et remboursés intégralement si l'opération échoue. L'analyse par règles (sans IA) est gratuite.
  */
 export async function withCredits<T>(
-  opts: { userId: string; projectId?: string | null; operation: string; credits: number },
+  opts: { userId: string; projectId?: string | null; operation: string; credits: number; engine?: "ai" | "rules"; notifyOnFailure?: boolean },
   run: (engine: "ai" | "rules") => Promise<{ result: T; usage?: AiUsage }>,
 ): Promise<{ result: T; engine: "ai" | "rules"; creditsUsed: number }> {
   const db = adminClient();
-  const engine = aiAvailable() ? "ai" : "rules";
+  const engine = opts.engine ?? (aiAvailable() ? "ai" : "rules");
   const cost = engine === "ai" ? opts.credits : 0;
   if (cost > 0) {
     const { data: ok, error } = await db.rpc("consume_credits", { uid: opts.userId, amount: cost });
@@ -55,7 +55,7 @@ export async function withCredits<T>(
     });
     await audit(`${opts.operation}.failed`, { projectId: opts.projectId, actorId: opts.userId, level: "error", details: { message: message.slice(0, 500), refunded: cost } });
     const label = { diagnose: "L'analyse de votre besoin", modify: "La modification demandée", ask: "La question à l'assistant", generate: "La génération" }[opts.operation] ?? "L'opération";
-    await notifyUser(opts.userId, { type: "error", title: `${label} a échoué`, body: `${message.slice(0, 300)}${cost > 0 ? ` — ${cost} crédit(s) remboursé(s).` : ""}`, projectId: opts.projectId, link: opts.projectId ? `/projets/${opts.projectId}` : "/espace" });
+    if (opts.notifyOnFailure !== false) await notifyUser(opts.userId, { type: "error", title: `${label} a échoué`, body: `${message.slice(0, 300)}${cost > 0 ? ` — ${cost} crédit(s) remboursé(s).` : ""}`, projectId: opts.projectId, link: opts.projectId ? `/projets/${opts.projectId}` : "/espace" });
     if (err instanceof HttpError) throw err;
     throw new HttpError(502, `${message}${cost > 0 ? ` Vos ${cost} crédit(s) ont été remboursés.` : ""}`);
   }

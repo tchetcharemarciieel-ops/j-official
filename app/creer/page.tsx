@@ -1,5 +1,5 @@
 import { requireProfile } from "@/lib/auth";
-import { aiAvailable } from "@/lib/ai";
+import { aiConfig } from "@/lib/ai";
 import { CREDIT_COSTS } from "@/lib/config";
 import { SiteHeader } from "@/components/SiteHeader";
 import { CreateWizard } from "./CreateWizard";
@@ -10,7 +10,8 @@ export const dynamic = "force-dynamic";
 export default async function Page({ searchParams }: { searchParams: Promise<{ probleme?: string }> }) {
   const { probleme } = await searchParams;
   const profile = await requireProfile(`/creer${probleme ? `?probleme=${encodeURIComponent(probleme)}` : ""}`);
-  const ai = aiAvailable();
+  const cfg = aiConfig();
+  const ai = cfg ? { label: cfg.label, model: cfg.model } : null;
   return (
     <div className="bg-aurora min-h-dvh">
       <SiteHeader />

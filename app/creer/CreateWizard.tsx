@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Bot } from "lucide-react";
+import { ArrowLeft, Bot, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { VoiceButton } from "@/components/VoiceButton";
@@ -9,12 +9,12 @@ import { api, ApiError } from "@/lib/fetcher";
 import { detectColumns, type ColumnInfo } from "@/lib/csv";
 import { readImage, readTabular } from "@/lib/file-read";
 import { MODULES } from "@/lib/modules";
-import type { Diagnosis, Feature } from "@/lib/generator";
+import type { DiagnoseResponse, Diagnosis, Feature } from "@/lib/generator";
 
 type Step = "describe" | "questions" | "plan" | "generating";
 type Attachment = { kind: "table"; name: string; columns: ColumnInfo[]; rows: number } | { kind: "image"; name: string; mediaType: "image/jpeg" | "image/png" | "image/webp" | "image/gif"; data: string; preview: string };
 
-export function CreateWizard({ initialProblem, ai, credits, costs }: { initialProblem: string; ai: boolean; credits: number; costs: { diagnose: number } }) {
+export function CreateWizard({ initialProblem, ai, credits, costs }: { initialProblem: string; ai: { label: string; model: string } | null; credits: number; costs: { diagnose: number } }) {
   const router = useRouter();
   const toast = useToast();
   const [step, setStep] = useState<Step>("describe");
@@ -23,11 +23,12 @@ export function CreateWizard({ initialProblem, ai, credits, costs }: { initialPr
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [retry, setRetry] = useState<(() => void) | null>(null);
   const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
   const [answers, setAnswers] = useState<{ question: string; answer: string }[]>([]);
   const [qIndex, setQIndex] = useState(0);
   const [currentAnswer, setCurrentAnswer] = useState("");
-  const [engine, setEngine] = useState<"ai" | "rules">(ai ? "ai" : "rules");
+  const [result, setResult] = useState<Omit<DiagnoseResponse, "diagnosis"> | null>(null);
   const [balance, setBalance] = useState(credits);
   const [answeredBase, setAnsweredBase] = useState(0);
 
@@ -50,8 +51,9 @@ export function CreateWizard({ initialProblem, ai, credits, costs }: { initialPr
   async function diagnose(withAnswers = answers) {
     setLoading(true);
     setError("");
+    setRetry(null);
     try {
-      const res = await api<{ diagnosis: Diagnosis; engine: "ai" | "rules"; creditsUsed: number }>("/api/diagnose", {
+      const res = await api<DiagnoseResponse>("/api/diagnose", {
         body: {
           problem,
           businessName: businessName || undefined,
@@ -60,7 +62,7 @@ export function CreateWizard({ initialProblem, ai, credits, costs }: { initialPr
           image: attachment?.kind === "image" ? { mediaType: attachment.mediaType, data: attachment.data } : undefined,
         },
       });
-      setEngine(res.engine);
+      setResult({ engine: res.engine, provider: res.provider, fallbackReason: res.fallbackReason, creditsUsed: res.creditsUsed });
       setBalance((b) => b - res.creditsUsed);
       setDiagnosis(res.diagnosis);
       if (res.diagnosis.businessName && !businessName) setBusinessName(res.diagnosis.businessName);
@@ -73,7 +75,8 @@ export function CreateWizard({ initialProblem, ai, credits, costs }: { initialPr
       } else setStep("plan");
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) router.push(`/connexion?next=${encodeURIComponent(`/creer?probleme=${encodeURIComponent(problem)}`)}`);
-      setError(e instanceof Error ? e.message : "Erreur");
+      setError(e instanceof Error ? e.message : "L'analyse n'a pas pu aboutir.");
+      setRetry(() => () => void diagnose(withAnswers));
     } finally {
       setLoading(false);
     }
@@ -108,12 +111,14 @@ export function CreateWizard({ initialProblem, ai, credits, costs }: { initialPr
     if (!diagnosis) return;
     setStep("generating");
     setError("");
+    setRetry(null);
     try {
       const res = await api<{ id: string }>("/api/projects", { body: { diagnosis: { ...diagnosis, businessName: businessName.slice(0, 80), questions: [] }, problem } });
       toast("success", "Logiciel généré et testé.");
       router.push(`/projets/${res.id}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur");
+      setError(e instanceof Error ? e.message : "La génération n'a pas pu aboutir.");
+      setRetry(() => () => void generate());
       setStep("plan");
     }
   }
@@ -136,16 +141,21 @@ export function CreateWizard({ initialProblem, ai, credits, costs }: { initialPr
         ))}
       </ol>
 
-      {!ai && (
-        <p className="mb-6 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-800">
-          Aucun fournisseur IA n&apos;est configuré sur cette plateforme : l&apos;analyse est faite par règles (mots-clés et modèles validés). Elle est gratuite mais moins précise.
+      {!ai && step === "describe" && (
+        <p className="mb-6 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Aucun fournisseur IA n&apos;est configuré sur cette plateforme : l&apos;analyse sera faite par le système de secours (mots-clés et modèles validés). Elle est gratuite mais moins précise.
         </p>
       )}
 
       {error && (
-        <p role="alert" className="mb-6 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-700">
-          {error}
-        </p>
+        <div role="alert" className="mb-6 flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between">
+          <p>{error}</p>
+          {retry && (
+            <button type="button" className="btn btn-ghost shrink-0" onClick={retry} disabled={loading}>
+              <RotateCcw className="h-4 w-4" aria-hidden /> Réessayer
+            </button>
+          )}
+        </div>
       )}
 
       {step === "describe" && (
@@ -202,11 +212,19 @@ export function CreateWizard({ initialProblem, ai, credits, costs }: { initialPr
           </div>
 
           <div className="mt-8 flex flex-col-reverse items-stretch justify-between gap-3 sm:flex-row sm:items-center">
-            <p className="text-xs text-slate-600">
-              {costs.diagnose > 0 ? `Coût estimé : ${costs.diagnose} crédits (remboursés en cas d'échec). Solde : ${balance} crédits.` : "Analyse par règles : gratuite."}
+            <p className="text-xs text-slate-600" aria-live="polite">
+              {loading
+                ? ai
+                  ? "Analyse en cours par l'IA… cela peut prendre jusqu'à une minute."
+                  : "Analyse en cours…"
+                : ai
+                  ? balance >= costs.diagnose
+                    ? `Analyse par l'IA : ${costs.diagnose} crédits, remboursés en cas d'échec. Solde : ${balance} crédits.`
+                    : `Solde insuffisant pour l'IA (${balance} crédits) : l'analyse sera faite par le système de secours, gratuitement.`
+                  : "Analyse par le système de secours : gratuite."}
             </p>
-            <button className="btn btn-primary" disabled={loading || problem.trim().length < 5 || (costs.diagnose > 0 && balance < costs.diagnose)} onClick={() => diagnose([])}>
-              {loading && <span className="spinner" />} Analyser mon besoin
+            <button className="btn btn-primary" disabled={loading || problem.trim().length < 5} onClick={() => diagnose([])}>
+              {loading && <span className="spinner" />} {loading ? "Analyse en cours…" : "Analyser mon problème"}
             </button>
           </div>
         </section>
@@ -249,13 +267,16 @@ export function CreateWizard({ initialProblem, ai, credits, costs }: { initialPr
           <div className="glass rounded-2xl p-5 sm:p-8">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h1 className="font-display text-2xl font-bold text-slate-900">Diagnostic</h1>
-              <span className="rounded-full bg-slate-50 px-3 py-1 text-xs text-slate-700">{engine === "ai" ? "Analyse IA" : "Analyse par règles"} · {diagnosis.sectorLabel}</span>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">{diagnosis.sectorLabel}</span>
             </div>
+            {result && <EngineNotice result={result} canRetry={Boolean(ai)} loading={loading} onRetry={() => void diagnose(answers)} />}
             <dl className="mt-6 grid gap-5 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <dt className="text-xs uppercase tracking-wide text-slate-500">Problème principal</dt>
                 <dd className="mt-1 text-sm text-slate-800">{diagnosis.mainProblem}</dd>
               </div>
+              <DList title="Causes probables" items={diagnosis.causes ?? []} />
+              <DList title="Solutions proposées" items={diagnosis.solutions ?? []} />
               <DList title="Tâches manuelles à améliorer" items={diagnosis.manualTasks} />
               <DList title="Données à conserver" items={diagnosis.dataToKeep} />
               <div>
@@ -321,6 +342,29 @@ export function CreateWizard({ initialProblem, ai, credits, costs }: { initialPr
             <li>• Tests automatiques et corrections</li>
           </ul>
         </section>
+      )}
+    </div>
+  );
+}
+
+/** Indique clairement quel moteur a produit le diagnostic. « IA » seulement si une requête réelle a réussi. */
+function EngineNotice({ result, canRetry, loading, onRetry }: { result: Omit<DiagnoseResponse, "diagnosis">; canRetry: boolean; loading: boolean; onRetry: () => void }) {
+  if (result.engine === "ai" && result.provider)
+    return (
+      <p className="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-2.5 text-sm text-green-800">
+        Analyse réalisée par l&apos;IA ({result.provider.name} · {result.provider.model}){result.creditsUsed > 0 ? ` · ${result.creditsUsed} crédits utilisés` : ""}.
+      </p>
+    );
+  return (
+    <div className="mt-4 flex flex-col gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+      <p>
+        <strong>Résultat du système de secours (mots-clés), sans IA.</strong>
+        {result.fallbackReason && <span className="block">{result.fallbackReason}</span>}
+      </p>
+      {canRetry && (
+        <button type="button" className="btn btn-ghost shrink-0" onClick={onRetry} disabled={loading}>
+          {loading ? <span className="spinner" /> : <RotateCcw className="h-4 w-4" aria-hidden />} Réessayer avec l&apos;IA
+        </button>
       )}
     </div>
   );

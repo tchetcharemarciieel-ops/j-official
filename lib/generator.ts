@@ -31,6 +31,8 @@ export const diagnosisSchema = z.object({
   sector: z.string().max(40),
   sectorLabel: z.string().max(60),
   mainProblem: z.string().max(400),
+  causes: z.array(z.string().max(300)).max(6).default([]),
+  solutions: z.array(z.string().max(300)).max(8).default([]),
   manualTasks: z.array(z.string().max(200)).max(10).default([]),
   dataToKeep: z.array(z.string().max(200)).max(15).default([]),
   users: z.string().max(200).default(""),
@@ -40,6 +42,17 @@ export const diagnosisSchema = z.object({
   questions: z.array(z.string().max(200)).max(5).default([]),
 });
 export type Diagnosis = z.infer<typeof diagnosisSchema>;
+
+/** Réponse de POST /api/diagnose : indique toujours quel moteur a produit le résultat. */
+export type DiagnoseResponse = {
+  diagnosis: Diagnosis;
+  engine: "ai" | "rules";
+  /** Fournisseur et modèle ayant réellement répondu (uniquement si engine = "ai"). */
+  provider: { name: string; model: string } | null;
+  /** Pourquoi le système de secours a été utilisé (null si l'IA a répondu). */
+  fallbackReason: string | null;
+  creditsUsed: number;
+};
 
 export type DiagnoseInput = {
   problem: string;
@@ -67,7 +80,7 @@ export function detectSector(text: string): string | null {
   return best;
 }
 
-/** Diagnostic par règles : utilisé quand aucun fournisseur IA n'est configuré. */
+/** Diagnostic par mots-clés : système de secours quand l'IA est absente, limitée ou en échec. */
 export function diagnoseWithRules(input: DiagnoseInput): Diagnosis {
   const fullText = [input.problem, ...(input.answers ?? []).map((a) => a.answer)].join(" \n ");
   const t = normalize(fullText);
@@ -123,6 +136,11 @@ export function diagnoseWithRules(input: DiagnoseInput): Diagnosis {
     sector: sectorId ?? "interne",
     sectorLabel: sector?.label ?? "Gestion interne",
     mainProblem: input.problem.slice(0, 400),
+    causes: [
+      "Les informations sont notées à la main ou dispersées (cahiers, messages, fichiers).",
+      "Aucun outil ne calcule automatiquement les totaux, les retards ou les alertes.",
+    ],
+    solutions: features.filter((f) => f.selected).map((f) => `${f.title} : ${f.description}`).slice(0, 8),
     manualTasks: features.filter((f) => f.selected).map((f) => `Saisie et suivi manuel : ${f.title.toLowerCase()}`).slice(0, 5),
     dataToKeep: features
       .filter((f) => f.selected)
@@ -133,7 +151,7 @@ export function diagnoseWithRules(input: DiagnoseInput): Diagnosis {
     users: usersAnswer ?? "Le propriétaire, puis les collaborateurs invités selon leur rôle.",
     automations: ["Alertes de stock bas ou de retard affichées sur le tableau de bord", "Notification (webhook) lors d'un nouvel enregistrement, si vous la configurez"],
     limits: [
-      "Analyse réalisée par règles (mots-clés) : aucun fournisseur IA n'est configuré sur cette plateforme.",
+      "Analyse réalisée par le système de secours (mots-clés) : elle repère votre secteur et vos besoins courants, sans comprendre le détail de votre situation.",
       "Les paiements en ligne et l'envoi de SMS ne sont pas inclus sans connecteur configuré.",
     ],
     features,

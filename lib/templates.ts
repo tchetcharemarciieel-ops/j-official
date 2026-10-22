@@ -24,6 +24,8 @@ function tpl(t: Omit<Template, "build">): Template {
         sector: t.sector,
         sectorLabel: SECTORS[t.sector]!.label,
         mainProblem: t.description,
+        causes: [],
+        solutions: [],
         manualTasks: [],
         dataToKeep: [],
         users: "",

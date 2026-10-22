@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { Banknote, ClipboardList, Package, ReceiptText, TriangleAlert, UserCog, UserRound, Users } from "lucide-react";
+import { siteHref } from "@/lib/site-mode";
 import { clamp, ease, seg, useScrollProgress, wordStyle } from "./useScrollProgress";
 
 /**
@@ -9,7 +11,7 @@ import { clamp, ease, seg, useScrollProgress, wordStyle } from "./useScrollProgr
  */
 export function ScrollStory() {
   return (
-    <div aria-label="L'histoire de MiniSoft RCA" className="relative">
+    <div aria-label="L'histoire de MiniSoft RCA" className="relative bg-[#050816] text-white">
       <Chaos />
       <Orb />
       <Network />
@@ -134,12 +136,12 @@ function Orb() {
 
 /* 3. Le cerveau et ses connexions */
 const NODES = [
-  { label: "Commandes", icon: "🧾", x: -28, y: -32 },
-  { label: "Stock", icon: "📦", x: 28, y: -34 },
-  { label: "Clients", icon: "👥", x: -32, y: 0 },
-  { label: "Dépenses", icon: "💸", x: 32, y: -2 },
-  { label: "Paiements", icon: "💰", x: -17, y: 24 },
-  { label: "Équipe", icon: "🧑🏾‍💼", x: 18, y: 26 },
+  { label: "Commandes", icon: ClipboardList, x: -28, y: -32 },
+  { label: "Stock", icon: Package, x: 28, y: -34 },
+  { label: "Clients", icon: Users, x: -32, y: 0 },
+  { label: "Dépenses", icon: ReceiptText, x: 32, y: -2 },
+  { label: "Paiements", icon: Banknote, x: -17, y: 24 },
+  { label: "Équipe", icon: UserCog, x: 18, y: 26 },
 ];
 function Network() {
   const { ref, p } = useScrollProgress<HTMLElement>();
@@ -147,7 +149,7 @@ function Network() {
     <Pinned height={260} label="Comment ça marche" sectionRef={ref}>
       <div className="absolute inset-0 grid grid-rows-[auto_1fr] gap-4 px-5 pb-6 pt-[12vh] sm:grid-cols-[minmax(0,380px)_1fr] sm:grid-rows-1 sm:items-center sm:gap-10 sm:px-[6vw] sm:pt-0">
         <div className="relative z-10">
-          <p className="text-sm uppercase tracking-[0.25em] text-brand-300" style={{ opacity: seg(p, 0, 0.1) }}>Pas un simple tableur</p>
+          <p className="text-sm uppercase tracking-[0.25em] text-blue-300" style={{ opacity: seg(p, 0, 0.1) }}>Pas un simple tableur</p>
           <h2 className="mt-3 font-display text-[clamp(28px,4.6vw,60px)] font-bold leading-tight text-white">
             <Words text="Un cerveau pour votre entreprise." p={seg(p, 0.02, 0.3)} />
           </h2>
@@ -172,14 +174,14 @@ function Network() {
           {NODES.map((n, i) => {
             const t = ease(seg(p, 0.25 + i * 0.07, 0.35 + i * 0.07));
             return (
-              <div key={n.label} className="absolute flex items-center gap-2 rounded-xl border border-white/15 bg-night-900/80 px-3 py-2 text-[clamp(11px,1.4vw,15px)] text-white shadow-xl" style={{ left: `${50 + n.x}%`, top: `${50 + n.y}%`, opacity: t, transform: `translate(-50%,-50%) scale(${0.7 + 0.3 * t})` }}>
-                <span aria-hidden>{n.icon}</span>
+              <div key={n.label} className="absolute flex items-center gap-2 rounded-xl border border-white/15 bg-slate-900/80 px-3 py-2 text-[clamp(11px,1.4vw,15px)] text-white shadow-xl" style={{ left: `${50 + n.x}%`, top: `${50 + n.y}%`, opacity: t, transform: `translate(-50%,-50%) scale(${0.7 + 0.3 * t})` }}>
+                <n.icon className="h-4 w-4 text-blue-300" aria-hidden />
                 {n.label}
               </div>
             );
           })}
           <div className="absolute bottom-[4%] left-1/2 w-[min(90%,420px)] rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-2.5 text-[clamp(11px,1.3vw,14px)] text-amber-100" style={{ opacity: seg(p, 0.78, 0.88), transform: `translate(-50%, ${(1 - seg(p, 0.78, 0.88)) * 20}px)` }}>
-            ⚠️ Riz 25 kg : il en reste 3. Pensez à commander avant samedi.
+            <TriangleAlert className="mr-1.5 inline h-4 w-4 align-[-3px]" aria-hidden />Riz 25 kg : il en reste 3. Pensez à commander avant samedi.
           </div>
         </div>
       </div>
@@ -203,7 +205,7 @@ function Expenses() {
     <Pinned height={240} label="Les dépenses" sectionRef={ref}>
       <div className="w-full max-w-5xl px-5">
         <h2 className="text-center font-display text-[clamp(30px,6vw,76px)] font-bold leading-tight text-white">
-          <Words text="Chaque dépense," p={seg(p, 0, 0.18)} /> <em className="font-serif font-normal italic text-brand-300"><Words text="à sa place." p={seg(p, 0.12, 0.28)} /></em>
+          <Words text="Chaque dépense," p={seg(p, 0, 0.18)} /> <em className="font-serif font-normal italic text-blue-300"><Words text="à sa place." p={seg(p, 0.12, 0.28)} /></em>
         </h2>
         <div className="relative mx-auto mt-[6vh] grid max-w-3xl grid-cols-3 gap-2 sm:gap-4">
           {CATS.map((c, ci) => {
@@ -245,13 +247,13 @@ function Profit() {
         <h2 className="font-display text-[clamp(30px,6vw,76px)] font-bold leading-tight text-white">
           <Words text="Combien vous gagnez," p={seg(p, 0, 0.18)} /> <em className="font-serif font-normal italic text-sky-300"><Words text="vraiment ?" p={seg(p, 0.1, 0.25)} /></em>
         </h2>
-        <div className="mx-auto mt-[5vh] max-w-2xl rounded-3xl border border-white/10 bg-night-900/70 p-5 text-left shadow-2xl sm:p-8" style={{ opacity: seg(p, 0.15, 0.25), transform: `perspective(900px) rotateX(${(1 - ease(seg(p, 0.15, 0.4))) * 25}deg)` }}>
+        <div className="mx-auto mt-[5vh] max-w-2xl rounded-3xl border border-white/10 bg-slate-900/70 p-5 text-left shadow-2xl sm:p-8" style={{ opacity: seg(p, 0.15, 0.25), transform: `perspective(900px) rotateX(${(1 - ease(seg(p, 0.15, 0.4))) * 25}deg)` }}>
           <p className="text-sm text-slate-400">Bénéfice du mois · Chez Mama, Bangui</p>
           <p className="mt-2 font-display text-[clamp(30px,6vw,60px)] font-bold tabular-nums text-white">{value.toLocaleString("fr-FR")} <span className="text-[0.5em] text-slate-400">FCFA</span></p>
           <div className="mt-5 flex h-28 items-end gap-2">
             {bars.map((h, i) => (
               <div key={i} className="flex h-full flex-1 items-end">
-                <div className="w-full rounded-t-md bg-gradient-to-t from-brand-500 to-sky-glow" style={{ height: `${h * ease(seg(p, 0.3 + i * 0.04, 0.5 + i * 0.04))}%` }} />
+                <div className="w-full rounded-t-md bg-gradient-to-t from-blue-600 to-sky-400" style={{ height: `${h * ease(seg(p, 0.3 + i * 0.04, 0.5 + i * 0.04))}%` }} />
               </div>
             ))}
           </div>
@@ -270,9 +272,9 @@ function Profit() {
 function Spaces() {
   const { ref, p } = useScrollProgress<HTMLElement>();
   const roles = [
-    { who: "Gérant", what: "voit tout : ventes, dépenses, bénéfice", icon: "👨🏾‍💼" },
-    { who: "Serveuse", what: "prend les commandes", icon: "👩🏾" },
-    { who: "Caissier", what: "encaisse, sans modifier les prix", icon: "🧑🏾" },
+    { who: "Gérant", what: "voit tout : ventes, dépenses, bénéfice", icon: UserCog },
+    { who: "Serveuse", what: "prend les commandes", icon: UserRound },
+    { who: "Caissier", what: "encaisse, sans modifier les prix", icon: Banknote },
   ];
   return (
     <Pinned height={220} label="L'équipe" sectionRef={ref}>
@@ -291,14 +293,14 @@ function Spaces() {
           <h2 className="font-display text-[clamp(30px,5.5vw,70px)] font-bold leading-tight text-white">
             <Words text="Chacun son espace." p={seg(p, 0, 0.2)} />
             <br />
-            <span className="text-brand-300"><Words text="Vous voyez tout." p={seg(p, 0.12, 0.3)} /></span>
+            <span className="text-blue-300"><Words text="Vous voyez tout." p={seg(p, 0.12, 0.3)} /></span>
           </h2>
           <ul className="mt-6 space-y-3">
             {roles.map((r, i) => {
               const t = ease(seg(p, 0.35 + i * 0.12, 0.5 + i * 0.12));
               return (
                 <li key={r.who} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3" style={{ opacity: t, transform: `translateX(${(1 - t) * 40}px)` }}>
-                  <span className="text-2xl" aria-hidden>{r.icon}</span>
+                  <r.icon className="h-5 w-5 shrink-0 text-blue-300" aria-hidden />
                   <span className="text-[clamp(13px,1.5vw,16px)] text-slate-200"><strong className="text-white">{r.who}</strong> — {r.what}</span>
                 </li>
               );
@@ -324,8 +326,8 @@ function Finale() {
           Décrivez votre problème. Votre logiciel est prêt à tester en quelques minutes, en français et en FCFA.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3" style={{ opacity: seg(p, 0.45, 0.6), transform: `translateY(${(1 - seg(p, 0.45, 0.6)) * 20}px)` }}>
-          <Link href="/demo" className="btn btn-primary">Essayer gratuitement</Link>
-          <Link href="/#demonstration" className="btn btn-ghost">Demander une démonstration</Link>
+          <Link href={siteHref("/creer")} className="btn btn-primary">Créer mon logiciel</Link>
+          <Link href="/#contact" className="btn border border-white/30 text-white hover:bg-white/10">Présentez votre projet</Link>
         </div>
       </div>
     </Pinned>

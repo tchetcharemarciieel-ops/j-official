@@ -10,6 +10,8 @@ import { getModule } from "@/lib/modules";
 import { getPlans, xaf } from "@/lib/plans";
 import { CREDIT_COSTS, SITE_URL } from "@/lib/config";
 import { LeadForm } from "@/components/LeadForm";
+import { ScrollStory } from "@/components/story/ScrollStory";
+import { TiltOnScroll } from "@/components/TiltOnScroll";
 
 export const dynamic = "force-dynamic";
 
@@ -126,10 +128,17 @@ export default async function Home() {
               </ul>
             </Reveal>
             <Reveal delay={100}>
-              <ScreenPreview />
+              <TiltOnScroll>
+                <ScreenPreview />
+              </TiltOnScroll>
             </Reveal>
           </div>
         </section>
+
+        {/* Histoire animée au défilement */}
+        <div id="histoire" className="scroll-mt-16">
+          <ScrollStory />
+        </div>
 
         {/* Problèmes résolus */}
         <section className="px-4 py-20 sm:px-6">

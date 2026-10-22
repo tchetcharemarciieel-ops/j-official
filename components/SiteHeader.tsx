@@ -1,4 +1,4 @@
-import { siteHref, STATIC_SITE } from "@/lib/site-mode";
+import { STATIC_SITE } from "@/lib/site-mode";
 import Link from "next/link";
 import { Logo } from "./Logo";
 import { MobileNav } from "./MobileNav";
@@ -19,27 +19,21 @@ export async function SiteHeader() {
           ))}
         </nav>
         <div className="hidden items-center gap-2 lg:flex">
-          {profile ? (
-            <>
-              {profile.is_admin && (
-                <Link href="/admin" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900">
-                  Administration
-                </Link>
-              )}
-              <Link href="/espace" className="btn btn-ghost">
-                Mon espace
-              </Link>
-            </>
-          ) : STATIC_SITE ? null : (
-            <Link href="/connexion" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900">
-              Connexion
+          {profile?.is_admin && (
+            <Link href="/admin" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900">
+              Administration
             </Link>
           )}
-          <Link href={siteHref("/creer")} className="btn btn-primary">
-            Créer mon logiciel
-          </Link>
+          {STATIC_SITE ? (
+            <Link href="/demo" className="btn btn-primary">Essayer la démo</Link>
+          ) : (
+            <>
+              <Link href="/connexion" className="btn btn-ghost">Se connecter</Link>
+              <Link href="/inscription" className="btn btn-primary">S&apos;inscrire</Link>
+            </>
+          )}
         </div>
-        <MobileNav loggedIn={Boolean(profile)} isAdmin={Boolean(profile?.is_admin)} />
+        <MobileNav isAdmin={Boolean(profile?.is_admin)} />
       </div>
     </header>
   );

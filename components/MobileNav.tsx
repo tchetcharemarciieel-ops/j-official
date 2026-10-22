@@ -1,6 +1,6 @@
 "use client";
 
-import { siteHref, STATIC_SITE } from "@/lib/site-mode";
+import { STATIC_SITE } from "@/lib/site-mode";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -9,7 +9,7 @@ import { Menu, X } from "lucide-react";
 import { SITE_NAV } from "@/lib/nav";
 
 
-export function MobileNav({ loggedIn, isAdmin }: { loggedIn: boolean; isAdmin: boolean }) {
+export function MobileNav({ isAdmin }: { isAdmin: boolean }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -40,14 +40,14 @@ export function MobileNav({ loggedIn, isAdmin }: { loggedIn: boolean; isAdmin: b
                 Administration
               </Link>
             )}
-            {!STATIC_SITE && (
-              <Link href={loggedIn ? "/espace" : "/connexion"} className="rounded-lg px-4 py-3 text-base font-medium text-slate-800 hover:bg-slate-100">
-                {loggedIn ? "Mon espace" : "Connexion"}
-              </Link>
+            {STATIC_SITE ? (
+              <Link href="/demo" className="btn btn-primary mt-4 text-base">Essayer la démo</Link>
+            ) : (
+              <div className="mt-4 grid gap-2">
+                <Link href="/inscription" className="btn btn-primary text-base">S&apos;inscrire</Link>
+                <Link href="/connexion" className="btn btn-ghost text-base">Se connecter</Link>
+              </div>
             )}
-            <Link href={siteHref("/creer")} className="btn btn-primary mt-4 text-base">
-              Créer mon logiciel
-            </Link>
           </nav>
         </div>,
         document.body,

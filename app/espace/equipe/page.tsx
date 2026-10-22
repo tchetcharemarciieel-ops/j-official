@@ -26,7 +26,7 @@ export default async function MonEquipe() {
   const uniquePeople = userIds.filter((u) => u !== profile.id).length;
 
   return (
-    <div className="space-y-6">
+    <div className="stagger space-y-6">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end animate-fade-up">
         <div>
           <h1 className="font-display text-3xl font-bold text-slate-900">Mon équipe</h1>
@@ -43,7 +43,7 @@ export default async function MonEquipe() {
               <h2 className="font-semibold text-slate-900">{p.name} <span className="text-sm font-normal text-slate-500">· {list.length} membre(s)</span></h2>
               <Link href={`/projets/${p.id}?onglet=equipe`} className="btn btn-primary !min-h-0 py-2 text-xs">+ Inviter · gérer les rôles</Link>
             </div>
-            <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+            <ul className="stagger-x mt-4 grid gap-2 sm:grid-cols-2">
               {list.map((m) => (
                 <li key={m.user_id} className="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5 transition hover:bg-slate-50">
                   <span className="grid h-9 w-9 place-items-center rounded-full bg-blue-600 text-xs font-bold text-white">{(who[m.user_id]?.full_name || who[m.user_id]?.email || "?").slice(0, 2).toUpperCase()}</span>

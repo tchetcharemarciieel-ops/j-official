@@ -18,7 +18,7 @@ export default async function Abonnement() {
           Le paiement en ligne (Mobile Money, carte) n&apos;est pas encore activé sur la plateforme. Aucun montant ne peut être prélevé. Pour changer de formule, contactez l&apos;équipe MiniSoft RCA : l&apos;administrateur activera votre formule après accord.
         </p>
       )}
-      <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="stagger mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {plans.map((p) => {
           const current = p.id === profile.plan;
           return (

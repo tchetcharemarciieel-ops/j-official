@@ -34,7 +34,7 @@ export default async function Statistiques() {
         <h1 className="font-display text-3xl font-bold text-slate-900">Statistiques</h1>
         <p className="mt-1 text-sm text-slate-600">30 derniers jours. Chiffres calculés sur vos vraies données uniquement.</p>
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+      <div className="stagger grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard label="Visites des logiciels" value={total} icon={BarChart3} hint="ouvertures par vos membres" tone="sky" />
         <StatCard label="Nouvelles fiches" value={newRecords} icon={FilePlus} hint={`${(records ?? []).length.toLocaleString("fr-FR")} au total`} delay={80} />
         <StatCard label="Versions créées" value={(versions ?? []).length} icon={History} hint="depuis la création" tone="amber" delay={160} />
@@ -48,9 +48,9 @@ export default async function Statistiques() {
         ) : (
           <>
             <div className="mt-5 flex h-40 items-end gap-1" role="img" aria-label={`Visites sur 30 jours : ${total} au total`}>
-              {perDay.map((x) => (
+              {perDay.map((x, i) => (
                 <div key={x.d} className="group relative flex h-full flex-1 items-end" title={`${fmtDate(x.d)} : ${x.v} visite(s)`}>
-                  <div className="w-full rounded-t bg-blue-600 transition-all duration-500 group-hover:brightness-125" style={{ height: `${x.v ? Math.max(4, (x.v / max) * 100) : 1}%`, opacity: x.v ? 1 : 0.2 }} />
+                  <div className="grow-up w-full rounded-t bg-blue-600 transition-[filter] group-hover:brightness-125" style={{ animationDelay: `${200 + i * 25}ms`, height: `${x.v ? Math.max(4, (x.v / max) * 100) : 1}%`, opacity: x.v ? 1 : 0.2 }} />
                 </div>
               ))}
             </div>

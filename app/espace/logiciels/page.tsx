@@ -11,7 +11,7 @@ export default async function MesLogiciels({ searchParams }: { searchParams: Pro
   const profile = await requireProfile("/espace/logiciels");
   const [{ statut }, projects] = await Promise.all([searchParams, loadProjects(profile)]);
   return (
-    <div className="space-y-6">
+    <div className="stagger space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end animate-fade-up">
         <div>
           <h1 className="font-display text-3xl font-bold text-slate-900">Mes logiciels</h1>

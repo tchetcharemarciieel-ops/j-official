@@ -23,7 +23,7 @@ function isActive(pathname: string, href: string) {
 
 function Links({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
   return (
-    <ul className="space-y-1">
+    <ul className="stagger-x space-y-1">
       {ESPACE_NAV.map((n) => {
         const active = isActive(pathname, n.href);
         return (
@@ -32,7 +32,7 @@ function Links({ pathname, onNavigate }: { pathname: string; onNavigate?: () => 
               href={n.href}
               onClick={onNavigate}
               aria-current={active ? "page" : undefined}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${active ? "bg-blue-50 font-semibold text-blue-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`}
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200 hover:translate-x-0.5 ${active ? "nav-active bg-blue-50 font-semibold text-blue-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`}
             >
               <n.icon className={`h-4 w-4 shrink-0 ${active ? "text-blue-600" : "text-slate-500"}`} aria-hidden />
               {n.label}

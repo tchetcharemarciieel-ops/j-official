@@ -17,7 +17,7 @@ export default async function Assistance() {
   const p = await requireProfile("/espace/assistance");
   const wa = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "").replace(/\D/g, "");
   return (
-    <div className="space-y-6">
+    <div className="stagger space-y-6">
       <div className="animate-fade-up">
         <h1 className="font-display text-3xl font-bold text-slate-900">Assistance</h1>
         <p className="mt-1 text-sm text-slate-600">Une question, un blocage ? Nous sommes là.</p>

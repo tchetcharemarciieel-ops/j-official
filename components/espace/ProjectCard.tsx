@@ -69,7 +69,7 @@ export function ProjectCard({ project: p, delay = 0, compact = false }: { projec
   const btn = "inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-50";
 
   return (
-    <article className="glass flex h-full flex-col rounded-2xl p-5 transition-colors hover:border-slate-300 animate-fade-up" style={{ animationDelay: `${delay}ms` }}>
+    <article className="glass lift flex h-full flex-col rounded-2xl p-5 animate-fade-up" style={{ animationDelay: `${delay}ms` }}>
       <div className="flex items-start gap-3">
         {p.logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

@@ -20,7 +20,7 @@ export default async function MesDonnees() {
   const count = (pid: string, entity?: string, demo = false) => (records ?? []).filter((r) => r.project_id === pid && r.is_demo === demo && (!entity || r.entity === entity)).length;
 
   return (
-    <div className="space-y-6">
+    <div className="stagger space-y-6">
       <div className="animate-fade-up">
         <h1 className="font-display text-3xl font-bold text-slate-900">Mes données</h1>
         <p className="mt-1 text-sm text-slate-600">Les fiches enregistrées dans vos logiciels. Vos données réelles sont séparées des données de démonstration et ne sont visibles que par vos membres.</p>
@@ -28,7 +28,7 @@ export default async function MesDonnees() {
       {projects.length === 0 ? (
         <div className="glass rounded-2xl p-8 text-center text-sm text-slate-600">Aucun logiciel dont vous êtes propriétaire ou administrateur. <Link href="/creer" className="text-blue-700 underline">Créer un logiciel</Link></div>
       ) : (
-        <div className="space-y-4">
+        <div className="stagger space-y-4">
           {projects.map((p, i) => {
             const last = (backups ?? []).find((b) => b.project_id === p.id);
             const real = count(p.id);

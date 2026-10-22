@@ -7,6 +7,7 @@ import { fmtDateTime } from "@/lib/status";
 import { LOW_CREDIT_THRESHOLD } from "@/lib/config";
 import { StatCard } from "@/components/espace/StatCard";
 import { ProjectCard } from "@/components/espace/ProjectCard";
+import { WordsIn } from "@/components/espace/WordsIn";
 
 export const metadata = { title: "Vue d'ensemble" };
 export const dynamic = "force-dynamic";
@@ -35,7 +36,7 @@ export default async function Overview() {
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end animate-fade-up">
         <div>
           <p className="text-sm text-slate-600">Vue d&apos;ensemble</p>
-          <h1 className="font-display text-3xl font-bold text-slate-900">Bonjour{profile.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}</h1>
+          <h1 className="font-display text-3xl font-bold text-slate-900"><WordsIn text={`Bonjour${profile.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}`} delay={80} /></h1>
           {profile.company_name && <p className="mt-1 text-sm text-slate-600">{profile.company_name}{profile.company_sector ? ` · ${profile.company_sector}` : ""}</p>}
         </div>
         <div className="flex gap-2">
@@ -57,7 +58,7 @@ export default async function Overview() {
         </Link>
       )}
 
-      <section aria-label="Indicateurs" className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+      <section aria-label="Indicateurs" className="stagger grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard label="Logiciels" value={projects.length} icon={SquareStack} hint={`${projects.filter((p) => p.role === "owner").length} créé(s) par vous`} href="/espace/logiciels" delay={0} />
         <StatCard label="En cours" value={inProgress} icon={Clock} hint={failed ? `dont ${failed} à corriger` : "préparation, génération ou test"} href="/espace/logiciels?statut=en-cours" tone="amber" delay={80} />
         <StatCard label="Publiés" value={published} icon={Send} hint="accessibles par leur lien" href="/espace/logiciels?statut=published" tone="green" delay={160} />
@@ -89,10 +90,10 @@ export default async function Overview() {
             {activity.length === 0 ? (
               <p className="mt-4 text-sm text-slate-600">Aucune activité pour l&apos;instant.</p>
             ) : (
-              <ol className="relative mt-4 space-y-4 border-l border-slate-200 pl-5">
+              <ol className="timeline-draw stagger-x relative mt-4 space-y-4 border-l border-slate-200 pl-5">
                 {activity.map((a, i) => (
                   <li key={i} className="relative">
-                    <span className={`absolute -left-[25px] top-1.5 h-2.5 w-2.5 rounded-full ring-4 ring-white ${a.level === "error" ? "bg-red-600" : a.level === "warning" ? "bg-amber-500" : "bg-blue-600"}`} />
+                    <span style={{ animationDelay: `${300 + i * 90}ms` }} className={`dot-pop absolute -left-[25px] top-1.5 h-2.5 w-2.5 rounded-full ring-4 ring-white ${a.level === "error" ? "bg-red-600" : a.level === "warning" ? "bg-amber-500" : "bg-blue-600"}`} />
                     <p className="text-sm text-slate-900">{a.label}</p>
                     <p className="text-xs text-slate-500">{name(a.project_id)} · {fmtDateTime(a.created_at)}</p>
                   </li>

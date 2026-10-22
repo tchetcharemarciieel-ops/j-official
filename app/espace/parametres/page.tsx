@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function Parametres() {
   const p = await requireProfile("/espace/parametres");
   return (
-    <div className="space-y-6">
+    <div className="stagger space-y-6">
       <div className="animate-fade-up">
         <h1 className="font-display text-3xl font-bold text-slate-900">Paramètres</h1>
         <p className="mt-1 text-sm text-slate-600">Profil de votre entreprise et sécurité de votre compte.</p>

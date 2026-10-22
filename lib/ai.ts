@@ -196,13 +196,21 @@ async function call<T extends z.ZodType>(system: string, user: string, schema: T
   return callAnthropic(cfg, system, user, schema, maxTokens, image);
 }
 
+/** Une seconde tentative si le fournisseur est momentanément surchargé (erreurs 500, 502, 503, 504). */
+async function fetchRetry(url: string, init: RequestInit): Promise<Response> {
+  const res = await fetch(url, init);
+  if (![500, 502, 503, 504].includes(res.status)) return res;
+  await new Promise((r) => setTimeout(r, 2000));
+  return fetch(url, init);
+}
+
 /** Appel à l'API Google Gemini (generateContent) avec sortie JSON imposée par un schéma. */
 async function callGemini<T extends z.ZodType>(cfg: AiConfig, system: string, user: string, schema: T, maxTokens: number, image?: ImageInput): Promise<{ data: z.infer<T>; usage: AiUsage }> {
   const { $schema: _ignored, ...jsonSchema } = z.toJSONSchema(schema) as Record<string, unknown>;
   const base = (process.env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com/v1beta").replace(/\/$/, "");
   let res: Response;
   try {
-    res = await fetch(`${base}/models/${encodeURIComponent(cfg.model)}:generateContent`, {
+    res = await fetchRetry(`${base}/models/${encodeURIComponent(cfg.model)}:generateContent`, {
       method: "POST",
       // Clé transmise en en-tête (jamais dans l'URL, qui peut apparaître dans des journaux).
       headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY ?? "" },
@@ -290,7 +298,7 @@ async function callOpenAi<T extends z.ZodType>(cfg: AiConfig, system: string, us
   const reasoning = /^(gpt-5|o\d)/.test(cfg.model) ? { reasoning_effort: process.env.AI_REASONING_EFFORT || "low" } : {};
   let res: Response;
   try {
-    res = await fetch(`${(process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "")}/chat/completions`, {
+    res = await fetchRetry(`${(process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
       signal: AbortSignal.timeout(TIMEOUT_MS),

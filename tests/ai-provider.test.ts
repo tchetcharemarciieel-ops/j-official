@@ -144,4 +144,18 @@ describe("fournisseur IA", () => {
     const { aiDiagnose } = await import("@/lib/ai");
     await expect(aiDiagnose({ problem: "Gérer mon stock" })).rejects.toThrow("clé API Google Gemini est refusée");
   });
+
+  it("réessaie une fois quand le fournisseur est surchargé", async () => {
+    process.env.GEMINI_API_KEY = KEY;
+    const ok = { candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify(validDiagnosis) }] } }] };
+    const fn = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { status: "UNAVAILABLE" } }), { status: 503 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(ok), { status: 200 }));
+    vi.stubGlobal("fetch", fn);
+    const { aiDiagnose } = await import("@/lib/ai");
+    const { diagnosis } = await aiDiagnose({ problem: "Gérer mon stock" });
+    expect(fn).toHaveBeenCalledTimes(2);
+    expect(diagnosis.source).toBe("ai");
+  });
 });

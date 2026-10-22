@@ -78,6 +78,11 @@ function keyFor(p: ProviderName): string | undefined {
   return runtime?.keys[p] || process.env[KEY_VARS[p]]?.trim() || undefined;
 }
 
+/** Clé utilisable côté serveur (liste des modèles) ; jamais renvoyée au navigateur. */
+export function aiProviderKey(p: "openai" | "anthropic" | "gemini"): string | undefined {
+  return keyFor(p);
+}
+
 /** Origine de la clé utilisée, pour l'affichage dans l'administration (jamais la clé elle-même). */
 export function aiKeySource(p: "openai" | "anthropic" | "gemini"): "admin" | "env" | null {
   if (runtime?.keys[p]) return "admin";

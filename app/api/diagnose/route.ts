@@ -5,7 +5,7 @@ import { HttpError } from "@/lib/access";
 import { getProfile } from "@/lib/auth";
 import { CREDIT_COSTS } from "@/lib/config";
 import { withCredits } from "@/lib/credits";
-import { aiConfig, aiDiagnose, type AiUsage } from "@/lib/ai";
+import { aiConfig, aiDiagnose, refreshAiSettings, type AiUsage } from "@/lib/ai";
 import { burstLimited, checkAiQuota } from "@/lib/ai-quota";
 import { diagnoseWithRules, type Diagnosis, type DiagnoseResponse } from "@/lib/generator";
 
@@ -38,6 +38,7 @@ export const POST = route(async (req) => {
   if (burstLimited(`diagnose:${ip}`) || burstLimited(`diagnose:${profile.id}`)) throw new HttpError(429, "Trop d'analyses en peu de temps. Patientez quelques minutes avant de réessayer.");
   const input = body.parse(await readJson(req, 6_000_000));
 
+  await refreshAiSettings();
   const cfg = aiConfig();
   let fallbackReason: string | null = null;
   if (!cfg) fallbackReason = "Aucun fournisseur IA n'est configuré sur le serveur.";

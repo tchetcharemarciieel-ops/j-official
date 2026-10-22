@@ -1,6 +1,6 @@
 import "server-only";
 import { adminClient } from "./supabase/admin";
-import { aiAvailable, AiError, type AiUsage } from "./ai";
+import { aiAvailable, AiError, refreshAiSettings, type AiUsage } from "./ai";
 import { audit } from "./audit";
 import { HttpError } from "./access";
 import { notifyUser } from "./notify";
@@ -14,6 +14,7 @@ export async function withCredits<T>(
   run: (engine: "ai" | "rules") => Promise<{ result: T; usage?: AiUsage }>,
 ): Promise<{ result: T; engine: "ai" | "rules"; creditsUsed: number }> {
   const db = adminClient();
+  await refreshAiSettings();
   const engine = opts.engine ?? (aiAvailable() ? "ai" : "rules");
   const cost = engine === "ai" ? opts.credits : 0;
   if (cost > 0) {

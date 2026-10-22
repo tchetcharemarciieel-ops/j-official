@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { adminClient } from "@/lib/supabase/admin";
-import { aiConfig } from "@/lib/ai";
+import { aiConfig, refreshAiSettings } from "@/lib/ai";
 import { activePaymentProvider } from "@/lib/payments";
 import { monthlySums, sinceDays, weeklyCounts } from "@/lib/admin-stats";
 import { fmtDateTime } from "@/lib/status";
@@ -28,6 +28,7 @@ export default async function Overview() {
   const provider = activePaymentProvider();
   const succeeded = pays.filter((p) => p.status === "succeeded");
   const revenue = succeeded.reduce((a, p) => a + p.amount_xaf, 0);
+  await refreshAiSettings();
   const cfg = aiConfig();
 
   return (

@@ -1,5 +1,5 @@
 import { requireProfile } from "@/lib/auth";
-import { aiConfig } from "@/lib/ai";
+import { aiConfig, refreshAiSettings } from "@/lib/ai";
 import { CREDIT_COSTS } from "@/lib/config";
 import { SiteHeader } from "@/components/SiteHeader";
 import { CreateWizard } from "./CreateWizard";
@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function Page({ searchParams }: { searchParams: Promise<{ probleme?: string }> }) {
   const { probleme } = await searchParams;
   const profile = await requireProfile(`/creer${probleme ? `?probleme=${encodeURIComponent(probleme)}` : ""}`);
+  await refreshAiSettings();
   const cfg = aiConfig();
   const ai = cfg ? { label: cfg.label, model: cfg.model } : null;
   return (

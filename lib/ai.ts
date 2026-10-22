@@ -5,6 +5,8 @@ import { z } from "zod";
 import { MODULES } from "./modules";
 import { SECTORS, diagnosisSchema, type DiagnoseInput, type Diagnosis } from "./generator";
 import { FIELD_TYPES, ROLES, WIDGET_TYPES, appSpecSchema, toKey, type AppSpec, type Entity } from "./spec";
+import { getSetting } from "./settings";
+import { decryptSecret } from "./crypto";
 
 /**
  * Intégration IA côté serveur uniquement : la clé n'est jamais envoyée au navigateur.
@@ -35,13 +37,63 @@ const TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS || 110_000);
 export type AiConfig = { provider: ProviderName; label: string; model: string; priceIn: number; priceOut: number };
 
 /**
+ * Réglages définis dans l'administration (table platform_settings, clé « ai ») : activation,
+ * fournisseur, modèle, quotas et clés chiffrées. Ils priment sur les variables d'environnement.
+ */
+type Runtime = {
+  enabled: boolean;
+  provider: string;
+  model: string;
+  fallback: string;
+  keys: Partial<Record<ProviderName, string>>;
+  limits: { userHourly: number; userDaily: number; globalDaily: number };
+  loadedAt: number;
+};
+let runtime: Runtime | null = null;
+
+export async function refreshAiSettings(force = false): Promise<void> {
+  if (!force && runtime && Date.now() - runtime.loadedAt < 30_000) return;
+  const s = await getSetting("ai");
+  const keys: Partial<Record<ProviderName, string>> = {};
+  for (const [p, v] of Object.entries(s.keys)) {
+    const plain = v ? decryptSecret(v.enc) : null;
+    if (plain) keys[p as ProviderName] = plain;
+  }
+  runtime = { enabled: s.enabled, provider: s.provider, model: s.model, fallback: s.fallbackModels, keys, limits: { userHourly: s.userHourly, userDaily: s.userDaily, globalDaily: s.globalDaily }, loadedAt: Date.now() };
+}
+
+/** Quotas par utilisateur et globaux (réglages de l'administration, sinon variables d'environnement). */
+export function aiLimits() {
+  return (
+    runtime?.limits ?? {
+      userHourly: Number(process.env.AI_USER_HOURLY_LIMIT || 10),
+      userDaily: Number(process.env.AI_USER_DAILY_LIMIT || 30),
+      globalDaily: Number(process.env.AI_GLOBAL_DAILY_LIMIT || 300),
+    }
+  );
+}
+
+/** Clé d'un fournisseur : enregistrée (chiffrée) dans l'administration, sinon variable d'environnement. */
+function keyFor(p: ProviderName): string | undefined {
+  return runtime?.keys[p] || process.env[KEY_VARS[p]]?.trim() || undefined;
+}
+
+/** Origine de la clé utilisée, pour l'affichage dans l'administration (jamais la clé elle-même). */
+export function aiKeySource(p: "openai" | "anthropic" | "gemini"): "admin" | "env" | null {
+  if (runtime?.keys[p]) return "admin";
+  return process.env[KEY_VARS[p]]?.trim() ? "env" : null;
+}
+
+/**
  * Fournisseur choisi par variables d'environnement serveur :
  * AI_PROVIDER = openai | anthropic | gemini (sinon : celui dont la clé est présente),
  * OPENAI_API_KEY / ANTHROPIC_API_KEY / GEMINI_API_KEY, AI_MODEL facultatif.
  */
 export function aiConfig(): AiConfig | null {
-  const wanted = (process.env.AI_PROVIDER || "").trim().toLowerCase();
-  const keyOf = (p: ProviderName) => process.env[KEY_VARS[p]]?.trim();
+  if (runtime && !runtime.enabled) return null;
+  const chosen = runtime && runtime.provider !== "auto" ? runtime.provider : "";
+  const wanted = (chosen || process.env.AI_PROVIDER || "").trim().toLowerCase();
+  const keyOf = keyFor;
   let provider: ProviderName | null = null;
   if ((PROVIDERS as string[]).includes(wanted)) provider = keyOf(wanted as ProviderName) ? (wanted as ProviderName) : null;
   else if (!wanted) provider = PROVIDERS.find((p) => keyOf(p)) ?? null;
@@ -51,7 +103,7 @@ export function aiConfig(): AiConfig | null {
   return {
     provider,
     label: d.label,
-    model: process.env.AI_MODEL?.trim() || (provider === "compat" && process.env.AI_COMPAT_MODEL?.trim()) || d.model,
+    model: (chosen && runtime?.model) || process.env.AI_MODEL?.trim() || (provider === "compat" && process.env.AI_COMPAT_MODEL?.trim()) || d.model,
     priceIn: num(process.env.AI_PRICE_INPUT_USD, d.priceIn),
     priceOut: num(process.env.AI_PRICE_OUTPUT_USD, d.priceOut),
   };
@@ -66,7 +118,7 @@ export function aiConfig(): AiConfig | null {
 export function aiChain(): AiConfig[] {
   const primary = aiConfig();
   if (!primary) return [];
-  const raw = process.env.AI_FALLBACK_MODELS?.trim();
+  const raw = runtime?.fallback || process.env.AI_FALLBACK_MODELS?.trim();
   let entries: string[];
   if (raw && /^(aucun|none)$/i.test(raw)) entries = [];
   else if (raw) entries = raw.split(",").map((x) => x.trim()).filter(Boolean);
@@ -79,7 +131,7 @@ export function aiChain(): AiConfig[] {
     const [p, ...rest] = e.includes(":") ? e.split(":") : [primary.provider, e];
     const provider = p as ProviderName;
     const model = rest.join(":");
-    if (!PROVIDERS.includes(provider) || !model || !process.env[KEY_VARS[provider]]?.trim()) continue;
+    if (!PROVIDERS.includes(provider) || !model || !keyFor(provider)) continue;
     if (provider === "compat" && !process.env.AI_COMPAT_BASE_URL) continue;
     if (chain.some((c) => c.provider === provider && c.model === model)) continue;
     const d = DEFAULTS[provider];
@@ -92,10 +144,11 @@ export function aiAvailable(): boolean {
   return aiConfig() !== null;
 }
 
-let client: Anthropic | null = null;
+let client: { key: string; sdk: Anthropic } | null = null;
 function getAnthropic(): Anthropic {
-  if (!client) client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: TIMEOUT_MS, maxRetries: 1 });
-  return client;
+  const key = keyFor("anthropic") ?? "";
+  if (!client || client.key !== key) client = { key, sdk: new Anthropic({ apiKey: key, timeout: TIMEOUT_MS, maxRetries: 1 }) };
+  return client.sdk;
 }
 
 export type AiUsage = { inputTokens: number; outputTokens: number; costXaf: number; model: string; provider?: string; fallback?: boolean };
@@ -232,6 +285,7 @@ function usageOf(cfg: AiConfig, model: string, inputTokens: number, outputTokens
 }
 
 async function call<T extends z.ZodType>(system: string, user: string, schema: T, maxTokens = 16000, image?: ImageInput): Promise<{ data: z.infer<T>; usage: AiUsage }> {
+  await refreshAiSettings();
   const chain = aiChain();
   if (!chain.length) throw new AiError("Aucun fournisseur IA n'est configuré sur le serveur.");
   const t0 = Date.now();
@@ -275,7 +329,7 @@ async function callGemini<T extends z.ZodType>(cfg: AiConfig, system: string, us
     res = await fetchRetry(`${base}/models/${encodeURIComponent(cfg.model)}:generateContent`, {
       method: "POST",
       // Clé transmise en en-tête (jamais dans l'URL, qui peut apparaître dans des journaux).
-      headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY ?? "" },
+      headers: { "content-type": "application/json", "x-goog-api-key": keyFor("gemini") ?? "" },
       signal: AbortSignal.timeout(TIMEOUT_MS),
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
@@ -360,7 +414,7 @@ async function callOpenAi<T extends z.ZodType>(cfg: AiConfig, system: string, us
   const compat = cfg.provider === "compat";
   const reasoning = !compat && /^(gpt-5|o\d)/.test(cfg.model) ? { reasoning_effort: process.env.AI_REASONING_EFFORT || "low" } : {};
   const base = compat ? process.env.AI_COMPAT_BASE_URL ?? "" : process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
-  const key = compat ? process.env.AI_COMPAT_API_KEY : process.env.OPENAI_API_KEY;
+  const key = keyFor(compat ? "compat" : "openai");
   // Services compatibles (FreeLLMAPI…) : le format JSON simple est le plus largement accepté ;
   // le schéma est alors donné dans les consignes et la réponse est vérifiée ici.
   const format = compat

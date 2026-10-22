@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
 import { adminClient } from "@/lib/supabase/admin";
 import { draftSpec, publishedSpec, type ProjectRow } from "@/lib/access";
-import { aiAvailable } from "@/lib/ai";
+import { aiAvailable, refreshAiSettings } from "@/lib/ai";
 import { CREDIT_COSTS, SITE_URL } from "@/lib/config";
 import type { Role } from "@/lib/spec";
 import { AppShell } from "@/components/AppShell";
@@ -13,6 +13,7 @@ export const metadata = { title: "Mon logiciel" };
 
 export default async function ProjectPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ onglet?: string }> }) {
   const { id } = await params;
+  await refreshAiSettings();
   const { onglet } = await searchParams;
   const profile = await requireProfile(`/projets/${id}`);
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();

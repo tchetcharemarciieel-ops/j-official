@@ -1,16 +1,12 @@
 import "server-only";
 import { adminClient } from "./supabase/admin";
+import { aiLimits, refreshAiSettings } from "./ai";
 
 /**
  * Limites d'appels IA pour éviter les abus et maîtriser les coûts.
  * Elles reposent sur le journal ai_usage (persistant, partagé entre redémarrages).
  * Quand une limite est atteinte, l'analyse passe par le système de secours.
  */
-const LIMITS = {
-  userHourly: Number(process.env.AI_USER_HOURLY_LIMIT || 10),
-  userDaily: Number(process.env.AI_USER_DAILY_LIMIT || 30),
-  globalDaily: Number(process.env.AI_GLOBAL_DAILY_LIMIT || 300),
-};
 
 async function countAiCalls(sinceMs: number, userId?: string, max = 1000): Promise<number> {
   let q = adminClient()
@@ -26,6 +22,8 @@ async function countAiCalls(sinceMs: number, userId?: string, max = 1000): Promi
 }
 
 export async function checkAiQuota(userId: string): Promise<{ ok: true } | { ok: false; reason: string }> {
+  await refreshAiSettings();
+  const LIMITS = aiLimits();
   const HOUR = 3600_000;
   if ((await countAiCalls(HOUR, userId, LIMITS.userHourly)) >= LIMITS.userHourly)
     return { ok: false, reason: `Limite de ${LIMITS.userHourly} analyses IA par heure atteinte pour votre compte.` };

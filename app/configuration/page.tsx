@@ -1,7 +1,7 @@
 import { CircleCheck, CircleX } from "lucide-react";
 import { AuthShell } from "@/components/AuthShell";
 import { serverConfigured, supabaseConfigured } from "@/lib/config";
-import { aiConfig } from "@/lib/ai";
+import { aiConfig, refreshAiSettings } from "@/lib/ai";
 
 export const metadata = { title: "Configuration requise" };
 export const dynamic = "force-dynamic";
@@ -19,7 +19,8 @@ function Row({ ok, label, help }: { ok: boolean; label: string; help: string }) 
 }
 
 /** Page honnête : indique ce qui manque au lieu de simuler un fonctionnement. */
-export default function Page() {
+export default async function Page() {
+  await refreshAiSettings();
   return (
     <AuthShell title="Configuration de la plateforme" subtitle="État des services nécessaires au fonctionnement de MiniSoft RCA.">
       <ul className="space-y-4 text-sm">

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { assertSameOrigin, route } from "@/lib/api";
 import { HttpError } from "@/lib/access";
-import { getProfile } from "@/lib/auth";
+import { assertAdminApi } from "@/lib/admin";
 import { adminClient } from "@/lib/supabase/admin";
 import { aiConfig, aiPing, AiError } from "@/lib/ai";
 import { burstLimited } from "@/lib/ai-quota";
@@ -9,8 +9,7 @@ import { burstLimited } from "@/lib/ai-quota";
 /** Test réel du fournisseur IA (administrateurs) : un petit appel, journalisé dans ai_usage. */
 export const POST = route(async (req) => {
   assertSameOrigin(req);
-  const admin = await getProfile();
-  if (!admin?.is_admin) throw new HttpError(404, "Introuvable.");
+  const admin = await assertAdminApi();
   if (burstLimited(`ai-test:${admin.id}`, 5)) throw new HttpError(429, "Trop de tests rapprochés. Patientez quelques minutes.");
   const cfg = aiConfig();
   if (!cfg) return NextResponse.json({ ok: false, message: "Aucun fournisseur IA n'est configuré (AI_PROVIDER et clé API absents du serveur)." });

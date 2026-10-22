@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { assertSameOrigin, readJson, route } from "@/lib/api";
 import { HttpError } from "@/lib/access";
-import { getProfile } from "@/lib/auth";
+import { assertAdminApi } from "@/lib/admin";
 import { adminClient } from "@/lib/supabase/admin";
 import { audit } from "@/lib/audit";
 
@@ -10,8 +10,7 @@ type Ctx = { params: Promise<{ userId: string }> };
 
 export const PATCH = route(async (req, { params }: Ctx) => {
   assertSameOrigin(req);
-  const admin = await getProfile();
-  if (!admin?.is_admin) throw new HttpError(404, "Introuvable.");
+  const admin = await assertAdminApi();
   const { userId } = await params;
   const input = z
     .object({

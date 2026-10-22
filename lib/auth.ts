@@ -35,9 +35,10 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
   if (!user) return null;
   const { data } = await adminClient().from("profiles").select("id,email,full_name,plan,credits,is_admin,suspended,company_name,company_logo_url,company_sector,company_phone,company_email,company_address").eq("id", user.id).maybeSingle();
   if (!data) return null;
-  // Les administrateurs sont désignés par variable d'environnement (jamais depuis le navigateur).
+  // Seuls les comptes explicitement listés dans ADMIN_EMAILS (serveur) administrent la plateforme ;
+  // l'ancien indicateur is_admin de la base n'accorde plus aucun droit.
   const admins = (process.env.ADMIN_EMAILS || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-  return { ...(data as Profile), is_admin: Boolean(data.is_admin) || admins.includes(String(data.email).toLowerCase()) };
+  return { ...(data as Profile), is_admin: admins.includes(String(data.email).toLowerCase()) };
 });
 
 export async function requireProfile(next = "/espace"): Promise<Profile> {
@@ -48,8 +49,4 @@ export async function requireProfile(next = "/espace"): Promise<Profile> {
   return profile;
 }
 
-export async function requireAdmin(): Promise<Profile> {
-  const profile = await requireProfile("/admin");
-  if (!profile.is_admin) redirect("/espace");
-  return profile;
-}
+

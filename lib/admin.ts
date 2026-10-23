@@ -34,7 +34,11 @@ export async function mfaState(): Promise<MfaState> {
 /** Garde des pages /admin : 404 pour tout autre compte, puis étape de vérification renforcée. */
 export async function requirePlatformAdmin(): Promise<Profile> {
   const profile = await requireProfile("/admin");
-  if (!isPlatformOwner(profile)) notFound();
+  if (!isPlatformOwner(profile)) {
+    // Tentative d'accès d'un compte connecté non autorisé : journalisée, puis « page introuvable ».
+    await audit("admin.access_denied", { actorId: profile.id, level: "warning", details: { email: profile.email } });
+    notFound();
+  }
   const mfa = await mfaState();
   if (mfa.current !== "aal2") redirect(mfa.next === "aal2" ? "/admin/verification" : "/admin/securite");
   return profile;

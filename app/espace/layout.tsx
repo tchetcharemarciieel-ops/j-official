@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
 import { adminClient } from "@/lib/supabase/admin";
 import { Logo } from "@/components/Logo";
-import { EspaceNav } from "@/components/espace/EspaceNav";
+import { EspaceBottomNav, EspaceNav } from "@/components/espace/EspaceNav";
 import { NotificationBell } from "@/components/espace/NotificationBell";
 
 /** Mise en page de l'espace client : barre du haut, menu latéral et contenu. */
@@ -34,10 +34,11 @@ export default async function EspaceLayout({ children }: { children: React.React
       </header>
       <div className="flex">
         <EspaceNavSidebar plan={plan?.name ?? profile.plan} credits={profile.credits} />
-        <main id="contenu" className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+        <main id="contenu" className="min-w-0 flex-1 px-4 pb-28 pt-6 sm:px-6 lg:px-10 lg:py-8">
           <div className="mx-auto max-w-6xl">{children}</div>
         </main>
       </div>
+      <EspaceBottomNav />
     </div>
   );
 }

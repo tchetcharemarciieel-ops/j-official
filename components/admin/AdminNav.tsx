@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { SlidingPill, useSlidingIndicator } from "@/components/ui/SlidingIndicator";
 import { Bot, Building2, CreditCard, LayoutDashboard, LayoutTemplate, LifeBuoy, Menu, Settings, ShieldCheck, SquareStack, Users, X, type LucideIcon } from "lucide-react";
 
 export const ADMIN_NAV: { href: string; label: string; icon: LucideIcon; badge?: "support" }[] = [
@@ -20,14 +21,17 @@ export const ADMIN_NAV: { href: string; label: string; icon: LucideIcon; badge?:
 ];
 
 function Links({ pathname, pending, onNavigate }: { pathname: string; pending: number; onNavigate?: () => void }) {
+  const active = ADMIN_NAV.find((n) => (n.href === "/admin" ? pathname === "/admin" : pathname.startsWith(n.href)))?.href;
+  const { ref, box, animate } = useSlidingIndicator<HTMLUListElement>(active);
   return (
-    <ul className="space-y-0.5">
+    <ul ref={ref} className="relative space-y-0.5">
+      <SlidingPill box={box} animate={animate} className="rounded-lg bg-slate-900" />
       {ADMIN_NAV.map((n) => {
-        const active = n.href === "/admin" ? pathname === "/admin" : pathname.startsWith(n.href);
+        const on = n.href === active;
         return (
           <li key={n.href}>
-            <Link href={n.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${active ? "bg-slate-900 font-medium text-white" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"}`}>
-              <n.icon className="h-4 w-4 shrink-0" aria-hidden />
+            <Link href={n.href} data-tab={n.href} onClick={onNavigate} aria-current={on ? "page" : undefined} className={`relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors duration-300 ${on ? "font-medium text-white" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"}`}>
+              <n.icon key={on ? "on" : "off"} className={`h-4 w-4 shrink-0 ${on ? "tab-pop" : ""}`} aria-hidden />
               <span className="flex-1">{n.label}</span>
               {n.badge === "support" && pending > 0 && <span className="rounded-full bg-red-600 px-1.5 text-[11px] font-semibold text-white">{pending}</span>}
             </Link>

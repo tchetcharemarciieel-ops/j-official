@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { SlidingPill, useSlidingIndicator } from "@/components/ui/SlidingIndicator";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowLeft, Database, Eye, FlaskConical, History, MessageSquare, Plug, Send, Settings, Users, type LucideIcon } from "lucide-react";
@@ -70,6 +71,7 @@ export function Workspace({ data, initialTab }: { data: WorkspaceData; initialTa
   const router = useRouter();
   const [tab, setTab] = useState<TabId>(() => (TABS.some(([id]) => id === initialTab) ? (initialTab as TabId) : "apercu"));
   const refresh = () => router.refresh();
+  const { ref: tabsRef, box: tabBox, animate: tabAnimate } = useSlidingIndicator<HTMLDivElement>(tab);
   const st = STATUS[data.project.status] ?? STATUS.preparation!;
   const latest = data.versions[0];
 
@@ -112,10 +114,11 @@ export function Workspace({ data, initialTab }: { data: WorkspaceData; initialTa
       )}
 
       <div className="mt-6 overflow-x-auto">
-        <div role="tablist" aria-label="Sections du projet" className="flex min-w-max gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1">
+        <div ref={tabsRef} role="tablist" aria-label="Sections du projet" className="relative flex min-w-max gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1">
+          <SlidingPill box={tabBox} animate={tabAnimate} className="rounded-xl bg-white shadow-sm ring-1 ring-slate-200" />
           {TABS.map(([id, label, Icon]) => (
-            <button key={id} role="tab" aria-selected={tab === id} aria-controls={`panel-${id}`} id={`tab-${id}`} onClick={() => setTab(id)} className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm transition ${tab === id ? "bg-blue-100 font-medium text-slate-900" : "text-slate-600 hover:text-slate-900"}`}>
-              <Icon className={`h-4 w-4 ${tab === id ? "text-blue-600" : "text-slate-500"}`} aria-hidden />
+            <button key={id} data-tab={id} role="tab" aria-selected={tab === id} aria-controls={`panel-${id}`} id={`tab-${id}`} onClick={() => setTab(id)} className={`tab-press relative inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm transition-colors duration-300 ${tab === id ? "font-medium text-slate-900" : "text-slate-600 hover:text-slate-900"}`}>
+              <Icon key={tab === id ? "on" : "off"} className={`h-4 w-4 ${tab === id ? "tab-pop text-blue-600" : "text-slate-500"}`} aria-hidden />
               {label}
             </button>
           ))}

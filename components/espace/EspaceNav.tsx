@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { SlidingPill, useSlidingIndicator } from "@/components/ui/SlidingIndicator";
 import { BarChart3, Database, LayoutDashboard, LifeBuoy, Menu, Plus, Settings, SquareStack, Users, X, type LucideIcon } from "lucide-react";
 
 export const ESPACE_NAV: { href: string; label: string; icon: LucideIcon }[] = [
@@ -22,25 +23,67 @@ function isActive(pathname: string, href: string) {
 }
 
 function Links({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+  const active = ESPACE_NAV.find((n) => isActive(pathname, n.href))?.href;
+  const { ref, box, animate } = useSlidingIndicator<HTMLUListElement>(active);
   return (
-    <ul className="stagger-x space-y-1">
+    <ul ref={ref} className="stagger-x relative space-y-1">
+      <SlidingPill box={box} animate={animate} className="rounded-xl bg-blue-50" />
       {ESPACE_NAV.map((n) => {
-        const active = isActive(pathname, n.href);
+        const on = n.href === active;
         return (
           <li key={n.href}>
             <Link
               href={n.href}
+              data-tab={n.href}
               onClick={onNavigate}
-              aria-current={active ? "page" : undefined}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200 hover:translate-x-0.5 ${active ? "nav-active bg-blue-50 font-semibold text-blue-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`}
+              aria-current={on ? "page" : undefined}
+              className={`relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors duration-200 ${on ? "font-semibold text-blue-700" : "text-slate-600 hover:bg-slate-50/70 hover:text-slate-900"}`}
             >
-              <n.icon className={`h-4 w-4 shrink-0 ${active ? "text-blue-600" : "text-slate-500"}`} aria-hidden />
+              <n.icon key={on ? "on" : "off"} className={`h-4 w-4 shrink-0 ${on ? "tab-pop text-blue-600" : "text-slate-500"}`} aria-hidden />
               {n.label}
             </Link>
           </li>
         );
       })}
     </ul>
+  );
+}
+
+/** Raccourcis du bas d'écran sur téléphone : la pastille glisse vers l'onglet touché. */
+const BOTTOM_NAV: { href: string; label: string; icon: LucideIcon }[] = [
+  { href: "/espace", label: "Accueil", icon: LayoutDashboard },
+  { href: "/espace/logiciels", label: "Logiciels", icon: SquareStack },
+  { href: "/creer", label: "Créer", icon: Plus },
+  { href: "/espace/donnees", label: "Données", icon: Database },
+  { href: "/espace/assistance", label: "Aide", icon: LifeBuoy },
+];
+
+export function EspaceBottomNav() {
+  const pathname = usePathname();
+  const active = BOTTOM_NAV.find((n) => isActive(pathname, n.href))?.href;
+  const { ref, box, animate } = useSlidingIndicator<HTMLUListElement>(active);
+  return (
+    <nav aria-label="Raccourcis de l'espace client" className="no-print fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:hidden">
+      <ul ref={ref} className="relative mx-auto flex max-w-md items-stretch rounded-2xl border border-slate-200 bg-white/95 p-1.5 shadow-[0_8px_30px_rgba(15,23,42,0.12)] backdrop-blur">
+        <SlidingPill box={box} animate={animate} className="rounded-xl bg-blue-600 shadow-md shadow-blue-600/30" style={{ background: "var(--brand, #2563eb)" }} />
+        {BOTTOM_NAV.map((n) => {
+          const on = n.href === active;
+          return (
+            <li key={n.href} className="flex-1">
+              <Link
+                href={n.href}
+                data-tab={n.href}
+                aria-current={on ? "page" : undefined}
+                className={`tab-press relative flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-[11px] transition-colors duration-300 ${on ? "font-semibold text-white" : "text-slate-500"}`}
+              >
+                <n.icon key={on ? "on" : "off"} className={`h-5 w-5 ${on ? "tab-pop" : ""}`} aria-hidden />
+                {n.label}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
   );
 }
 

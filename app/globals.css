@@ -336,3 +336,28 @@ select.input option {
   .lift:hover { transform: none; }
   .lift::after { display: none; }
 }
+
+/* Barres d'onglets : indicateur qui glisse avec un léger rebond, icône qui « saute » à l'activation */
+.tab-slide {
+  transition:
+    transform 0.5s cubic-bezier(0.34, 1.36, 0.64, 1),
+    width 0.5s cubic-bezier(0.34, 1.36, 0.64, 1),
+    height 0.5s cubic-bezier(0.34, 1.36, 0.64, 1);
+  will-change: transform, width;
+}
+.tab-pop { animation: tab-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+@keyframes tab-pop {
+  0% { transform: scale(0.6); }
+  60% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+.tab-press { transition: transform 0.15s ease; }
+.tab-press:active { transform: scale(0.92); }
+.tab-raise { transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.tab-label { transition: opacity 0.25s ease, transform 0.25s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-slide, .tab-raise, .tab-label { transition: none; }
+  .tab-pop { animation: none; }
+  .tab-press:active { transform: none; }
+}

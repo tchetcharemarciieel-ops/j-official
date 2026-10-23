@@ -14,6 +14,7 @@ import { EntityView } from "./EntityView";
 import { usePrefs } from "./usePrefs";
 import { WorkspaceView } from "./workspace/WorkspaceView";
 import { effectiveWorkspace } from "@/lib/workspace";
+import { SlidingNotch, SlidingPill, useSlidingIndicator } from "@/components/ui/SlidingIndicator";
 
 type Answer = { answer: string; facts: string[]; period: string; basis: string; missing: string[]; mode: string; engine: string };
 
@@ -53,15 +54,24 @@ export function AppRuntime({ projectId, spec, mode, role, compact = false }: { p
   const rowsFor = (key: string): Row[] => (data.records[key] ?? []).map((r) => ({ id: r.id, data: r.data, created_at: r.created_at }));
   const style = useMemo(() => ({ "--app-primary": spec.theme.primary, "--app-accent": spec.theme.accent }) as React.CSSProperties, [spec.theme]);
 
+  const { ref: navRef, box: navBox, animate: navAnimate } = useSlidingIndicator<HTMLElement>(page);
   const nav = (
-    <nav aria-label={`Menu de ${spec.name}`} className="space-y-1">
-      {ws.enabled && <NavItem active={page === "__workspace"} onClick={() => go("__workspace")} icon={Building2} label="Espace de travail" />}
-      <NavItem active={page === "__dashboard"} onClick={() => go("__dashboard")} icon={LayoutDashboard} label="Tableau de bord" />
+    <nav ref={navRef} aria-label={`Menu de ${spec.name}`} className="relative space-y-1">
+      <SlidingPill box={navBox} animate={navAnimate} className="rounded-xl shadow-sm" style={{ background: "var(--app-primary)" }} />
+      {ws.enabled && <NavItem id="__workspace" active={page === "__workspace"} onClick={() => go("__workspace")} icon={Building2} label="Espace de travail" />}
+      <NavItem id="__dashboard" active={page === "__dashboard"} onClick={() => go("__dashboard")} icon={LayoutDashboard} label="Tableau de bord" />
       {entities.map((e) => (
-        <NavItem key={e.key} active={page === e.key} onClick={() => go(e.key)} icon={Table2} label={e.labelPlural} count={data.records[e.key]?.length} />
+        <NavItem key={e.key} id={e.key} active={page === e.key} onClick={() => go(e.key)} icon={Table2} label={e.labelPlural} count={data.records[e.key]?.length} />
       ))}
     </nav>
   );
+
+  // Barre du bas sur téléphone : accès direct aux premiers modules, le reste dans « Menu ».
+  const tabs: { id: string; label: string; icon: LucideIcon }[] = [
+    ...(ws.enabled ? [{ id: "__workspace", label: "Espace", icon: Building2 }] : []),
+    { id: "__dashboard", label: "Accueil", icon: LayoutDashboard },
+    ...entities.map((e) => ({ id: e.key, label: e.labelPlural, icon: Table2 })),
+  ].slice(0, 4);
 
   return (
     <div style={style} className={`flex bg-slate-50 text-slate-900 ${compact ? "min-h-[640px] rounded-2xl" : "min-h-dvh"}`}>
@@ -127,8 +137,40 @@ export function AppRuntime({ projectId, spec, mode, role, compact = false }: { p
             </div>
           )}
         </main>
+        <BottomTabs tabs={tabs} page={page} onGo={go} menuOpen={menuOpen} onMenu={() => setMenuOpen((o) => !o)} />
       </div>
     </div>
+  );
+}
+
+/** Barre d'onglets à encoche : le disque glisse vers l'onglet touché et l'icône s'y loge. */
+function BottomTabs({ tabs, page, onGo, menuOpen, onMenu }: { tabs: { id: string; label: string; icon: LucideIcon }[]; page: string; onGo: (id: string) => void; menuOpen: boolean; onMenu: () => void }) {
+  const active = menuOpen ? "__menu" : tabs.some((t) => t.id === page) ? page : "__menu";
+  const { ref, box, animate } = useSlidingIndicator<HTMLUListElement>(active);
+  const items = [...tabs, { id: "__menu", label: "Menu", icon: Menu }];
+  return (
+    <nav aria-label="Navigation rapide" className="no-print sticky bottom-0 z-30 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-7 lg:hidden">
+      <ul ref={ref} className="relative mx-auto flex max-w-md rounded-2xl bg-slate-900 px-1 shadow-xl shadow-slate-900/20">
+        <SlidingNotch box={box} animate={animate} color="var(--app-primary)" ring="#f8fafc" />
+        {items.map((t) => {
+          const on = t.id === active;
+          return (
+            <li key={t.id} data-tab={t.id} className="min-w-0 flex-1">
+              <button
+                type="button"
+                onClick={() => (t.id === "__menu" ? onMenu() : onGo(t.id))}
+                aria-current={on && t.id !== "__menu" ? "page" : undefined}
+                aria-expanded={t.id === "__menu" ? menuOpen : undefined}
+                className="tab-press relative flex w-full flex-col items-center gap-1 px-1 pb-2 pt-3 text-[11px]"
+              >
+                <t.icon className={`tab-raise h-5 w-5 ${on ? "-translate-y-[22px] text-white" : "text-slate-400"}`} aria-hidden />
+                <span className={`tab-label block max-w-full truncate ${on ? "-translate-y-2 font-semibold text-white" : "text-slate-400"}`}>{t.label}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
   );
 }
 
@@ -148,10 +190,10 @@ function Brand({ spec, small }: { spec: AppSpec; small?: boolean }) {
   );
 }
 
-function NavItem({ active, onClick, icon: Icon, label, count }: { active: boolean; onClick: () => void; icon: LucideIcon; label: string; count?: number }) {
+function NavItem({ id, active, onClick, icon: Icon, label, count }: { id: string; active: boolean; onClick: () => void; icon: LucideIcon; label: string; count?: number }) {
   return (
-    <button onClick={onClick} aria-current={active ? "page" : undefined} className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm transition ${active ? "font-semibold text-white" : "text-slate-600 hover:bg-slate-100"}`} style={active ? { background: "var(--app-primary)" } : undefined}>
-      <Icon className={`h-4 w-4 shrink-0 ${active ? "" : "text-slate-500"}`} aria-hidden />
+    <button data-tab={id} onClick={onClick} aria-current={active ? "page" : undefined} className={`relative flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm transition-colors duration-300 ${active ? "font-semibold text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+      <Icon key={active ? "on" : "off"} className={`h-4 w-4 shrink-0 ${active ? "tab-pop" : "text-slate-500"}`} aria-hidden />
       <span className="flex-1 truncate">{label}</span>
       {count !== undefined && <span className={`text-xs ${active ? "text-white/80" : "text-slate-600"}`}>{count}</span>}
     </button>

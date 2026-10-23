@@ -1,15 +1,21 @@
 import "server-only";
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:crypto";
 
 /**
- * Chiffrement des secrets enregistrés en base (clés API) : AES-256-GCM avec la clé
- * APP_ENCRYPTION_KEY (32 octets en base64), connue du seul serveur.
+ * Chiffrement des secrets enregistrés en base (clés API) : AES-256-GCM.
+ * Clé : APP_ENCRYPTION_KEY (32 octets en base64) si elle est définie, sinon dérivée (HKDF-SHA256)
+ * d'un secret déjà présent sur le serveur (clé de passerelle ou clé de service Supabase).
+ * Si ce secret change, les clés enregistrées deviennent illisibles et doivent être ressaisies.
  */
 function key(): Buffer | null {
   const raw = process.env.APP_ENCRYPTION_KEY;
-  if (!raw) return null;
-  const k = Buffer.from(raw, "base64");
-  return k.length === 32 ? k : null;
+  if (raw) {
+    const k = Buffer.from(raw, "base64");
+    return k.length === 32 ? k : null;
+  }
+  const base = process.env.SUPABASE_GATEWAY_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!base || base.length < 20) return null;
+  return Buffer.from(hkdfSync("sha256", base, "minisoft-rca", "platform-settings-api-keys-v1", 32));
 }
 
 export function encryptionAvailable(): boolean {

@@ -7,6 +7,7 @@ describe("administration", () => {
   afterEach(() => {
     delete process.env.ADMIN_EMAILS;
     delete process.env.APP_ENCRYPTION_KEY;
+    delete process.env.SUPABASE_GATEWAY_KEY;
     vi.resetModules();
   });
 
@@ -31,7 +32,13 @@ describe("administration", () => {
     expect(maskSecret("cle-secrete-de-test-1234")).toBe("••••••••1234");
   });
 
-  it("sans clé de chiffrement, aucune clé ne peut être enregistrée", async () => {
+  it("sans APP_ENCRYPTION_KEY, la clé est dérivée du secret serveur existant", async () => {
+    process.env.SUPABASE_GATEWAY_KEY = "secret-de-passerelle-de-test-0123456789";
+    const { encryptSecret, decryptSecret } = await import("@/lib/crypto");
+    expect(decryptSecret(encryptSecret("abc123"))).toBe("abc123");
+  });
+
+  it("sans aucun secret serveur, aucune clé ne peut être enregistrée", async () => {
     const { encryptionAvailable, encryptSecret } = await import("@/lib/crypto");
     expect(encryptionAvailable()).toBe(false);
     expect(() => encryptSecret("x")).toThrow();

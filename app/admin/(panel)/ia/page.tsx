@@ -69,7 +69,7 @@ export default async function AiAdmin() {
         </Card>
         <div className="space-y-4">
           <Card title="Clés API" subtitle="Chiffrées sur le serveur (AES-256). Seuls les 4 derniers caractères sont affichés.">
-            {!encryptionAvailable() && <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">Enregistrement de clés impossible : la variable APP_ENCRYPTION_KEY n&apos;est pas définie sur le serveur.</p>}
+            {!encryptionAvailable() && <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">Enregistrement de clés impossible : aucun secret serveur n&apos;est disponible pour le chiffrement (APP_ENCRYPTION_KEY).</p>}
             <div className="space-y-2">
               {providers.map((p) => (
                 <ApiKeyRow key={p.id} provider={p.id} label={p.label} masked={s.keys[p.id] ? maskSecret(`xxxx${s.keys[p.id]!.last4}`) : ""} savedAt={s.keys[p.id]?.savedAt} source={aiKeySource(p.id)} canStore={encryptionAvailable()} />

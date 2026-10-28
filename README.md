@@ -10,6 +10,18 @@ Plateforme qui transforme les problèmes des entreprises en mini-logiciels web p
 - **Moteur d'exécution** (`components/runtime`) : interprète l'`AppSpec` avec des composants validés (tableaux, formulaires, tableaux de bord, exports).
 - **Tests automatiques** (`lib/checks.ts` + `/api/projects/[id]/tests`) : structure, formulaires, calculs, permissions, cycle CRUD réel en base, isolation entre clients.
 
+## Module « Gestion du garage »
+
+Pour un logiciel dont l'espace de travail est un garage, le plan 3D (et le plan 2D) présente cinq zones cliquables : **Accueil**, **Atelier**, **Stock des pièces**, **Bureau** et **Salle de repos**. Un clic ouvre un panneau latéral à gauche sans quitter le plan ; la zone ouverte est mise en évidence ; la croix ferme le panneau.
+
+- Un seul dossier d'intervention suit le véhicule : Accueil → Diagnostic → Devis accepté → Réparation → Contrôle qualité → Prêt → Remise au client.
+- Données rangées dans la table `records` existante sous les identifiants réservés `gx:…` (aucun conflit possible avec les tables générées), historique dans `record_history`, sauvegardes comprises.
+- Règles appliquées côté serveur (`lib/garage/engine.ts`, route `/api/apps/[id]/garage`) : références uniques (GAR, DEV, FAC, REC, BC), réparation bloquée sans accord enregistré sur un devis, statut « Prêt » réservé à la validation qualité par un gérant, paiements limités au solde (statut « Payée » uniquement calculé), stock déduit une seule fois par mouvement (mises à jour conditionnelles + clés d'opération), sorties supérieures au stock refusées.
+- Rôles existants : Employé = accueil et mécaniciens ; Gestionnaire, Administrateur, Propriétaire = gérant ; Lecteur = consultation.
+- Démo sans compte : même moteur exécuté dans le navigateur, sans aucune donnée d'exemple.
+
+Configuration : exécuter `supabase/migrations/0007_garage_expenses_rls.sql` (les dépenses du garage ne sont lisibles directement que par les gérants). Les photos des dossiers sont réduites dans le navigateur et stockées en base (8 par dossier) : le projet n'utilise pas encore Supabase Storage.
+
 ## Mise en service
 
 1. Créer un projet Supabase, puis exécuter `supabase/migrations/0001_init.sql` (éditeur SQL ou `supabase db push`).

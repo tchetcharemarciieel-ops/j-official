@@ -1,5 +1,5 @@
 import type { Station, WorkspaceLayout } from "@/lib/spec";
-import type { CrewMember, StationStats } from "@/lib/workspace";
+import type { CrewMember, GarageZoneId, StationStats } from "@/lib/workspace";
 
 export type SceneStation = Station & { x: number; z: number; stats: StationStats | null; crew: CrewMember[] };
 
@@ -13,6 +13,21 @@ export type SceneProps = {
   /** Emplacements libres, garnis d'un décor non cliquable adapté au métier. */
   freeSlots: { x: number; z: number }[];
   onOpen: (target: string) => void;
+  /** Garage : zones fonctionnelles cliquables et véhicules réellement enregistrés comme présents. */
+  garage?: GarageSceneProps;
+};
+
+export type BadgeTone = "alert" | "active" | "idle";
+export type GarageAreaView = { id: GarageZoneId; label: string; x: number; z: number; w: number; d: number; badge: { text: string; tone: BadgeTone } | null };
+export type GarageSceneProps = {
+  areas: GarageAreaView[];
+  selected: GarageZoneId | null;
+  onZone: (z: GarageZoneId) => void;
+  /** Véhicules en atelier (un par pont) et en attente / prêts sur le parking. */
+  bays: { id: string; plate: string; status: string }[];
+  parked: { id: string; plate: string; ready: boolean }[];
+  extraInWorkshop: number;
+  extraParked: number;
 };
 
 export const fmtNumber = (n: number, unit?: string) => `${n.toLocaleString("fr-FR")}${unit ? ` ${unit}` : ""}`;

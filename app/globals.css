@@ -205,6 +205,10 @@ select.input option {
   .print-area { color: black !important; }
   .print-area table { border-collapse: collapse; width: 100%; }
   .print-area th, .print-area td { border: 1px solid #999; padding: 4px 6px; color: black !important; }
+  /* Document du garage (facture, reçu, devis) : seul le document est imprimé. */
+  body.printing-doc * { visibility: hidden !important; }
+  body.printing-doc .print-doc, body.printing-doc .print-doc * { visibility: visible !important; }
+  body.printing-doc .print-doc { position: absolute; inset: 0 auto auto 0; width: 100%; padding: 12mm; }
 }
 
 @keyframes slide-in {

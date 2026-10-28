@@ -5,9 +5,14 @@ import { Box, LayoutDashboard, Map as MapIcon } from "lucide-react";
 import { Component, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/fetcher";
 import type { AppPrefs } from "@/lib/app-prefs";
-import { ROLE_LABELS, type AppSpec, type Workspace } from "@/lib/spec";
+import { ROLE_LABELS, type AppSpec, type Role, type Workspace } from "@/lib/spec";
 import type { Row } from "@/lib/stats";
-import { LAYOUT_LABELS, SLOTS, assignCrew, boardKpis, demoCrew, placeStations, recentActivity, stationStats, type CrewMember } from "@/lib/workspace";
+import { GARAGE_ZONE_IDS, LAYOUT_LABELS, SLOTS, assignCrew, boardKpis, demoCrew, placeStations, recentActivity, stationStats, type CrewMember, type GarageZoneId } from "@/lib/workspace";
+import { JOB_STATUS_LABELS, type Doc, type Job, type Vehicle } from "@/lib/garage/model";
+import { useToast } from "@/components/Toaster";
+import { GARAGE_ZONES, GaragePanel } from "../garage/GaragePanel";
+import { garageScene } from "../garage/scene";
+import { useGarage } from "../garage/useGarage";
 import type { DataMode, Rec } from "../useAppData";
 import { KIND_ICONS, ROLE_COLORS } from "./kinds";
 import { Plan2D } from "./Plan2D";
@@ -52,6 +57,7 @@ type Props = {
   spec: AppSpec;
   ws: Workspace;
   mode: DataMode;
+  role: Role;
   readable: string[];
   records: Record<string, Rec[]>;
   loading: boolean;
@@ -63,13 +69,22 @@ type Props = {
 };
 
 /** Espace de travail : bureau virtuel du logiciel, relié à ses modules et à ses données. */
-export function WorkspaceView({ projectId, spec, ws, mode, readable, records, loading, reload, prefs, savePrefs, onOpen, onClassic }: Props) {
+export function WorkspaceView({ projectId, spec, ws, mode, role, readable, records, loading, reload, prefs, savePrefs, onOpen, onClassic }: Props) {
   const [members, setMembers] = useState<CrewMember[]>([]);
   const [teamError, setTeamError] = useState(false);
   const [gl, setGl] = useState<{ ok: boolean; low: boolean } | null>(null);
   const [crashed, setCrashed] = useState(false);
 
   useEffect(() => setGl({ ok: webglAvailable(), low: lowPowerDevice() }), []);
+
+  // Garage : zones fonctionnelles (accueil, atelier, stock, bureau, salle de repos) ouvertes dans un panneau latéral.
+  const garageMode = ws.layout === "garage";
+  const garage = useGarage(projectId, mode, role, garageMode);
+  const notify = useToast();
+  const [zone, setZone] = useState<GarageZoneId | null>(null);
+  const [jobRequest, setJobRequest] = useState<{ id: string; n: number } | null>(null);
+  const garageView = useMemo(() => (garageMode ? garageScene(garage.state, zone, setZone) : undefined), [garageMode, garage.state, zone]);
+  const recentJobs = useMemo(() => (garage.state ? ([...garage.state.data.job] as Doc<Job>[]).sort((a, b) => b.updated_at.localeCompare(a.updated_at)).slice(0, 6) : []), [garage.state]);
 
   // Équipe : membres réels du logiciel ; personnages fictifs signalés dans la démo publique.
   useEffect(() => {
@@ -108,7 +123,7 @@ export function WorkspaceView({ projectId, spec, ws, mode, readable, records, lo
   const title = ws.title || spec.name;
 
   const render: "3d" | "2d" = !gl ? "2d" : !gl.ok || crashed ? "2d" : (prefs.render ?? (gl.low ? "2d" : "3d"));
-  const sceneProps: SceneProps = { stations, layout: ws.layout, title, kpis, demo, freeSlots, onOpen: (t) => onOpen(t) };
+  const sceneProps: SceneProps = { stations, layout: ws.layout, title, kpis, demo, freeSlots, onOpen: (t) => onOpen(t), garage: garageView };
 
   return (
     <div className="@container space-y-4">
@@ -116,7 +131,7 @@ export function WorkspaceView({ projectId, spec, ws, mode, readable, records, lo
         <div>
           <h2 className="text-xl font-bold">Espace de travail · {title}</h2>
           <p className="text-sm text-slate-500">
-            {LAYOUT_LABELS[ws.layout]} · cliquez sur un poste pour ouvrir le module correspondant.
+            {LAYOUT_LABELS[ws.layout]} · {garageMode ? "cliquez sur une zone pour ouvrir sa gestion sans quitter le plan." : "cliquez sur un poste pour ouvrir le module correspondant."}
             {demo && <span className="ml-1 font-medium text-amber-700">{mode === "local" ? "Données et équipe de démonstration." : "Aperçu avec données de démonstration."}</span>}
           </p>
         </div>
@@ -159,6 +174,28 @@ export function WorkspaceView({ projectId, spec, ws, mode, readable, records, lo
         </div>
 
         <aside className="grid gap-4 @2xl:grid-cols-3 @5xl:grid-cols-1 @5xl:content-start">
+          {garageMode && garageView ? (
+            <section className="rounded-2xl border border-slate-200 bg-white p-4" aria-labelledby="ws-zones">
+              <h3 id="ws-zones" className="text-sm font-semibold">Zones du garage</h3>
+              <ul className="mt-2 space-y-1">
+                {GARAGE_ZONE_IDS.map((z) => {
+                  const Z = GARAGE_ZONES[z];
+                  const badge = garageView.areas.find((a) => a.id === z)?.badge;
+                  return (
+                    <li key={z}>
+                      <button type="button" onClick={() => setZone(z)} aria-pressed={zone === z} className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-slate-50 ${zone === z ? "bg-slate-100 font-semibold" : ""}`}>
+                        <Z.icon className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
+                        <span className="min-w-0 flex-1 truncate">{Z.label}</span>
+                        {badge && <span className={`shrink-0 text-xs ${badge.tone === "alert" ? "text-red-600" : badge.tone === "active" ? "text-blue-700" : "text-slate-500"}`}>{badge.text}</span>}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              {garage.error && <p className="mt-2 text-xs text-red-600">{garage.error}</p>}
+              <p className="mt-2 text-xs text-slate-500">Les tables du logiciel restent accessibles dans l&apos;interface classique.</p>
+            </section>
+          ) : (
           <section className="rounded-2xl border border-slate-200 bg-white p-4" aria-labelledby="ws-postes">
             <h3 id="ws-postes" className="text-sm font-semibold">Postes</h3>
             <ul className="mt-2 space-y-1">
@@ -177,7 +214,27 @@ export function WorkspaceView({ projectId, spec, ws, mode, readable, records, lo
               })}
             </ul>
           </section>
+          )}
 
+          {garageMode ? (
+            <section className="rounded-2xl border border-slate-200 bg-white p-4" aria-labelledby="ws-dossiers">
+              <h3 id="ws-dossiers" className="text-sm font-semibold">Derniers dossiers</h3>
+              {recentJobs.length === 0 ? (
+                <p className="mt-2 text-sm text-slate-500">Aucune intervention enregistrée.</p>
+              ) : (
+                <ol className="mt-2 space-y-1">
+                  {recentJobs.map((j) => (
+                    <li key={j.id}>
+                      <button type="button" onClick={() => (setJobRequest({ id: j.id, n: Date.now() }), setZone(j.data.status === "diagnostic" || j.data.status === "reparation" || j.data.status === "controle" ? "atelier" : "accueil"))} className="w-full rounded-lg px-2 py-1.5 text-left hover:bg-slate-50">
+                        <span className="block truncate text-sm text-slate-900">{(garage.state?.data.vehicle as Doc<Vehicle>[] | undefined)?.find((v) => v.id === j.data.vehicle_id)?.data.plate ?? j.data.ref} · {j.data.ref}</span>
+                        <span className="block text-xs text-slate-500">{JOB_STATUS_LABELS[j.data.status]} · {new Date(j.updated_at).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </section>
+          ) : (
           <section className="rounded-2xl border border-slate-200 bg-white p-4" aria-labelledby="ws-activite">
             <h3 id="ws-activite" className="text-sm font-semibold">Activité récente</h3>
             {activity.length === 0 ? (
@@ -195,6 +252,7 @@ export function WorkspaceView({ projectId, spec, ws, mode, readable, records, lo
               </ol>
             )}
           </section>
+          )}
 
           <section className="rounded-2xl border border-slate-200 bg-white p-4" aria-labelledby="ws-equipe">
             <h3 id="ws-equipe" className="text-sm font-semibold">Équipe</h3>
@@ -216,6 +274,7 @@ export function WorkspaceView({ projectId, spec, ws, mode, readable, records, lo
           </section>
         </aside>
       </div>
+      {garageMode && zone && <GaragePanel zone={zone} onZone={setZone} onClose={() => setZone(null)} api={garage} projectId={projectId} mode={mode} appName={title} notify={notify} jobRequest={jobRequest} />}
     </div>
   );
 }

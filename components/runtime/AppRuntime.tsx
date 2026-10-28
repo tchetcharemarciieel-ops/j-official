@@ -115,7 +115,7 @@ export function AppRuntime({ projectId, spec, mode, role, compact = false }: { p
           {current ? (
             <EntityView key={`${current.key}:${openRecord ?? ""}`} spec={spec} entity={current} role={role} data={data} notify={notify} openRecordId={openRecord} />
           ) : page === "__workspace" && ws.enabled ? (
-            <WorkspaceView projectId={projectId} spec={spec} ws={ws} mode={mode} readable={entities.map((e) => e.key)} records={data.records} loading={data.loading} reload={data.reload} prefs={prefs} savePrefs={save} onOpen={go} onClassic={() => go("__dashboard")} />
+            <WorkspaceView projectId={projectId} spec={spec} ws={ws} mode={mode} role={role} readable={entities.map((e) => e.key)} records={data.records} loading={data.loading} reload={data.reload} prefs={prefs} savePrefs={save} onOpen={go} onClassic={() => go("__dashboard")} />
           ) : (
             <div className="space-y-6">
               <div>

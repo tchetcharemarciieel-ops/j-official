@@ -6,10 +6,10 @@ import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { Minus, Plus, RotateCcw, RotateCw, Scan } from "lucide-react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { Group, Mesh } from "three";
-import { LAYOUT_STYLE, ROOM } from "@/lib/workspace";
+import { GARAGE_BAYS, GARAGE_PARKING, GARAGE_SPOTS, LAYOUT_STYLE, ROOM } from "@/lib/workspace";
 import type { StationKind } from "@/lib/spec";
 import { ROLE_COLORS, SKIN } from "./kinds";
-import { fmtNumber, stationBadge, type SceneProps, type SceneStation } from "./types";
+import { fmtNumber, stationBadge, type GarageAreaView, type GarageSceneProps, type SceneProps, type SceneStation } from "./types";
 
 /** Couche HTML des étiquettes (hors du canevas) et mode compact quand la vue est dézoomée. */
 const LabelCtx = createContext<{ portal: React.RefObject<HTMLDivElement> | null; compact: boolean }>({ portal: null, compact: false });
@@ -130,7 +130,7 @@ function Cyl({ r, h, position, color, r2 }: { r: number; h: number; position: [n
   );
 }
 
-function Room({ stations, layout, title, kpis, demo, freeSlots, onOpen }: SceneProps) {
+function Room({ stations, layout, title, kpis, demo, freeSlots, onOpen, garage }: SceneProps) {
   const style = LAYOUT_STYLE[layout];
   const w = ROOM.width;
   const d = ROOM.depth;
@@ -146,11 +146,17 @@ function Room({ stations, layout, title, kpis, demo, freeSlots, onOpen }: SceneP
       <Label position={[-0.2, 2.75, -d / 2 + 0.05]} z={5}>
         <div className="whitespace-nowrap rounded-md px-3 py-1 text-sm font-bold text-white shadow" style={{ background: style.accent }}>{title}</div>
       </Label>
-      <Plant position={[-w / 2 + 0.6, 0, -d / 2 + 0.6]} />
-      <Plant position={[w / 2 - 0.6, 0, d / 2 - 0.6]} />
-      <Plant position={[-w / 2 + 0.6, 0, d / 2 - 0.6]} />
-      {freeSlots.map((s, i) => <Decor key={i} kind={style.decor[i % style.decor.length]!} position={[s.x, 0, s.z]} />)}
-      {stations.map((s, i) => (s.kind === "stats_board" ? <StatsBoard key={s.id} station={s} kpis={kpis} demo={demo} onOpen={onOpen} /> : <StationNode key={s.id} station={s} index={i} accent={style.accent} onOpen={onOpen} />))}
+      {garage ? (
+        <GarageFloor garage={garage} accent={style.accent} />
+      ) : (
+        <>
+          <Plant position={[-w / 2 + 0.6, 0, -d / 2 + 0.6]} />
+          <Plant position={[w / 2 - 0.6, 0, d / 2 - 0.6]} />
+          <Plant position={[-w / 2 + 0.6, 0, d / 2 - 0.6]} />
+          {freeSlots.map((s, i) => <Decor key={i} kind={style.decor[i % style.decor.length]!} position={[s.x, 0, s.z]} />)}
+          {stations.map((s, i) => (s.kind === "stats_board" ? <StatsBoard key={s.id} station={s} kpis={kpis} demo={demo} onOpen={onOpen} /> : <StationNode key={s.id} station={s} index={i} accent={style.accent} onOpen={onOpen} />))}
+        </>
+      )}
     </group>
   );
 }
@@ -440,6 +446,153 @@ function StatsBoard({ station: s, kpis, demo, onOpen }: { station: SceneStation;
       {s.crew.slice(0, 2).map((m, i) => (
         <Person key={m.id} position={[-0.5 + i * 1.0, 0, 0.9]} color={ROLE_COLORS[m.role] ?? "#334155"} skin={SKIN[(i + 2) % SKIN.length]!} phase={i * 2.1} name={m.name} onClick={() => onOpen(s.target)} />
       ))}
+    </group>
+  );
+}
+
+// ---------- Garage : zones fonctionnelles ----------
+
+const BAY_COLORS: Record<string, string> = { diagnostic: "#8b5cf6", reparation: "#3b82f6", controle: "#f59e0b" };
+
+/** Plan du garage : zones cliquables (la zone ouverte est mise en évidence) et véhicules enregistrés. */
+function GarageFloor({ garage, accent }: { garage: GarageSceneProps; accent: string }) {
+  const { compact } = useContext(LabelCtx);
+  const P = GARAGE_PARKING;
+  return (
+    <group>
+      {/* Parking clients : un clic ouvre l'accueil */}
+      <mesh position={[P.x, 0.012, P.z]} rotation={[-Math.PI / 2, 0, 0]} onClick={(e) => (e.stopPropagation(), garage.onZone("accueil"))}>
+        <planeGeometry args={[P.w, P.d]} />
+        <meshStandardMaterial color="#475569" />
+      </mesh>
+      {[-6, -4.25, -2.35, -0.5].map((x) => <Box key={x} size={[0.06, 0.02, 1.9]} position={[x + 0.03, 0.02, P.z + 0.3]} color="#f8fafc" />)}
+      {!compact && (
+        <Label position={[P.x, 0.9, P.z + 1.25]} z={8}>
+          <span className="whitespace-nowrap rounded-md bg-slate-700/80 px-2 py-0.5 text-[10px] font-medium text-white">Parking clients</span>
+        </Label>
+      )}
+      {garage.areas.map((a) => <GarageArea key={a.id} area={a} selected={garage.selected === a.id} accent={accent} onZone={garage.onZone} />)}
+      {GARAGE_BAYS.map((b, i) => {
+        const v = garage.bays[i];
+        return (
+          <group key={i} position={[b.x, 0, b.z]} onClick={(e) => (e.stopPropagation(), garage.onZone("atelier"))}>
+            <Box size={[2.0, 0.06, 1.3]} position={[0, 0.03, 0]} color="#facc15" />
+            {[-1.05, 1.05].map((x) => <Box key={x} size={[0.14, 1.7, 0.14]} position={[x, 0.85, -0.55]} color="#334155" />)}
+            {v && <Car position={[0, 0.08, 0]} color={BAY_COLORS[v.status] ?? "#64748b"} />}
+            {v && !compact && (
+              <Label position={[0, 1.55, 0]} z={12}>
+                <span className="whitespace-nowrap rounded bg-white/95 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-900 shadow">{v.plate}</span>
+              </Label>
+            )}
+          </group>
+        );
+      })}
+      {garage.extraInWorkshop > 0 && (
+        <Label position={[1.1, 0.6, -0.4]} z={12}>
+          <span className="whitespace-nowrap rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-semibold text-white">+{garage.extraInWorkshop} en atelier</span>
+        </Label>
+      )}
+      {GARAGE_SPOTS.map((s, i) => {
+        const v = garage.parked[i];
+        if (!v) return null;
+        return (
+          <group key={v.id} position={[s.x, 0, s.z]} rotation={[0, Math.PI / 2, 0]} onClick={(e) => (e.stopPropagation(), garage.onZone("accueil"))}>
+            <Car position={[0, 0, 0]} color={v.ready ? "#16a34a" : "#94a3b8"} />
+            {!compact && (
+              <Label position={[0, 1.35, 0]} z={12}>
+                <span className={`whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold shadow ${v.ready ? "bg-green-600 text-white" : "bg-white/95 text-slate-900"}`}>{v.plate}{v.ready ? " · prêt" : ""}</span>
+              </Label>
+            )}
+          </group>
+        );
+      })}
+      {garage.extraParked > 0 && (
+        <Label position={[-0.9, 0.6, 3.9]} z={12}>
+          <span className="whitespace-nowrap rounded-full bg-slate-700 px-2 py-0.5 text-[10px] font-semibold text-white">+{garage.extraParked}</span>
+        </Label>
+      )}
+    </group>
+  );
+}
+
+function GarageArea({ area: a, selected, accent, onZone }: { area: GarageAreaView; selected: boolean; accent: string; onZone: (z: GarageAreaView["id"]) => void }) {
+  const [hover, setHover] = useState(false);
+  const { compact } = useContext(LabelCtx);
+  const open = () => onZone(a.id);
+  const wall = selected ? accent : "#94a3b8";
+  const h = selected ? 0.5 : 0.32;
+  const t = selected ? 0.1 : 0.06;
+  return (
+    <group>
+      <mesh
+        position={[a.x, 0.015, a.z]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        onClick={(e) => (e.stopPropagation(), open())}
+        onPointerOver={(e) => (e.stopPropagation(), setHover(true), (document.body.style.cursor = "pointer"))}
+        onPointerOut={() => (setHover(false), (document.body.style.cursor = ""))}
+      >
+        <planeGeometry args={[a.w - 0.08, a.d - 0.08]} />
+        <meshStandardMaterial color={selected || hover ? accent : "#ffffff"} transparent opacity={selected ? 0.4 : hover ? 0.24 : 0.14} />
+      </mesh>
+      {/* Cloisons basses : contour de la zone, renforcé quand elle est sélectionnée */}
+      <Box size={[a.w, h, t]} position={[a.x, h / 2, a.z - a.d / 2]} color={wall} />
+      <Box size={[a.w, h, t]} position={[a.x, h / 2, a.z + a.d / 2]} color={wall} />
+      <Box size={[t, h, a.d]} position={[a.x - a.w / 2, h / 2, a.z]} color={wall} />
+      <Box size={[t, h, a.d]} position={[a.x + a.w / 2, h / 2, a.z]} color={wall} />
+      <group onClick={(e) => (e.stopPropagation(), open())}>
+        <AreaFurniture id={a.id} x={a.x} z={a.z} />
+      </group>
+      <Label position={[a.x, a.id === "atelier" ? 1.1 : 2.1, a.id === "atelier" ? a.z + a.d / 2 - 0.9 : a.z]} z={selected ? 30 : 20} interactive>
+        <button
+          type="button"
+          onClick={open}
+          aria-pressed={selected}
+          className={`flex flex-col items-center whitespace-nowrap rounded-lg border px-2.5 py-1 text-[11px] leading-tight shadow-sm transition-transform hover:-translate-y-0.5 ${selected ? "border-transparent text-white" : hover ? "border-blue-400 bg-white/95" : "border-slate-200 bg-white/95"}`}
+          style={selected ? { background: accent } : undefined}
+        >
+          <span className={`font-semibold ${selected ? "" : "text-slate-900"}`}>{a.label}</span>
+          {a.badge && (!compact || a.badge.tone === "alert") && <span className={selected ? "text-white/90" : a.badge.tone === "alert" ? "font-medium text-red-600" : a.badge.tone === "active" ? "text-blue-700" : "text-slate-500"}>{a.badge.text}</span>}
+        </button>
+      </Label>
+    </group>
+  );
+}
+
+function AreaFurniture({ id, x, z }: { id: GarageAreaView["id"]; x: number; z: number }) {
+  if (id === "atelier")
+    return (
+      <group>
+        <Box size={[1.6, 0.9, 0.6]} position={[-5.4, 0.45, 1.1]} color="#b91c1c" />
+        <Box size={[1.6, 0.06, 0.7]} position={[-5.4, 0.93, 1.1]} color="#334155" />
+        <Box size={[0.5, 1.2, 0.4]} position={[0.9, 0.6, 1.1]} color="#1d4ed8" />
+      </group>
+    );
+  if (id === "stock")
+    return (
+      <group>
+        <Shelf position={[x - 1.05, 0, z - 0.75]} />
+        <Shelf position={[x + 1.05, 0, z - 0.75]} />
+      </group>
+    );
+  if (id === "bureau")
+    return (
+      <group position={[x, 0, z - 0.2]}>
+        <Furniture kind="desk" />
+      </group>
+    );
+  if (id === "accueil")
+    return (
+      <group position={[x, 0, z - 0.4]}>
+        <Furniture kind="reception" />
+      </group>
+    );
+  return (
+    <group position={[x, 0, z]}>
+      <Box size={[1.6, 0.4, 0.7]} position={[-0.6, 0.25, -0.7]} color="#64748b" />
+      <Box size={[1.6, 0.5, 0.2]} position={[-0.6, 0.6, -1.0]} color="#64748b" />
+      <Cyl r={0.45} h={0.05} position={[-0.5, 0.55, 0.35]} color="#d4a373" />
+      <Cyl r={0.06} h={0.52} position={[-0.5, 0.27, 0.35]} color="#713f12" />
+      <Box size={[0.6, 1.5, 0.6]} position={[1.2, 0.75, -0.8]} color="#e2e8f0" />
     </group>
   );
 }

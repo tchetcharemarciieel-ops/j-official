@@ -261,3 +261,22 @@ export function demoCrew(layout: WorkspaceLayout): CrewMember[] {
   };
   return roles[layout].map((name, i) => ({ id: `demo-${i}`, name: `${name} (démo)`, role: i === 0 ? "owner" : "employee", demo: true }));
 }
+
+// ---------- Garage : zones fonctionnelles du plan ----------
+
+export const GARAGE_ZONE_IDS = ["accueil", "atelier", "stock", "bureau", "repos"] as const;
+export type GarageZoneId = (typeof GARAGE_ZONE_IDS)[number];
+
+/** Zones du plan du garage (centre x/z, largeur w, profondeur d) dans la pièce de 12 × 9. */
+export const GARAGE_AREAS: { id: GarageZoneId; label: string; x: number; z: number; w: number; d: number }[] = [
+  { id: "atelier", label: "Atelier", x: -2.25, z: -1.5, w: 7.5, d: 6 },
+  { id: "stock", label: "Stock des pièces", x: 3.75, z: -3, w: 4.5, d: 3 },
+  { id: "bureau", label: "Bureau", x: 3.75, z: 0, w: 4.5, d: 3 },
+  { id: "accueil", label: "Accueil", x: 1, z: 3, w: 3, d: 3 },
+  { id: "repos", label: "Salle de repos", x: 4.25, z: 3, w: 3.5, d: 3 },
+];
+/** Parking clients (non cliquable comme zone : il ouvre l'accueil). */
+export const GARAGE_PARKING = { x: -3.25, z: 3, w: 5.5, d: 3 };
+/** Ponts élévateurs de l'atelier et places du parking. */
+export const GARAGE_BAYS = [-4.6, -2.25, 0.1].map((x) => ({ x, z: -2.1 }));
+export const GARAGE_SPOTS = [-5.2, -3.3, -1.4].map((x) => ({ x, z: 3.1 }));

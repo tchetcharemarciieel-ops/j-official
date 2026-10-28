@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Box, LayoutDashboard, Map as MapIcon } from "lucide-react";
+import { Box, LayoutDashboard, Map as MapIcon, Settings2 } from "lucide-react";
 import { Component, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/fetcher";
 import type { AppPrefs } from "@/lib/app-prefs";
@@ -13,6 +13,12 @@ import { useToast } from "@/components/Toaster";
 import { GARAGE_ZONES, GaragePanel } from "../garage/GaragePanel";
 import { garageScene } from "../garage/scene";
 import { useGarage } from "../garage/useGarage";
+import { useVenue, venueSettings } from "../venue/useVenue";
+import { venueScene } from "../venue/scene";
+import { VenuePanel } from "../venue/VenuePanel";
+import { VenueSetup } from "../venue/VenueSetup";
+import { ZONE_META } from "../venue/zones";
+import { LEVEL as VENUE_LEVEL, activeZones, type VenueZone } from "@/lib/venue/model";
 import type { DataMode, Rec } from "../useAppData";
 import { KIND_ICONS, ROLE_COLORS } from "./kinds";
 import { Plan2D } from "./Plan2D";
@@ -84,6 +90,23 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
   const [zone, setZone] = useState<GarageZoneId | null>(null);
   const [jobRequest, setJobRequest] = useState<{ id: string; n: number } | null>(null);
   const garageView = useMemo(() => (garageMode ? garageScene(garage.state, zone, setZone) : undefined), [garageMode, garage.state, zone]);
+  // Restaurant et hôtel : questionnaire avant le plan, zones déclarées, panneau latéral.
+  const venueKind = ws.layout === "restaurant" || ws.layout === "hotel" ? ws.layout : null;
+  const venue = useVenue(projectId, mode, role, venueKind);
+  const vSettings = useMemo(() => venueSettings(venue.state, venueKind ?? "restaurant"), [venue.state, venueKind]);
+  const vZones = useMemo(() => (venueKind ? activeZones(vSettings) : []), [venueKind, vSettings]);
+  const [vZone, setVZone] = useState<VenueZone | null>(null);
+  const [vRoom, setVRoom] = useState<string | null>(null);
+  const [setupOpen, setSetupOpen] = useState(false);
+  const needsSetup = Boolean(venueKind && venue.state && (!vSettings.answered || (venueKind === "hotel" && vSettings.photos_step === null)));
+  const venueView = useMemo(
+    () => (venueKind ? venueScene(venueKind, venue.state, vSettings, vZone, (z) => (setVZone(z), setVRoom(null)), vRoom, (id) => (setVZone("chambres"), setVRoom(id))) : undefined),
+    [venueKind, venue.state, vSettings, vZone, vRoom],
+  );
+  useEffect(() => {
+    // Zone retirée du plan (réponse modifiée) : on ferme son panneau.
+    if (vZone && !vZones.includes(vZone)) setVZone(null);
+  }, [vZone, vZones]);
   const recentJobs = useMemo(() => (garage.state ? ([...garage.state.data.job] as Doc<Job>[]).sort((a, b) => b.updated_at.localeCompare(a.updated_at)).slice(0, 6) : []), [garage.state]);
 
   // Équipe : membres réels du logiciel ; personnages fictifs signalés dans la démo publique.
@@ -123,7 +146,7 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
   const title = ws.title || spec.name;
 
   const render: "3d" | "2d" = !gl ? "2d" : !gl.ok || crashed ? "2d" : (prefs.render ?? (gl.low ? "2d" : "3d"));
-  const sceneProps: SceneProps = { stations, layout: ws.layout, title, kpis, demo, freeSlots, onOpen: (t) => onOpen(t), garage: garageView };
+  const sceneProps: SceneProps = { stations, layout: ws.layout, title, kpis, demo, freeSlots, onOpen: (t) => onOpen(t), garage: garageView, venue: venueView };
 
   return (
     <div className="@container space-y-4">
@@ -131,7 +154,7 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
         <div>
           <h2 className="text-xl font-bold">Espace de travail · {title}</h2>
           <p className="text-sm text-slate-500">
-            {LAYOUT_LABELS[ws.layout]} · {garageMode ? "cliquez sur une zone pour ouvrir sa gestion sans quitter le plan." : "cliquez sur un poste pour ouvrir le module correspondant."}
+            {LAYOUT_LABELS[ws.layout]} · {garageMode || venueKind ? "cliquez sur une zone pour ouvrir sa gestion sans quitter le plan." : "cliquez sur un poste pour ouvrir le module correspondant."}
             {demo && <span className="ml-1 font-medium text-amber-700">{mode === "local" ? "Données et équipe de démonstration." : "Aperçu avec données de démonstration."}</span>}
           </p>
         </div>
@@ -152,6 +175,11 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
               <MapIcon className="h-4 w-4" aria-hidden />Plan 2D
             </button>
           </div>
+          {venueKind && venue.state && VENUE_LEVEL[venue.state.role] >= 2 && !needsSetup && (
+            <button type="button" onClick={() => (setSetupOpen(true), setVZone(null))} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
+              <Settings2 className="h-4 w-4" aria-hidden />Configurer le plan
+            </button>
+          )}
           <button type="button" onClick={onClassic} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
             <LayoutDashboard className="h-4 w-4" aria-hidden />Interface classique
           </button>
@@ -160,6 +188,11 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
 
       {crashed && <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">La 3D n&apos;a pas pu s&apos;afficher sur cet appareil : le plan 2D est utilisé à la place.</p>}
 
+      {venueKind && (needsSetup || setupOpen) ? (
+        <VenueSetup kind={venueKind} api={venue} settings={vSettings} notify={notify} onDone={() => setSetupOpen(false)} onCancel={needsSetup ? undefined : () => setSetupOpen(false)} />
+      ) : venueKind && !venue.state ? (
+        <div className="grid h-60 place-items-center rounded-2xl border border-slate-200 bg-white text-sm text-slate-500">{venue.error ? <span>{venue.error} <button type="button" className="underline" onClick={() => venue.reload()}>Réessayer</button></span> : "Chargement du plan…"}</div>
+      ) : (
       <div className="grid gap-4 @5xl:grid-cols-[1fr_300px]">
         <div className={`overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 ${render === "3d" ? "h-[52vh] min-h-[340px] @2xl:h-[62vh]" : ""}`}>
           {loading ? (
@@ -174,7 +207,30 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
         </div>
 
         <aside className="grid gap-4 @2xl:grid-cols-3 @5xl:grid-cols-1 @5xl:content-start">
-          {garageMode && garageView ? (
+          {venueKind && venueView ? (
+            <section className="rounded-2xl border border-slate-200 bg-white p-4" aria-labelledby="ws-zones">
+              <h3 id="ws-zones" className="text-sm font-semibold">{venueKind === "hotel" ? "Zones de l'hôtel" : "Zones du restaurant"}</h3>
+              <ul className="mt-2 space-y-1">
+                {vZones.map((z) => {
+                  const Z = ZONE_META[venueKind][z]!;
+                  const badge = venueView.areas.find((a) => a.id === z && a.showLabel)?.badge;
+                  return (
+                    <li key={z}>
+                      <button type="button" onClick={() => (setVZone(z), setVRoom(null))} aria-pressed={vZone === z} className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-slate-50 ${vZone === z ? "bg-slate-100 font-semibold" : ""}`}>
+                        <Z.icon className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
+                        <span className="min-w-0 flex-1 truncate">{Z.label}</span>
+                        {badge && <span className={`shrink-0 text-xs ${badge.tone === "alert" ? "text-red-600" : badge.tone === "active" ? "text-blue-700" : "text-slate-500"}`}>{badge.text}</span>}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              {venue.error && <p className="mt-2 text-xs text-red-600">{venue.error}</p>}
+              {venueView.photoTinted && <p className="mt-2 text-xs text-slate-500">Couleurs de certaines zones reprises de vos photos (référence visuelle, pas une mesure).</p>}
+              {Boolean(vSettings.dims.length || vSettings.dims.width) && <p className="mt-1 text-xs text-slate-500">Dimensions déclarées : {vSettings.dims.length ?? "?"} × {vSettings.dims.width ?? "?"} m (le plan reste schématique).</p>}
+              <p className="mt-2 text-xs text-slate-500">Les tables du logiciel restent accessibles dans l&apos;interface classique.</p>
+            </section>
+          ) : garageMode && garageView ? (
             <section className="rounded-2xl border border-slate-200 bg-white p-4" aria-labelledby="ws-zones">
               <h3 id="ws-zones" className="text-sm font-semibold">Zones du garage</h3>
               <ul className="mt-2 space-y-1">
@@ -274,6 +330,8 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
           </section>
         </aside>
       </div>
+      )}
+      {venueKind && vZone && !setupOpen && !needsSetup && <VenuePanel kind={venueKind} zones={vZones} zone={vZone} onZone={(z) => (setVZone(z), setVRoom(null))} onClose={() => (setVZone(null), setVRoom(null))} api={venue} projectId={projectId} mode={mode} appName={title} notify={notify} roomId={vRoom} onRoom={setVRoom} request={null} />}
       {garageMode && zone && <GaragePanel zone={zone} onZone={setZone} onClose={() => setZone(null)} api={garage} projectId={projectId} mode={mode} appName={title} notify={notify} jobRequest={jobRequest} />}
     </div>
   );

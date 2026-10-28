@@ -3,12 +3,14 @@
 import { Armchair, Boxes, Briefcase, Car, ConciergeBell, Wrench } from "lucide-react";
 import { GARAGE_PARKING, LAYOUT_STYLE, ROOM, type GarageZoneId } from "@/lib/workspace";
 import { KIND_ICONS, ROLE_COLORS } from "./kinds";
-import { fmtNumber, stationBadge, type GarageAreaView, type GarageSceneProps, type SceneProps, type SceneStation } from "./types";
+import { fmtNumber, stationBadge, type GarageAreaView, type GarageSceneProps, type SceneProps, type SceneStation, type VenueAreaView, type VenueSceneProps } from "./types";
+import { ZONE_META } from "../venue/zones";
 
 /** Plan 2D vu de dessus : même contenu et mêmes actions que la 3D, très léger pour les petits téléphones. */
-export function Plan2D({ stations, layout, title, kpis, demo, onOpen, garage }: SceneProps) {
+export function Plan2D({ stations, layout, title, kpis, demo, onOpen, garage, venue }: SceneProps) {
   const style = LAYOUT_STYLE[layout];
   if (garage) return <GaragePlan2D garage={garage} accent={style.accent} floor={style.floor} />;
+  if (venue) return <VenuePlan2D venue={venue} accent={style.accent} floor={style.floor} />;
   const pct = (v: number, size: number) => `${((v + size / 2) / size) * 100}%`;
   const board = stations.find((s) => s.kind === "stats_board");
   return (
@@ -135,6 +137,77 @@ function ZoneCard({ a, selected, accent, onZone, fill, children }: { a: GarageAr
       </span>
       {a.badge && <span className={`text-[10px] ${a.badge.tone === "alert" ? "font-medium text-red-600" : a.badge.tone === "active" ? "text-blue-700" : "text-slate-500"}`}>{a.badge.text}</span>}
       {children}
+    </button>
+  );
+}
+
+const ROOM_BG: Record<string, string> = { disponible: "bg-green-100 border-green-300", reservee: "bg-violet-100 border-violet-300", occupee: "bg-blue-100 border-blue-300", a_nettoyer: "bg-amber-100 border-amber-300", maintenance: "bg-red-100 border-red-300" };
+
+/** Plan 2D du restaurant ou de l'hôtel : mêmes zones et mêmes chambres que la 3D. */
+function VenuePlan2D({ venue, accent, floor }: { venue: VenueSceneProps; accent: string; floor: string }) {
+  const pct = (v: number, size: number) => `${((v + size / 2) / size) * 100}%`;
+  const labelled = venue.areas.filter((a) => a.showLabel);
+  return (
+    <div className="@container flex flex-col gap-3 p-3">
+      <ul className="grid grid-cols-2 gap-2 @lg:hidden">
+        {labelled.map((a) => (
+          <li key={a.id}>
+            <VenueZoneCard a={a} kind={venue.kind} selected={venue.selected === a.id} accent={accent} onZone={venue.onZone} />
+          </li>
+        ))}
+      </ul>
+      {venue.rooms.length > 0 && (
+        <ul className="grid grid-cols-4 gap-1.5 @lg:hidden" aria-label="Chambres">
+          {venue.rooms.map((r) => (
+            <li key={r.id}>
+              <button type="button" onClick={() => venue.onRoom(r.id)} aria-pressed={venue.selectedRoom === r.id} className={`w-full rounded-lg border-2 px-1 py-1.5 text-center text-[11px] ${ROOM_BG[r.state] ?? "bg-white"}`} style={venue.selectedRoom === r.id ? { borderColor: accent, boxShadow: `0 0 0 3px ${accent}33` } : undefined}>
+                <span className="block text-sm font-bold">{r.number}</span>{r.stateLabel}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="relative hidden aspect-[4/3] w-full overflow-hidden rounded-xl border-4 border-slate-300 @lg:block" style={{ background: floor }} aria-label="Plan de l'établissement">
+        {venue.areas.map((a, i) => (
+          <div key={`${a.id}-${i}`} className="absolute p-1" style={{ left: pct(a.x - a.w / 2, ROOM.width), top: pct(a.z - a.d / 2, ROOM.depth), width: `${(a.w / ROOM.width) * 100}%`, height: `${(a.d / ROOM.depth) * 100}%` }}>
+            {a.id === "chambres" ? (
+              <div className="h-full w-full rounded-lg border-2 border-dashed border-white/70 bg-white/30" />
+            ) : (
+              <VenueZoneCard a={a} kind={venue.kind} selected={venue.selected === a.id} accent={accent} onZone={venue.onZone} fill />
+            )}
+          </div>
+        ))}
+        {venue.rooms.map((r) => (
+          <button key={r.id} type="button" onClick={() => venue.onRoom(r.id)} aria-pressed={venue.selectedRoom === r.id} className={`absolute flex flex-col items-center justify-center rounded-md border-2 text-[10px] leading-tight ${ROOM_BG[r.state] ?? "bg-white"}`} style={{ left: pct(r.x - r.w / 2, ROOM.width), top: pct(r.z - r.d / 2, ROOM.depth), width: `${(r.w / ROOM.width) * 100}%`, height: `${(r.d / ROOM.depth) * 100}%`, ...(venue.selectedRoom === r.id ? { borderColor: accent, boxShadow: `0 0 0 3px ${accent}55` } : {}) }}>
+            <span className="text-xs font-bold">{r.number}</span>{r.stateLabel}
+          </button>
+        ))}
+        {venue.areas.filter((a) => a.id === "chambres" && a.showLabel).map((a) => (
+          <button key="ch-label" type="button" onClick={() => venue.onZone("chambres")} className="absolute -translate-x-1/2 rounded-md bg-white/95 px-2 py-0.5 text-[11px] font-semibold shadow" style={{ left: pct(a.x, ROOM.width), top: pct(a.z + a.d / 2 - 0.5, ROOM.depth) }}>
+            Chambres{a.badge && <span className="ml-1 font-normal text-slate-500">{a.badge.text}</span>}
+          </button>
+        ))}
+        {venue.extraRooms > 0 && <span className="absolute bottom-1 right-1 rounded-full bg-slate-700 px-2 py-0.5 text-[10px] text-white">+{venue.extraRooms} chambres</span>}
+      </div>
+    </div>
+  );
+}
+
+function VenueZoneCard({ a, kind, selected, accent, onZone, fill }: { a: VenueAreaView; kind: VenueSceneProps["kind"]; selected: boolean; accent: string; onZone: (z: VenueAreaView["id"]) => void; fill?: boolean }) {
+  const Icon = ZONE_META[kind][a.id]?.icon ?? Briefcase;
+  return (
+    <button
+      type="button"
+      onClick={() => onZone(a.id)}
+      aria-pressed={selected}
+      className={`flex w-full flex-col items-start gap-0.5 rounded-lg border-2 p-2 text-left shadow-sm transition-transform hover:-translate-y-0.5 ${fill ? "h-full" : ""} ${selected ? "bg-white" : "border-white/70 bg-white/90"}`}
+      style={selected ? { borderColor: accent, boxShadow: `0 0 0 3px ${accent}33` } : a.tint ? { background: `${a.tint}33` } : undefined}
+    >
+      <span className="flex w-full items-center gap-1.5">
+        <Icon className="h-4 w-4 shrink-0" style={{ color: accent }} aria-hidden />
+        <span className="truncate text-[12px] font-semibold text-slate-900">{a.label}</span>
+      </span>
+      {a.badge && <span className={`text-[10px] ${a.badge.tone === "alert" ? "font-medium text-red-600" : a.badge.tone === "active" ? "text-blue-700" : "text-slate-500"}`}>{a.badge.text}</span>}
     </button>
   );
 }

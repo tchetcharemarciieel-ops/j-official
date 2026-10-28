@@ -9,7 +9,7 @@ import type { Group, Mesh } from "three";
 import { GARAGE_BAYS, GARAGE_PARKING, GARAGE_SPOTS, LAYOUT_STYLE, ROOM } from "@/lib/workspace";
 import type { StationKind } from "@/lib/spec";
 import { ROLE_COLORS, SKIN } from "./kinds";
-import { fmtNumber, stationBadge, type GarageAreaView, type GarageSceneProps, type SceneProps, type SceneStation } from "./types";
+import { fmtNumber, stationBadge, type GarageAreaView, type GarageSceneProps, type SceneProps, type SceneStation, type VenueAreaView, type VenueSceneProps } from "./types";
 
 /** Couche HTML des étiquettes (hors du canevas) et mode compact quand la vue est dézoomée. */
 const LabelCtx = createContext<{ portal: React.RefObject<HTMLDivElement> | null; compact: boolean }>({ portal: null, compact: false });
@@ -130,7 +130,7 @@ function Cyl({ r, h, position, color, r2 }: { r: number; h: number; position: [n
   );
 }
 
-function Room({ stations, layout, title, kpis, demo, freeSlots, onOpen, garage }: SceneProps) {
+function Room({ stations, layout, title, kpis, demo, freeSlots, onOpen, garage, venue }: SceneProps) {
   const style = LAYOUT_STYLE[layout];
   const w = ROOM.width;
   const d = ROOM.depth;
@@ -148,6 +148,8 @@ function Room({ stations, layout, title, kpis, demo, freeSlots, onOpen, garage }
       </Label>
       {garage ? (
         <GarageFloor garage={garage} accent={style.accent} />
+      ) : venue ? (
+        <VenueFloor venue={venue} accent={style.accent} />
       ) : (
         <>
           <Plant position={[-w / 2 + 0.6, 0, -d / 2 + 0.6]} />
@@ -593,6 +595,199 @@ function AreaFurniture({ id, x, z }: { id: GarageAreaView["id"]; x: number; z: n
       <Cyl r={0.45} h={0.05} position={[-0.5, 0.55, 0.35]} color="#d4a373" />
       <Cyl r={0.06} h={0.52} position={[-0.5, 0.27, 0.35]} color="#713f12" />
       <Box size={[0.6, 1.5, 0.6]} position={[1.2, 0.75, -0.8]} color="#e2e8f0" />
+    </group>
+  );
+}
+
+// ---------- Restaurant et hôtel : zones déclarées ----------
+
+const ROOM_COLORS: Record<string, string> = { disponible: "#86efac", reservee: "#c4b5fd", occupee: "#93c5fd", a_nettoyer: "#fcd34d", maintenance: "#fca5a5" };
+
+/** Plan du restaurant ou de l'hôtel : zones cliquables (zone ouverte mise en évidence) et chambres enregistrées. */
+function VenueFloor({ venue, accent }: { venue: VenueSceneProps; accent: string }) {
+  return (
+    <group>
+      {venue.areas.map((a, i) => <VenueArea key={`${a.id}-${i}`} area={a} selected={venue.selected === a.id && (a.id !== "chambres" || !venue.selectedRoom)} accent={accent} onZone={venue.onZone} kind={venue.kind} />)}
+      {venue.rooms.map((r) => <RoomTile key={r.id} room={r} selected={venue.selectedRoom === r.id} accent={accent} onRoom={venue.onRoom} />)}
+      {venue.extraRooms > 0 && (
+        <Label position={[5.6, 0.8, 1.2]} z={12}>
+          <span className="whitespace-nowrap rounded-full bg-slate-700 px-2 py-0.5 text-[10px] font-semibold text-white">+{venue.extraRooms} chambres</span>
+        </Label>
+      )}
+    </group>
+  );
+}
+
+function VenueArea({ area: a, selected, accent, onZone, kind }: { area: VenueAreaView; selected: boolean; accent: string; onZone: (z: VenueAreaView["id"]) => void; kind: "restaurant" | "hotel" }) {
+  const [hover, setHover] = useState(false);
+  const { compact } = useContext(LabelCtx);
+  const open = () => onZone(a.id);
+  const wall = selected ? accent : "#94a3b8";
+  const h = selected ? 0.55 : 0.34;
+  const t = selected ? 0.1 : 0.06;
+  const floor = a.id === "terrasse" ? "#d6d3d1" : a.id === "froid" ? "#e0f2fe" : a.id === "toilettes" ? "#f1f5f9" : a.tint ?? "#ffffff";
+  return (
+    <group>
+      <mesh
+        position={[a.x, 0.015, a.z]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        onClick={(e) => (e.stopPropagation(), open())}
+        onPointerOver={(e) => (e.stopPropagation(), setHover(true), (document.body.style.cursor = "pointer"))}
+        onPointerOut={() => (setHover(false), (document.body.style.cursor = ""))}
+      >
+        <planeGeometry args={[a.w - 0.08, a.d - 0.08]} />
+        <meshStandardMaterial color={selected || hover ? accent : floor} transparent opacity={selected ? 0.42 : hover ? 0.28 : a.tint || a.id === "froid" || a.id === "terrasse" ? 0.55 : 0.16} />
+      </mesh>
+      {a.id === "terrasse" ? (
+        <>
+          {/* Garde-corps de la terrasse (extérieur) */}
+          <Box size={[0.05, 0.7, a.d]} position={[a.x - a.w / 2, 0.35, a.z]} color="#334155" />
+          <Box size={[a.w, 0.7, 0.05]} position={[a.x, 0.35, a.z + a.d / 2]} color="#334155" />
+          <Box size={[t, h, a.d]} position={[a.x + a.w / 2, h / 2, a.z]} color={wall} />
+        </>
+      ) : (
+        <>
+          <Box size={[a.w, h, t]} position={[a.x, h / 2, a.z - a.d / 2]} color={wall} />
+          <Box size={[a.w, h, t]} position={[a.x, h / 2, a.z + a.d / 2]} color={wall} />
+          <Box size={[t, h, a.d]} position={[a.x - a.w / 2, h / 2, a.z]} color={wall} />
+          <Box size={[t, h, a.d]} position={[a.x + a.w / 2, h / 2, a.z]} color={wall} />
+        </>
+      )}
+      <group onClick={(e) => (e.stopPropagation(), open())}>
+        <VenueFurniture id={a.id} a={a} kind={kind} />
+      </group>
+      {a.showLabel && (
+        <Label position={[a.x, a.id === "chambres" ? 1.7 : 2.1, a.id === "chambres" ? a.z + a.d / 2 - 0.2 : a.z]} z={selected ? 30 : 20} interactive>
+          <button
+            type="button"
+            onClick={open}
+            aria-pressed={selected}
+            className={`flex flex-col items-center whitespace-nowrap rounded-lg border px-2.5 py-1 text-[11px] leading-tight shadow-sm transition-transform hover:-translate-y-0.5 ${selected ? "border-transparent text-white" : hover ? "border-blue-400 bg-white/95" : "border-slate-200 bg-white/95"}`}
+            style={selected ? { background: accent } : undefined}
+          >
+            <span className={`font-semibold ${selected ? "" : "text-slate-900"}`}>{a.label}</span>
+            {a.badge && (!compact || a.badge.tone === "alert") && <span className={selected ? "text-white/90" : a.badge.tone === "alert" ? "font-medium text-red-600" : a.badge.tone === "active" ? "text-blue-700" : "text-slate-500"}>{a.badge.text}</span>}
+          </button>
+        </Label>
+      )}
+    </group>
+  );
+}
+
+function DiningSet({ position, chairs = 4 }: { position: [number, number, number]; chairs?: number }) {
+  return (
+    <group position={position}>
+      <Cyl r={0.42} h={0.05} position={[0, 0.72, 0]} color="#8b5a2b" />
+      <Cyl r={0.06} h={0.7} position={[0, 0.35, 0]} color="#5b3a1a" />
+      {Array.from({ length: chairs }, (_, k) => <Box key={k} size={[0.3, 0.42, 0.3]} position={[Math.cos((k * 2 * Math.PI) / chairs) * 0.68, 0.21, Math.sin((k * 2 * Math.PI) / chairs) * 0.68]} color="#a16207" />)}
+    </group>
+  );
+}
+
+function VenueFurniture({ id, a, kind }: { id: VenueAreaView["id"]; a: VenueAreaView; kind: "restaurant" | "hotel" }) {
+  const { x, z, w, d } = a;
+  switch (id) {
+    case "cuisine":
+      return (
+        <group>
+          <group position={[x - w / 2 + 1.2, 0, z - d / 2 + 0.6]}><Furniture kind="kitchen" /></group>
+          {w > 4 && <Box size={[1.6, 0.9, 0.7]} position={[x + 0.6, 0.45, z + 0.3]} color="#cbd5e1" />}
+          <Box size={[0.7, 1.8, 0.6]} position={[x + w / 2 - 0.5, 0.9, z - d / 2 + 0.45]} color="#e2e8f0" />
+        </group>
+      );
+    case "stock":
+      return <Shelf position={[x, 0, z - 0.6]} />;
+    case "froid":
+      return (
+        <group>
+          <Box size={[1.6, 1.9, 1.2]} position={[x, 0.95, z - 0.4]} color="#f8fafc" />
+          <Box size={[0.08, 1.5, 0.8]} position={[x + 0.82, 0.85, z - 0.4]} color="#94a3b8" />
+          <Box size={[0.4, 0.25, 0.04]} position={[x - 0.3, 1.5, z + 0.22]} color="#0ea5e9" />
+        </group>
+      );
+    case "toilettes":
+      return (
+        <group>
+          {[-0.6, 0.6].map((dx) => (
+            <group key={dx} position={[x + dx, 0, z - 0.7]}>
+              <Box size={[0.4, 0.42, 0.55]} position={[0, 0.21, 0]} color="#f8fafc" />
+              <Box size={[0.4, 0.5, 0.15]} position={[0, 0.55, -0.22]} color="#f1f5f9" />
+            </group>
+          ))}
+          <Box size={[1.4, 0.8, 0.45]} position={[x, 0.4, z + 0.85]} color="#e2e8f0" />
+          <Box size={[0.06, 1.4, 1.3]} position={[x, 0.7, z - 0.6]} color="#cbd5e1" />
+        </group>
+      );
+    case "salle":
+    case "restaurant": {
+      const cols = Math.max(1, Math.floor((w - 0.8) / 1.9));
+      const rows = Math.max(1, Math.floor((d - 0.8) / 1.9));
+      const sets: [number, number, number][] = [];
+      for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) sets.push([x - ((cols - 1) * 1.9) / 2 + i * 1.9, 0, z - ((rows - 1) * 1.9) / 2 + j * 1.9]);
+      return <group>{sets.slice(0, 12).map((p, i) => <DiningSet key={i} position={p} />)}</group>;
+    }
+    case "terrasse":
+      return (
+        <group>
+          {[z - 1.6, z + 0.9].map((zz) => (
+            <group key={zz}>
+              <DiningSet position={[x, 0, zz]} chairs={2} />
+              <Cyl r={0.04} h={1.9} position={[x, 0.95, zz]} color="#475569" />
+              <mesh position={[x, 1.95, zz]}><coneGeometry args={[0.9, 0.35, 16]} /><meshStandardMaterial color="#f97316" /></mesh>
+            </group>
+          ))}
+          <Plant position={[x - 0.7, 0, z + d / 2 - 0.5]} />
+        </group>
+      );
+    case "caisse":
+      return <group position={[x, 0, z - 0.4]}><Furniture kind="cashier" /></group>;
+    case "reception":
+      return (
+        <group>
+          <group position={[x + 1.5, 0, z - 0.5]}><Furniture kind="reception" /></group>
+          <Box size={[1.6, 0.4, 0.7]} position={[x - 2.8, 0.25, z + 0.3]} color="#64748b" />
+          <Box size={[1.6, 0.5, 0.2]} position={[x - 2.8, 0.6, z + 0.6]} color="#64748b" />
+          <Plant position={[x - w / 2 + 0.5, 0, z - d / 2 + 0.5]} />
+        </group>
+      );
+    case "bureau":
+      return <group position={[x, 0, z - 0.2]}><Furniture kind="desk" /></group>;
+    case "chambres":
+      return null;
+  }
+  return kind ? null : null;
+}
+
+function RoomTile({ room, selected, accent, onRoom }: { room: VenueSceneProps["rooms"][number]; selected: boolean; accent: string; onRoom: (id: string) => void }) {
+  const [hover, setHover] = useState(false);
+  const { compact } = useContext(LabelCtx);
+  const h = selected ? 0.9 : 0.55;
+  const wall = selected ? accent : "#94a3b8";
+  const open = () => onRoom(room.id);
+  return (
+    <group>
+      <mesh
+        position={[room.x, 0.02, room.z]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        onClick={(e) => (e.stopPropagation(), open())}
+        onPointerOver={(e) => (e.stopPropagation(), setHover(true), (document.body.style.cursor = "pointer"))}
+        onPointerOut={() => (setHover(false), (document.body.style.cursor = ""))}
+      >
+        <planeGeometry args={[room.w - 0.06, room.d - 0.06]} />
+        <meshStandardMaterial color={selected ? accent : ROOM_COLORS[room.state] ?? "#e2e8f0"} transparent opacity={selected ? 0.75 : hover ? 0.9 : 0.6} />
+      </mesh>
+      <Box size={[room.w, h, 0.05]} position={[room.x, h / 2, room.z - room.d / 2]} color={wall} />
+      <Box size={[0.05, h, room.d]} position={[room.x - room.w / 2, h / 2, room.z]} color={wall} />
+      <Box size={[0.05, h, room.d]} position={[room.x + room.w / 2, h / 2, room.z]} color={wall} />
+      <group position={[room.x, 0, room.z - 0.35]} scale={0.6} onClick={(e) => (e.stopPropagation(), open())}>
+        <Furniture kind="bed" />
+      </group>
+      <Label position={[room.x, 1.2, room.z + room.d / 2 - 0.35]} z={selected ? 32 : 22} interactive>
+        <button type="button" onClick={open} aria-pressed={selected} aria-label={`Chambre ${room.number} : ${room.stateLabel}`} className={`flex flex-col items-center whitespace-nowrap rounded-md border px-1.5 py-0.5 text-[10px] leading-tight shadow-sm ${selected ? "border-transparent text-white" : "border-slate-200 bg-white/95"}`} style={selected ? { background: accent } : undefined}>
+          <span className={`font-bold ${selected ? "" : "text-slate-900"}`}>{room.number}</span>
+          {!compact && <span className={selected ? "text-white/90" : "text-slate-500"}>{room.stateLabel}</span>}
+        </button>
+      </Label>
     </group>
   );
 }

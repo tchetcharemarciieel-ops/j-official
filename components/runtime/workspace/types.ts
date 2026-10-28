@@ -1,5 +1,6 @@
 import type { Station, WorkspaceLayout } from "@/lib/spec";
 import type { CrewMember, GarageZoneId, StationStats } from "@/lib/workspace";
+import type { VenueKind, VenueZone } from "@/lib/venue/model";
 
 export type SceneStation = Station & { x: number; z: number; stats: StationStats | null; crew: CrewMember[] };
 
@@ -15,6 +16,24 @@ export type SceneProps = {
   onOpen: (target: string) => void;
   /** Garage : zones fonctionnelles cliquables et véhicules réellement enregistrés comme présents. */
   garage?: GarageSceneProps;
+  /** Restaurant ou hôtel : zones déclarées dans le questionnaire et chambres enregistrées. */
+  venue?: VenueSceneProps;
+};
+
+export type VenueAreaView = { id: VenueZone; label: string; showLabel: boolean; x: number; z: number; w: number; d: number; tint: string | null; badge: { text: string; tone: BadgeTone } | null };
+export type VenueRoomView = { id: string; number: string; state: string; stateLabel: string; x: number; z: number; w: number; d: number };
+export type VenueSceneProps = {
+  kind: VenueKind;
+  areas: VenueAreaView[];
+  selected: VenueZone | null;
+  onZone: (z: VenueZone) => void;
+  /** Hôtel : une case par chambre enregistrée (les autres sont comptées à part). */
+  rooms: VenueRoomView[];
+  extraRooms: number;
+  selectedRoom: string | null;
+  onRoom: (id: string) => void;
+  /** Teintes reprises des photos importées (référence visuelle). */
+  photoTinted: boolean;
 };
 
 export type BadgeTone = "alert" | "active" | "idle";

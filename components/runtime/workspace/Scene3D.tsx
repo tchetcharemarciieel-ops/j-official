@@ -143,9 +143,11 @@ function Room({ stations, layout, title, kpis, demo, freeSlots, onOpen, garage, 
       {[-4.5, -2.2].map((x) => <Box key={x} size={[1.5, 1.6, 0.05]} position={[x, 1.8, -d / 2 + 0.02]} color="#1e293b" />)}
       {[-2.6, 0.2, 2.9].map((z) => <Box key={z} size={[0.05, 1.6, 1.4]} position={[-w / 2 + 0.02, 1.8, z]} color="#1e293b" />)}
       {/* Enseigne de l'entreprise */}
-      <Label position={[-0.2, 2.75, -d / 2 + 0.05]} z={5}>
-        <div className="whitespace-nowrap rounded-md px-3 py-1 text-sm font-bold text-white shadow" style={{ background: style.accent }}>{title}</div>
-      </Label>
+      {!venue && (
+        <Label position={[-0.2, 2.75, -d / 2 + 0.05]} z={5}>
+          <div className="whitespace-nowrap rounded-md px-3 py-1 text-sm font-bold text-white shadow" style={{ background: style.accent }}>{title}</div>
+        </Label>
+      )}
       {garage ? (
         <GarageFloor garage={garage} accent={style.accent} />
       ) : venue ? (

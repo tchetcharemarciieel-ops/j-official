@@ -22,6 +22,17 @@ Pour un logiciel dont l'espace de travail est un garage, le plan 3D (et le plan 
 
 Configuration : exécuter `supabase/migrations/0007_garage_expenses_rls.sql` (les dépenses du garage ne sont lisibles directement que par les gérants). Les photos des dossiers sont réduites dans le navigateur et stockées en base (8 par dossier) : le projet n'utilise pas encore Supabase Storage.
 
+## Modules « Restaurant » et « Hôtel »
+
+Pour un logiciel dont l'espace de travail est un restaurant ou un hôtel, un questionnaire est posé avant d'afficher le plan 3D, puis reste modifiable (« Configurer le plan ») :
+
+- **Restaurant** : « Votre restaurant possède-t-il une terrasse ? ». Zones : Cuisine (équipements, budget), Salle de restaurant (tables et chaises, capacité, réservations, budget), Stock (produits, entrées et sorties, alertes, valeur), Chambre froide (relevés de température saisis à la main, produits, dates limites, alertes et entretien), Toilettes (aménagement, nettoyage récurrent, produits d'entretien, budget), Accueil / Caisse (commande, encaissement avec monnaie rendue, reçus et factures, rapport de caisse), Bureau (tableau de bord, personnel et horaires, dépenses et bénéfice estimé, rapports) et Terrasse si elle existe.
+- **Hôtel** : restaurant sur place ? service en chambre ? autres espaces, puis étape facultative « Ajoutez des photos de votre hôtel » (importer ou continuer sans). Zones : Réception (réservations sans chevauchement, arrivées et départs, disponibilité, paiements et factures, fiches clients), Chambres (chaque chambre enregistrée est cliquable sur le plan : informations, état, nettoyage, réservations, équipements et réparations), Restaurant et Cuisine si l'hôtel en a (commandes reliées à la cuisine, carte, recettes et coût estimé, stock déduit une seule fois, hygiène, consommations ajoutées à la note de chambre d'un client présent), Bureau (tableau de bord, finances, personnel, taux d'occupation, tâches et alertes de toutes les zones).
+
+Règles côté serveur (`lib/venue/engine.ts`, route `/api/apps/[id]/venue`) : prix toujours repris de la carte, paiements limités au reste dû et protégés contre le double envoi, paiements « en attente » exclus des recettes jusqu'à confirmation, aucune température présentée comme mesurée automatiquement, budgets calculés uniquement sur les prix saisis. Données dans `records` sous des identifiants « hx:… » (tests : `tests/venue.test.ts`).
+
+Configuration : exécuter `supabase/migrations/0008_venue_rls.sql` (dépenses réservées aux gérants, fiches clients et personnel cachées aux comptes en lecture seule ; remplace la politique de 0007 en l'étendant).
+
 ## Mise en service
 
 1. Créer un projet Supabase, puis exécuter `supabase/migrations/0001_init.sql` (éditeur SQL ou `supabase db push`).

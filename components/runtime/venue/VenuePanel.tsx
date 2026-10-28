@@ -2,7 +2,7 @@
 
 import { X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { LEVEL, type VenueKind, type VenueZone } from "@/lib/venue/model";
+import { LEVEL, PHOTO_CATEGORY_LABELS, type Doc, type Photo, type PhotoCategory, type VenueKind, type VenueZone } from "@/lib/venue/model";
 import type { DataMode } from "../useAppData";
 import { Back, Btn, Modal, OptionCard, VenueCtx } from "./ui";
 import { venueSettings, type VenueApi } from "./useVenue";
@@ -95,6 +95,15 @@ export function VenuePanel({ kind, zones, zone, onZone, onClose, api, projectId,
   }, [s, api, mode, projectId, appName, kind, settings, ask, notify, onZone, zones, zone]);
 
   const current = options.find((o) => o.id === option);
+  // Photos réelles de l'espace (références visuelles), chargées seulement si la zone en a.
+  const photoCat: PhotoCategory | null = kind === "hotel" ? (({ reception: "reception", chambres: "chambres", restaurant: "restaurant" }) as Partial<Record<VenueZone, PhotoCategory>>)[zone] ?? null : null;
+  const hasPhotos = photoCat !== null && (settings.photo_counts[photoCat] ?? 0) > 0;
+  const [photos, setPhotos] = useState<Doc<Photo>[] | null>(null);
+  useEffect(() => {
+    if (!hasPhotos || photos) return;
+    api.photos().then((p) => setPhotos(p as Doc<Photo>[]), () => setPhotos([]));
+  }, [hasPhotos, photos, api]);
+  const zonePhotos = (photos ?? []).filter((p) => p.data.category === photoCat);
   const isRooms = kind === "hotel" && zone === "chambres";
 
   return (
@@ -133,6 +142,17 @@ export function VenuePanel({ kind, zones, zone, onZone, onClose, api, projectId,
         ) : ctx ? (
           <VenueCtx.Provider value={ctx}>
             {api.error && <p role="alert" className="mb-2 text-xs text-red-600">Actualisation impossible : {api.error}</p>}
+            {!current && !roomId && zonePhotos.length > 0 && (
+              <div className="mb-3">
+                <p className="mb-1 text-xs font-medium text-slate-600">Vos photos · {PHOTO_CATEGORY_LABELS[photoCat!]} (photos réelles, référence visuelle)</p>
+                <ul className="flex gap-1.5 overflow-x-auto pb-1">
+                  {zonePhotos.map((p) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <li key={p.id} className="shrink-0"><img src={p.data.data_url} alt={p.data.caption || "Photo"} className="h-16 w-24 rounded-lg border border-slate-200 object-cover" /></li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <div key={`${zone}:${option ?? ""}:${roomId ?? ""}`} style={{ animation: "fade-up .3s ease both" }}>
               {isRooms ? (
                 roomId ? <RoomDetail roomId={roomId} onBack={() => onRoom(null)} /> : <RoomsList onRoom={(id) => onRoom(id)} />

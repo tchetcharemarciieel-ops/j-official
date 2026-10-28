@@ -112,7 +112,8 @@ export function StayForm({ stay, roomId, onClose }: { stay: Doc<Stay> | null; ro
   const guests = docs<Guest>(v.data.guest).sort((a, b) => a.data.name.localeCompare(b.data.name));
   const t = today();
   const tomorrow = (() => { const x = new Date(); x.setDate(x.getDate() + 1); return today(x); })();
-  const [f, setF] = useState({ room_id: d?.room_id ?? roomId ?? rooms.find((r) => !r.data.maintenance)?.id ?? "", arrival: d?.arrival ?? t, departure: d?.departure ?? tomorrow, adults: String(d?.adults ?? 1), children: String(d?.children ?? 0), rate: numOrEmpty(d?.rate ?? rooms.find((r) => r.id === (d?.room_id ?? roomId))?.data.price_night), note: d?.note ?? "" });
+  const firstRoom = d?.room_id ?? roomId ?? rooms.find((r) => !r.data.maintenance && !stays.some((s) => s.data.room_id === r.id && STAY_ACTIVE.includes(s.data.status) && staysOverlap(s.data, { arrival: t, departure: tomorrow })))?.id ?? rooms.find((r) => !r.data.maintenance)?.id ?? "";
+  const [f, setF] = useState({ room_id: firstRoom, arrival: d?.arrival ?? t, departure: d?.departure ?? tomorrow, adults: String(d?.adults ?? 1), children: String(d?.children ?? 0), rate: numOrEmpty(d?.rate ?? rooms.find((r) => r.id === firstRoom)?.data.price_night), note: d?.note ?? "" });
   const [guestId, setGuestId] = useState(d?.guest_id ?? "");
   const [g, setG] = useState({ name: "", phone: "", email: "", id_type: "", id_number: "" });
   const [busy, setBusy] = useState(false);
@@ -137,7 +138,7 @@ export function StayForm({ stay, roomId, onClose }: { stay: Doc<Stay> | null; ro
         <Field label="Arrivée"><input type="date" className={inp} required value={f.arrival} onChange={(e) => setF({ ...f, arrival: e.target.value })} /></Field>
         <Field label="Départ"><input type="date" className={inp} required min={f.arrival} value={f.departure} onChange={(e) => setF({ ...f, departure: e.target.value })} /></Field>
         <Field label="Chambre">
-          <select className={inp} value={f.room_id} onChange={(e) => { const r = rooms.find((x) => x.id === e.target.value); setF({ ...f, room_id: e.target.value, rate: f.rate || numOrEmpty(r?.data.price_night) }); }}>
+          <select className={inp} value={f.room_id} onChange={(e) => { const r = rooms.find((x) => x.id === e.target.value); setF({ ...f, room_id: e.target.value, rate: r?.data.price_night != null ? String(r.data.price_night) : f.rate }); }}>
             {rooms.map((r) => {
               const busy2 = stays.some((s) => s.id !== stay?.id && s.data.room_id === r.id && STAY_ACTIVE.includes(s.data.status) && f.departure > f.arrival && staysOverlap(s.data, f));
               return <option key={r.id} value={r.id} disabled={r.data.maintenance || busy2}>Ch. {r.data.number} · {r.data.type} · {r.data.capacity} pers.{r.data.maintenance ? " (maintenance)" : busy2 ? " (déjà réservée)" : ""}</option>;

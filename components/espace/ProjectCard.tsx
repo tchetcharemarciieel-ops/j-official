@@ -97,7 +97,7 @@ export function ProjectCard({ project: p, delay = 0, compact = false }: { projec
         {hasPublished && p.status !== "suspended" ? (
           <a href={`/apps/${p.slug}`} target="_blank" rel="noopener" className={`${btn} bg-slate-100 text-slate-900 hover:bg-slate-200`}><ExternalLink className="h-3.5 w-3.5" aria-hidden />Ouvrir</a>
         ) : (
-          <Link href={manage ? `/projets/${p.id}` : "#"} aria-disabled={!manage} className={`${btn} bg-slate-100 text-slate-900 hover:bg-slate-200 ${manage ? "" : "pointer-events-none opacity-50"}`}><ExternalLink className="h-3.5 w-3.5" aria-hidden />Ouvrir</Link>
+          <a href={manage && p.draftVersion > 0 ? `/apps/${p.slug}` : manage ? `/projets/${p.id}` : "#"} aria-disabled={!manage} title={manage ? "Ouvrir l'aperçu du logiciel (pas encore publié)" : undefined} className={`${btn} bg-slate-100 text-slate-900 hover:bg-slate-200 ${manage ? "" : "pointer-events-none opacity-50"}`}><ExternalLink className="h-3.5 w-3.5" aria-hidden />Ouvrir</a>
         )}
         {manage ? (
           <>

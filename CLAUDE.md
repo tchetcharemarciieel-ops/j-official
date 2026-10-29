@@ -12,3 +12,7 @@ Rules:
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
 - A committed graphify-out/graph.json is rewritten whole on every build, so a large diff to it in a pull request is expected. Do not flag it as churn or suggest skipping the graph rebuild or its hooks.
+
+## context-mode
+
+Installé le 2026-10-29 (`.mcp.json`, version fixée 1.0.169, serveur MCP seul, sans crochets). Pour analyser une grosse sortie (journaux Render/Supabase, longues listes de fichiers, pages web), utiliser `ctx_execute` / `ctx_fetch_and_index` et n'afficher que le résumé ; garder Bash, Read et Edit pour les commandes courtes et les modifications de fichiers. Les règles graphify ci-dessus restent prioritaires pour explorer le code.

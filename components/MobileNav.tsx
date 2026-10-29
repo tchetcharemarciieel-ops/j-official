@@ -9,7 +9,7 @@ import { Menu, X } from "lucide-react";
 import { SITE_NAV } from "@/lib/nav";
 
 
-export function MobileNav({ isAdmin }: { isAdmin: boolean }) {
+export function MobileNav({ isAdmin, signedIn = false }: { isAdmin: boolean; signedIn?: boolean }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -44,8 +44,17 @@ export function MobileNav({ isAdmin }: { isAdmin: boolean }) {
               <Link href="/demo" className="btn btn-primary mt-4 text-base">Essayer la démo</Link>
             ) : (
               <div className="mt-4 grid gap-2">
-                <Link href="/inscription" className="btn btn-primary text-base">S&apos;inscrire</Link>
-                <Link href="/connexion" className="btn btn-ghost text-base">Se connecter</Link>
+                {signedIn ? (
+                  <>
+                    <Link href="/espace" className="btn btn-primary text-base">Mon espace</Link>
+                    <form action="/auth/signout" method="post"><button type="submit" className="btn btn-ghost w-full text-base">Se déconnecter</button></form>
+                  </>
+                ) : (
+                  <>
+                    <Link href="/inscription" className="btn btn-primary text-base">S&apos;inscrire</Link>
+                    <Link href="/connexion" className="btn btn-ghost text-base">Se connecter</Link>
+                  </>
+                )}
               </div>
             )}
           </nav>

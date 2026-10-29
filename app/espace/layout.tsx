@@ -4,6 +4,7 @@ import { adminClient } from "@/lib/supabase/admin";
 import { Logo } from "@/components/Logo";
 import { EspaceBottomNav, EspaceNav } from "@/components/espace/EspaceNav";
 import { NotificationBell } from "@/components/espace/NotificationBell";
+import { SignOutButton } from "@/components/SignOutButton";
 
 /** Mise en page de l'espace client : barre du haut, menu latéral et contenu. */
 export default async function EspaceLayout({ children }: { children: React.ReactNode }) {
@@ -20,6 +21,7 @@ export default async function EspaceLayout({ children }: { children: React.React
             {profile.is_admin && <Link href="/admin" className="hidden rounded-lg px-3 py-2 text-sm text-slate-700 hover:text-slate-900 sm:block">Administration</Link>}
             <Link href="/" className="hidden rounded-lg px-3 py-2 text-sm text-slate-600 hover:text-slate-900 md:block">Site public</Link>
             <NotificationBell />
+            <SignOutButton className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900" label="Déconnexion" />
             <Link href="/espace/parametres" className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 py-1 pl-1 pr-3 transition hover:bg-slate-100" aria-label="Profil de l'entreprise">
               {profile.company_logo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element

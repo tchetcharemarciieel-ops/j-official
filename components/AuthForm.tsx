@@ -28,7 +28,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" | "forgot" | "rese
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(params.get("erreur") === "expire" ? "Ce lien a expiré. Connectez-vous pour recevoir un nouvel e-mail de confirmation." : params.get("erreur") === "lien" ? "Lien invalide ou déjà utilisé." : "");
-  const [info, setInfo] = useState(params.get("info") === "confirme" ? "Adresse e-mail confirmée. Connectez-vous avec votre e-mail et votre mot de passe." : "");
+  const [info, setInfo] = useState(params.get("info") === "confirme" ? "Adresse e-mail confirmée. Connectez-vous avec votre e-mail et votre mot de passe." : params.get("info") === "deconnecte" ? "Vous êtes déconnecté. Saisissez votre e-mail et votre mot de passe pour vous reconnecter." : "");
   // Inscription réussie : en attente de la confirmation de l'adresse e-mail.
   const [sentTo, setSentTo] = useState("");
   const [unconfirmed, setUnconfirmed] = useState(false);

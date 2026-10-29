@@ -4,6 +4,7 @@ import { Logo } from "./Logo";
 import { MobileNav } from "./MobileNav";
 import { getProfile } from "@/lib/auth";
 import { SITE_NAV } from "@/lib/nav";
+import { SignOutButton } from "./SignOutButton";
 
 export async function SiteHeader() {
   const profile = await getProfile().catch(() => null);
@@ -27,13 +28,20 @@ export async function SiteHeader() {
           {STATIC_SITE ? (
             <Link href="/demo" className="btn btn-primary">Essayer la démo</Link>
           ) : (
-            <>
-              <Link href="/connexion" className="btn btn-ghost">Se connecter</Link>
-              <Link href="/inscription" className="btn btn-primary">S&apos;inscrire</Link>
-            </>
+            profile ? (
+              <>
+                <Link href="/espace" className="btn btn-primary">Mon espace</Link>
+                <SignOutButton />
+              </>
+            ) : (
+              <>
+                <Link href="/connexion" className="btn btn-ghost">Se connecter</Link>
+                <Link href="/inscription" className="btn btn-primary">S&apos;inscrire</Link>
+              </>
+            )
           )}
         </div>
-        <MobileNav isAdmin={Boolean(profile?.is_admin)} />
+        <MobileNav isAdmin={Boolean(profile?.is_admin)} signedIn={Boolean(profile)} />
       </div>
     </header>
   );

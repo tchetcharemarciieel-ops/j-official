@@ -51,6 +51,10 @@ export const POST = route(async (req) => {
     if (/already|exists|registered/i.test(error.message)) throw new HttpError(409, "Un compte existe déjà avec cette adresse. Connectez-vous.");
     if (/rate limit|too many/i.test(error.message)) throw new HttpError(429, "Trop d'e-mails envoyés pour le moment. Réessayez dans quelques minutes.");
     if (/password/i.test(error.message)) throw new HttpError(400, "Mot de passe trop faible : utilisez au moins 8 caractères avec lettres et chiffres.");
+    if (/sending.*email|smtp/i.test(error.message)) {
+      console.error("[auth] envoi de l'e-mail impossible (réglage SMTP de Supabase) :", error.message);
+      throw new HttpError(503, "L'e-mail de vérification n'a pas pu être envoyé. Le service d'envoi d'e-mails est mal réglé : réessayez plus tard.");
+    }
     console.error("[auth/signup] échec Supabase :", error.status, error.message);
     if (/invalid.*email|email.*invalid/i.test(error.message)) throw new HttpError(400, "Inscription impossible. Vérifiez l'adresse e-mail.");
     throw new HttpError(503, "Le service d'inscription ne répond pas pour le moment. Réessayez dans un instant.");

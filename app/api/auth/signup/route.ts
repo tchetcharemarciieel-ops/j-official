@@ -5,11 +5,15 @@ import { HttpError } from "@/lib/access";
 import { createClient } from "@/lib/supabase/server";
 import { SITE_URL } from "@/lib/config";
 import { audit } from "@/lib/audit";
+import { saveOnboarding } from "@/lib/onboarding-store";
+import { onboardingSchema } from "@/lib/onboarding";
 
 const body = z.object({
   email: z.string().trim().toLowerCase().email("Adresse e-mail invalide.").max(200),
   password: z.string().min(8, "Le mot de passe doit contenir au moins 8 caractères.").max(200),
   fullName: z.string().trim().max(80).default(""),
+  companyName: z.string().trim().max(120).default(""),
+  onboarding: z.unknown().optional(),
   website: z.string().max(0).optional(), // champ piège anti-robots, doit rester vide
   next: z.string().max(300).regex(/^\/(?!\/)/).default("/espace"),
 });
@@ -34,6 +38,9 @@ export const POST = route(async (req) => {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "inconnue";
   if (limited(ip)) throw new HttpError(429, "Trop d'inscriptions depuis cet appareil. Réessayez dans une heure.");
   const input = body.parse(await readJson(req));
+  // Questionnaire validé avant de créer le compte : une réponse invalide n'empêche que l'enregistrement des réponses.
+  const answers = input.onboarding === undefined ? null : onboardingSchema.safeParse(input.onboarding);
+  if (answers && !answers.success) throw new HttpError(422, `Questionnaire incomplet : ${answers.error.issues[0]?.message ?? "réponse invalide"}`);
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     email: input.email,
@@ -50,6 +57,8 @@ export const POST = route(async (req) => {
   }
   // Adresse déjà inscrite et confirmée : Supabase ne renvoie aucune identité (et n'envoie pas d'e-mail).
   if (data.user && data.user.identities?.length === 0) throw new HttpError(409, "Un compte existe déjà avec cette adresse. Connectez-vous.");
+  let answersSaved = false;
+  if (data.user && (answers?.success || input.companyName)) answersSaved = await saveOnboarding(data.user.id, answers?.success ? answers.data : null, input.companyName);
   await audit("account.created", { details: { email: input.email, confirmation: data.session ? "désactivée dans Supabase" : "e-mail envoyé" } });
-  return NextResponse.json({ ok: true, confirmationRequired: !data.session });
+  return NextResponse.json({ ok: true, confirmationRequired: !data.session, answersSaved });
 });

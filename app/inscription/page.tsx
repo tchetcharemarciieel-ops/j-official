@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AuthShell } from "@/components/AuthShell";
-import { AuthForm } from "@/components/AuthForm";
+import { SignupWizard } from "@/components/onboarding/SignupWizard";
 import { serverConfigured } from "@/lib/config";
 import { getProfile } from "@/lib/auth";
 
@@ -30,9 +30,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ n
     );
   }
   return (
-    <AuthShell title="Créer un compte" subtitle="Gratuit, sans carte bancaire.">
+    <AuthShell wide title="Créer un compte" subtitle="Quelques questions pour comprendre ton entreprise, puis ton compte. Gratuit, sans carte bancaire.">
       <Suspense>
-        <AuthForm mode="signup" />
+        <SignupWizard />
       </Suspense>
     </AuthShell>
   );

@@ -365,3 +365,12 @@ select.input option {
   .tab-pop { animation: none; }
   .tab-press:active { transform: none; }
 }
+
+/* Questionnaire d'inscription : passage d'une question à l'autre */
+.wizard-in-next { animation: wizard-next 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.wizard-in-prev { animation: wizard-prev 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@keyframes wizard-next { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+@keyframes wizard-prev { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .wizard-in-next, .wizard-in-prev { animation: none; }
+}

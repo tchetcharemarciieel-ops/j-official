@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/browser";
+import type { OnboardingAnswers } from "@/lib/onboarding";
 
 function safeNext(n: string | null) {
   return n && n.startsWith("/") && !n.startsWith("//") ? n : "/espace";
@@ -19,13 +20,15 @@ function frError(message: string) {
   return `Une erreur est survenue (${message.slice(0, 80)}). Réessayez.`;
 }
 
-export function AuthForm({ mode }: { mode: "login" | "signup" | "forgot" | "reset" }) {
+export function AuthForm({ mode, onboarding, onSignedUp }: { mode: "login" | "signup" | "forgot" | "reset"; onboarding?: OnboardingAnswers; onSignedUp?: () => void }) {
   const router = useRouter();
   const params = useSearchParams();
   const next = safeNext(params.get("next"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [company, setCompany] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(params.get("erreur") === "expire" ? "Ce lien a expiré. Connectez-vous pour recevoir un nouvel e-mail de confirmation." : params.get("erreur") === "lien" ? "Lien invalide ou déjà utilisé." : "");
   const [info, setInfo] = useState(params.get("info") === "confirme" ? "Adresse e-mail confirmée. Connectez-vous avec votre e-mail et votre mot de passe." : params.get("info") === "deconnecte" ? "Vous êtes déconnecté. Saisissez votre e-mail et votre mot de passe pour vous reconnecter." : "");
@@ -51,9 +54,11 @@ export function AuthForm({ mode }: { mode: "login" | "signup" | "forgot" | "rese
     e.preventDefault();
     setError("");
     setInfo("");
+    if (mode === "signup" && !email.trim()) return setError("Indiquez votre adresse e-mail.");
     if ((mode === "signup" || mode === "reset") && password.length < 8) return setError("Le mot de passe doit contenir au moins 8 caractères.");
+    if (mode === "signup" && password !== confirm) return setError("Les deux mots de passe ne sont pas identiques.");
     setLoading(true);
-    const supabase = createClient();
+    const supabase = { get auth() { return createClient().auth; } };
     const origin = window.location.origin;
     try {
       if (mode === "login") {
@@ -66,9 +71,10 @@ export function AuthForm({ mode }: { mode: "login" | "signup" | "forgot" | "rese
         router.replace(next);
         router.refresh();
       } else if (mode === "signup") {
-        const res = await fetch("/api/auth/signup", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password, fullName: name, next }) });
+        const res = await fetch("/api/auth/signup", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password, fullName: name, companyName: company, onboarding, next }) });
         const body = (await res.json().catch(() => ({}))) as { error?: string; details?: string[]; confirmationRequired?: boolean };
         if (!res.ok) return setError(body.details?.[0]?.split(" : ").pop() ?? body.error ?? "Inscription impossible.");
+        onSignedUp?.();
         if (body.confirmationRequired === false) {
           // Confirmation désactivée côté Supabase : la session est déjà ouverte.
           router.replace(next);
@@ -145,6 +151,12 @@ export function AuthForm({ mode }: { mode: "login" | "signup" | "forgot" | "rese
           <input id="name" className="input" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" maxLength={80} />
         </div>
       )}
+      {mode === "signup" && onboarding && (
+        <div>
+          <label className="label" htmlFor="company">Nom de l&apos;entreprise <span className="font-normal text-slate-500">(facultatif)</span></label>
+          <input id="company" className="input" value={company} onChange={(e) => setCompany(e.target.value)} autoComplete="organization" maxLength={120} />
+        </div>
+      )}
       {mode !== "reset" && (
         <div>
           <label className="label" htmlFor="email">Adresse e-mail</label>
@@ -155,6 +167,13 @@ export function AuthForm({ mode }: { mode: "login" | "signup" | "forgot" | "rese
         <div>
           <label className="label" htmlFor="password">{mode === "reset" ? "Nouveau mot de passe" : "Mot de passe"}</label>
           <input id="password" type="password" className="input" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={mode === "login" ? "current-password" : "new-password"} />
+        </div>
+      )}
+      {mode === "signup" && (
+        <div>
+          <label className="label" htmlFor="confirm">Confirmation du mot de passe</label>
+          <input id="confirm" type="password" className="input" required minLength={8} value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" />
+          {confirm && confirm !== password && <p className="mt-1 text-xs text-red-600">Les mots de passe ne correspondent pas.</p>}
         </div>
       )}
       {error && <p role="alert" className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700">{error}</p>}

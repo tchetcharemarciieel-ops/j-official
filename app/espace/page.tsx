@@ -8,6 +8,8 @@ import { LOW_CREDIT_THRESHOLD } from "@/lib/config";
 import { StatCard } from "@/components/espace/StatCard";
 import { ProjectCard } from "@/components/espace/ProjectCard";
 import { WordsIn } from "@/components/espace/WordsIn";
+import { Welcome } from "@/components/onboarding/Welcome";
+import { loadOnboarding } from "@/lib/onboarding-store";
 
 export const metadata = { title: "Vue d'ensemble" };
 export const dynamic = "force-dynamic";
@@ -21,10 +23,11 @@ export default async function Overview() {
   const managed = projects.filter((p) => p.role === "owner" || p.role === "admin").map((p) => p.id);
   const db = adminClient();
   const since = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-  const [activity, { data: views }, { count: records }] = await Promise.all([
+  const [activity, { data: views }, { count: records }, onboarding] = await Promise.all([
     loadActivity(ids, 12),
     ids.length ? db.from("app_views").select("views").in("project_id", ids).gte("day", since) : Promise.resolve({ data: [] as { views: number }[] }),
     managed.length ? db.from("records").select("id", { count: "exact", head: true }).in("project_id", managed).eq("is_demo", false) : Promise.resolve({ count: 0 }),
+    loadOnboarding(profile.id).catch(() => null),
   ]);
   const name = (id: string | null) => projects.find((p) => p.id === id)?.name ?? "—";
   const published = projects.filter((p) => p.status === "published").length;
@@ -44,6 +47,8 @@ export default async function Overview() {
           <Link href="/creer" className="btn btn-primary"><Plus className="h-4 w-4" aria-hidden />Créer un logiciel</Link>
         </div>
       </div>
+
+      {projects.length === 0 && <Welcome answers={onboarding} firstName={profile.full_name.split(" ")[0] ?? ""} />}
 
       {!profile.company_name && (
         <Link href="/espace/parametres" className="flex items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm text-blue-800 transition-colors hover:bg-blue-100 animate-fade-up">

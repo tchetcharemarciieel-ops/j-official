@@ -34,7 +34,7 @@ export const POST = route(async (req) => {
   if (error) {
     const m = error.message;
     if (/invalid login|invalid credentials/i.test(m)) throw new HttpError(401, "E-mail ou mot de passe incorrect.");
-    if (/email not confirmed/i.test(m)) throw new HttpError(403, "Votre adresse e-mail n'est pas encore confirmée. Cliquez sur le lien reçu par e-mail, ou demandez un nouvel e-mail ci-dessous.");
+    if (/email not confirmed/i.test(m)) throw new HttpError(403, "Votre adresse e-mail n'est pas encore vérifiée. Demandez un code ci-dessous puis saisissez-le.");
     if (/rate limit|too many/i.test(m)) throw new HttpError(429, "Trop de tentatives. Patientez quelques minutes.");
     console.error("[auth/login] échec Supabase :", error.status, m);
     throw new HttpError(503, "Le service de connexion ne répond pas pour le moment. Réessayez dans un instant.");

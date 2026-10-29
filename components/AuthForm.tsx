@@ -11,7 +11,7 @@ function safeNext(n: string | null) {
 
 function frError(message: string) {
   if (/invalid login/i.test(message)) return "E-mail ou mot de passe incorrect.";
-  if (/email not confirmed/i.test(message)) return "Votre adresse e-mail n'est pas encore confirmée. Cliquez sur le lien reçu par e-mail, ou demandez un nouvel e-mail ci-dessous.";
+  if (/email not confirmed/i.test(message)) return "Votre adresse e-mail n'est pas encore vérifiée. Demandez un code ci-dessous puis saisissez-le.";
   if (/already registered/i.test(message)) return "Un compte existe déjà avec cette adresse.";
   if (/password/i.test(message) && /6|characters/i.test(message)) return "Le mot de passe doit contenir au moins 8 caractères.";
   if (/rate limit/i.test(message)) return "Trop de tentatives. Patientez quelques minutes.";
@@ -31,6 +31,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" | "forgot" | "rese
   const [info, setInfo] = useState(params.get("info") === "confirme" ? "Adresse e-mail confirmée. Connectez-vous avec votre e-mail et votre mot de passe." : params.get("info") === "deconnecte" ? "Vous êtes déconnecté. Saisissez votre e-mail et votre mot de passe pour vous reconnecter." : "");
   // Inscription réussie : en attente de la confirmation de l'adresse e-mail.
   const [sentTo, setSentTo] = useState("");
+  const [code, setCode] = useState("");
   const [unconfirmed, setUnconfirmed] = useState(false);
 
   async function resend(address: string) {
@@ -43,7 +44,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" | "forgot" | "rese
     } catch {
       return setError("Pas de connexion Internet. Vérifiez votre réseau puis réessayez.");
     }
-    setInfo(`Un nouvel e-mail de confirmation a été envoyé à ${address}.`);
+    setInfo(`Un nouveau code a été envoyé à ${address}.`);
   }
 
   async function submit(e: React.FormEvent) {
@@ -96,17 +97,42 @@ export function AuthForm({ mode }: { mode: "login" | "signup" | "forgot" | "rese
     return (
       <div className="space-y-4 text-sm text-slate-700">
         <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
-          <p className="font-semibold text-slate-900">Confirmez votre adresse e-mail</p>
+          <p className="font-semibold text-slate-900">Vérifiez votre adresse e-mail</p>
           <p className="mt-1">
-            Un e-mail vient d&apos;être envoyé à <strong>{sentTo}</strong>. Cliquez sur le lien qu&apos;il contient pour activer votre compte : vous arriverez directement dans votre espace.
+            Un code de vérification vient d&apos;être envoyé à <strong>{sentTo}</strong>. Saisissez-le ci-dessous pour activer votre compte.
           </p>
-          <p className="mt-2 text-xs text-slate-500">Pensez à regarder dans les courriers indésirables (spam). Le lien est valable 24 heures.</p>
+          <p className="mt-2 text-xs text-slate-500">Pensez à regarder dans les courriers indésirables (spam).</p>
         </div>
+        <form
+          className="space-y-3"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setError("");
+            setInfo("");
+            setLoading(true);
+            try {
+              const res = await fetch("/api/auth/verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: sentTo, code }) });
+              const body = (await res.json().catch(() => ({}))) as { error?: string; details?: string[] };
+              if (!res.ok) return setError(body.details?.[0]?.split(" : ").pop() ?? body.error ?? "Vérification impossible.");
+              setInfo("Adresse vérifiée : bienvenue !");
+              router.replace(next);
+              router.refresh();
+            } catch {
+              setError("Impossible de joindre le serveur. Vérifiez votre connexion Internet puis réessayez.");
+            } finally {
+              setLoading(false);
+            }
+          }}
+        >
+          <label className="label" htmlFor="code">Code reçu par e-mail</label>
+          <input id="code" className="input text-center font-mono text-2xl tracking-[0.4em]" inputMode="numeric" autoComplete="one-time-code" maxLength={10} required value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} placeholder="••••••" autoFocus />
+          <button type="submit" className="btn btn-primary w-full" disabled={loading || code.length < 6}>{loading ? "Vérification…" : "Vérifier et accéder à mon compte"}</button>
+        </form>
         {error && <p role="alert" className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-red-700">{error}</p>}
         {info && <p role="status" className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-green-700">{info}</p>}
-        <button type="button" className="btn btn-ghost w-full" onClick={() => resend(sentTo)}>Renvoyer l&apos;e-mail</button>
+        <button type="button" className="btn btn-ghost w-full" onClick={() => resend(sentTo)}>Renvoyer un code</button>
         <p className="text-center">
-          Adresse confirmée ? <Link href={`/connexion?next=${encodeURIComponent(next)}`} className="text-blue-700">Se connecter</Link>
+          Mauvaise adresse ? <button type="button" className="text-blue-700" onClick={() => (setSentTo(""), setCode(""))}>Modifier</button>
         </p>
       </div>
     );
@@ -133,7 +159,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" | "forgot" | "rese
       )}
       {error && <p role="alert" className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700">{error}</p>}
       {mode === "login" && unconfirmed && email && (
-        <button type="button" className="btn btn-ghost w-full" onClick={() => resend(email)}>Renvoyer l&apos;e-mail de confirmation</button>
+        <button type="button" className="btn btn-ghost w-full" onClick={async () => { await resend(email); setSentTo(email); }}>Recevoir un code de vérification</button>
       )}
       {info && <p role="status" className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{info}</p>}
       <button className="btn btn-primary w-full" disabled={loading}>

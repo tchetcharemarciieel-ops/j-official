@@ -19,3 +19,13 @@ describe("MiniSoft RCA Assistant", () => {
     expect(CLIENT_ASSISTANT).toMatch(/Créer ce logiciel/);
   });
 });
+
+import { OWNER_AGENTS } from "@/lib/assistant";
+describe("agents spécialisés", () => {
+  it("chaque agent garde les règles d'honnêteté et son rôle", () => {
+    expect(Object.keys(OWNER_AGENTS)).toEqual(["general", "diagnostic", "conception", "qualite", "commercial"]);
+    for (const a of Object.values(OWNER_AGENTS)) expect(a.prompt).toMatch(/aucun outil d'action/);
+    expect(OWNER_AGENTS.qualite.prompt).toMatch(/jamais comme réussis/);
+    expect(OWNER_AGENTS.commercial.prompt).toMatch(/validation du propriétaire/);
+  });
+});

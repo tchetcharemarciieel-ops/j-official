@@ -78,7 +78,7 @@ function CodeBlock({ code }: { code: string }) {
  * Conversation avec « MiniSoft RCA Assistant ». L'historique reste dans ce navigateur ;
  * l'assistant ne fait que conseiller et rédiger des brouillons.
  */
-export function AssistantChat({ endpoint, storageKey, intro, starters, client = false, note }: { endpoint: string; storageKey: string; intro: string; starters: string[]; client?: boolean; note?: string }) {
+export function AssistantChat({ endpoint, storageKey, intro, starters, client = false, note, extra, title = "MiniSoft RCA Assistant" }: { endpoint: string; storageKey: string; intro: string; starters: string[]; client?: boolean; note?: string; extra?: Record<string, string>; title?: string }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -88,9 +88,11 @@ export function AssistantChat({ endpoint, storageKey, intro, starters, client = 
   const loaded = useRef(false);
 
   useEffect(() => {
+    loaded.current = false;
+    setError("");
     try {
       const raw = localStorage.getItem(storageKey);
-      if (raw) setMsgs(JSON.parse(raw) as Msg[]);
+      setMsgs(raw ? (JSON.parse(raw) as Msg[]) : []);
     } catch {
       /* stockage indisponible : la conversation reste en mémoire */
     }
@@ -115,7 +117,7 @@ export function AssistantChat({ endpoint, storageKey, intro, starters, client = 
     setText("");
     setBusy(true);
     try {
-      const res = await fetch(endpoint, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages: next.slice(-20).map((m) => ({ role: m.role, text: m.text.slice(0, 8000) })) }) });
+      const res = await fetch(endpoint, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...extra, messages: next.slice(-20).map((m) => ({ role: m.role, text: m.text.slice(0, 8000) })) }) });
       const body = (await res.json().catch(() => ({}))) as { reply?: string; suggestions?: string[]; problem?: string; error?: string; details?: string[] };
       if (!res.ok || !body.reply) throw new Error(body.details?.[0] ?? body.error ?? "L'assistant n'a pas pu répondre.");
       setMsgs([...next, { role: "assistant", text: body.reply, suggestions: body.suggestions ?? [], problem: body.problem || undefined }]);
@@ -135,7 +137,7 @@ export function AssistantChat({ endpoint, storageKey, intro, starters, client = 
         <div className="flex items-center gap-2">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-600 text-white"><Bot className="h-5 w-5" aria-hidden /></span>
           <div>
-            <p className="font-semibold text-slate-900">MiniSoft RCA Assistant</p>
+            <p className="font-semibold text-slate-900">{title}</p>
             <p className="text-xs text-slate-500">Conseils et brouillons uniquement : il ne publie et ne contacte personne.</p>
           </div>
         </div>

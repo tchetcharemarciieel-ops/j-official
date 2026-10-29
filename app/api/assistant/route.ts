@@ -3,7 +3,7 @@ import { assertSameOrigin, readJson, route } from "@/lib/api";
 import { HttpError } from "@/lib/access";
 import { getProfile } from "@/lib/auth";
 import { CREDIT_COSTS } from "@/lib/config";
-import { aiAssistant, aiConfig, refreshAiSettings } from "@/lib/ai";
+import { aiAssistant, assistantChain, refreshAiSettings } from "@/lib/ai";
 import { burstLimited, checkAiQuota } from "@/lib/ai-quota";
 import { withCredits } from "@/lib/credits";
 import { CLIENT_ASSISTANT } from "@/lib/assistant";
@@ -21,7 +21,7 @@ export const POST = route(async (req) => {
   if (burstLimited(`assistant:${profile.id}`) || burstLimited(`assistant:${ip}`)) throw new HttpError(429, "Trop de messages en peu de temps. Patientez quelques minutes.");
   const input = chatBody.parse(await readJson(req, 400_000));
   await refreshAiSettings();
-  if (!aiConfig()) throw new HttpError(503, "L'assistant IA n'est pas disponible pour le moment. Vous pouvez décrire votre besoin directement dans « Créer un logiciel ».");
+  if (!assistantChain().length) throw new HttpError(503, "L'assistant IA n'est pas disponible pour le moment. Vous pouvez décrire votre besoin directement dans « Créer un logiciel ».");
   const quota = await checkAiQuota(profile.id);
   if (!quota.ok) throw new HttpError(429, quota.reason);
   const { result, creditsUsed } = await withCredits({ userId: profile.id, operation: "assistant", credits: CREDIT_COSTS.ask, engine: "ai", notifyOnFailure: false }, async () => {

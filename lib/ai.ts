@@ -289,9 +289,9 @@ function usageOf(cfg: AiConfig, model: string, inputTokens: number, outputTokens
   return { inputTokens, outputTokens, model, provider: cfg.label, costXaf: Math.round(((inputTokens * cfg.priceIn + outputTokens * cfg.priceOut) / 1_000_000) * USD_TO_XAF) };
 }
 
-async function call<T extends z.ZodType>(system: string, user: string, schema: T, maxTokens = 16000, image?: ImageInput): Promise<{ data: z.infer<T>; usage: AiUsage }> {
+async function call<T extends z.ZodType>(system: string, user: string, schema: T, maxTokens = 16000, image?: ImageInput, chainOverride?: AiConfig[]): Promise<{ data: z.infer<T>; usage: AiUsage }> {
   await refreshAiSettings();
-  const chain = aiChain();
+  const chain = chainOverride ?? aiChain();
   if (!chain.length) throw new AiError("Aucun fournisseur IA n'est configuré sur le serveur.");
   const t0 = Date.now();
   let last: AiError | null = null;
@@ -618,6 +618,24 @@ export async function aiAssistant(system: string, turns: ChatTurn[]): Promise<{ 
     .slice(-20)
     .map((t) => `${t.role === "user" ? "UTILISATEUR" : "ASSISTANT"} :\n${t.text.slice(0, 6000)}`)
     .join("\n\n---\n\n");
-  const { data, usage } = await call(system, `Conversation (la dernière intervention est celle de l'utilisateur, à laquelle tu réponds) :\n\n${transcript}`, assistantSchema, 12000);
+  const { data, usage } = await call(system, `Conversation (la dernière intervention est celle de l'utilisateur, à laquelle tu réponds) :\n\n${transcript}`, assistantSchema, 8000, undefined, assistantChain());
   return { answer: { reply: data.reply.slice(0, 20000), suggestions: data.suggestions.slice(0, 4).map((s) => s.slice(0, 160)), problem: data.problem.slice(0, 2000) }, usage };
+}
+
+/**
+ * Les agents utilisent Claude (Anthropic) en priorité dès qu'une clé Anthropic est enregistrée,
+ * puis la chaîne habituelle en secours. Modèle réglable par ASSISTANT_CLAUDE_MODEL.
+ */
+export function assistantChain(): AiConfig[] {
+  const rest = aiChain();
+  if (!keyFor("anthropic")) return rest;
+  const d = DEFAULTS.anthropic;
+  const claude: AiConfig = { provider: "anthropic", label: "Claude (Anthropic)", model: process.env.ASSISTANT_CLAUDE_MODEL?.trim() || "claude-sonnet-5-5", priceIn: d.priceIn, priceOut: d.priceOut };
+  return [claude, ...rest.filter((c) => !(c.provider === "anthropic" && c.model === claude.model))];
+}
+
+/** Fournisseur effectivement utilisé en premier par les agents (affichage). */
+export function assistantEngine(): { label: string; model: string; claude: boolean } | null {
+  const c = assistantChain()[0];
+  return c ? { label: c.label, model: c.model, claude: c.provider === "anthropic" } : null;
 }

@@ -1,6 +1,7 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { z } from "zod";
 import { MODULES } from "./modules";
 import { SECTORS, diagnosisSchema, type DiagnoseInput, type Diagnosis } from "./generator";
@@ -33,6 +34,12 @@ const DEFAULT_FALLBACKS: Partial<Record<ProviderName, string[]>> = {
 const CHAIN_BUDGET_MS = Number(process.env.AI_CHAIN_BUDGET_MS || 80_000);
 const USD_TO_XAF = Number(process.env.USD_TO_XAF || 600);
 const TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS || 110_000);
+/**
+ * Délais propres à un type d'appel (ex. agents conversationnels : 45 s par modèle, pour laisser
+ * le temps aux modèles de secours de répondre avant la limite de la requête).
+ */
+const callLimits = new AsyncLocalStorage<{ timeoutMs: number; budgetMs: number }>();
+const timeoutFor = () => callLimits.getStore()?.timeoutMs ?? TIMEOUT_MS;
 
 export type AiConfig = { provider: ProviderName; label: string; model: string; priceIn: number; priceOut: number };
 
@@ -297,7 +304,7 @@ async function call<T extends z.ZodType>(system: string, user: string, schema: T
   let last: AiError | null = null;
   for (const [i, cfg] of chain.entries()) {
     // Au-delà du budget de temps, on laisse la main au système de secours par mots-clés.
-    if (i > 0 && Date.now() - t0 > CHAIN_BUDGET_MS) break;
+    if (i > 0 && Date.now() - t0 > (callLimits.getStore()?.budgetMs ?? CHAIN_BUDGET_MS)) break;
     try {
       const res = await callOne(cfg, system, user, schema, maxTokens, image);
       if (i > 0) res.usage.fallback = true;
@@ -335,7 +342,7 @@ async function callGemini<T extends z.ZodType>(cfg: AiConfig, system: string, us
       method: "POST",
       // Clé transmise en en-tête (jamais dans l'URL, qui peut apparaître dans des journaux).
       headers: { "content-type": "application/json", "x-goog-api-key": keyFor("gemini") ?? "" },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutFor()),
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: "user", parts: [...(image ? [{ inlineData: { mimeType: image.mediaType, data: image.data } }] : []), { text: user }] }],
@@ -401,7 +408,7 @@ async function callAnthropic<T extends z.ZodType>(cfg: AiConfig, system: string,
         },
       ],
       output_config: { effort: "medium", format: betaZodOutputFormat(schema) },
-    });
+    }, { timeout: timeoutFor() });
   } catch (err) {
     const status = err instanceof Anthropic.APIError ? err.status : undefined;
     throw new AiError(providerErrorMessage(cfg, status));
@@ -431,7 +438,7 @@ async function callOpenAi<T extends z.ZodType>(cfg: AiConfig, system: string, us
     res = await fetchRetry(`${base.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutFor()),
       body: JSON.stringify({
         model: cfg.model,
         ...format,
@@ -618,7 +625,9 @@ export async function aiAssistant(system: string, turns: ChatTurn[]): Promise<{ 
     .slice(-20)
     .map((t) => `${t.role === "user" ? "UTILISATEUR" : "ASSISTANT"} :\n${t.text.slice(0, 6000)}`)
     .join("\n\n---\n\n");
-  const { data, usage } = await call(system, `Conversation (la dernière intervention est celle de l'utilisateur, à laquelle tu réponds) :\n\n${transcript}`, assistantSchema, 8000, undefined, assistantChain());
+  const { data, usage } = await callLimits.run({ timeoutMs: Number(process.env.ASSISTANT_TIMEOUT_MS || 45_000), budgetMs: 70_000 }, () =>
+    call(system, `Conversation (la dernière intervention est celle de l'utilisateur, à laquelle tu réponds) :\n\n${transcript}`, assistantSchema, 8000, undefined, assistantChain()),
+  );
   return { answer: { reply: data.reply.slice(0, 20000), suggestions: data.suggestions.slice(0, 4).map((s) => s.slice(0, 160)), problem: data.problem.slice(0, 2000) }, usage };
 }
 

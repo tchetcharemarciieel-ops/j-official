@@ -180,7 +180,7 @@ export function AssistantChat({ endpoint, storageKey, intro, starters, client = 
         ))}
         {busy && (
           <div className="flex items-center gap-2 text-sm text-slate-500">
-            <span className="spinner !border-slate-300 !border-t-blue-600" aria-hidden />L&apos;assistant réfléchit… (jusqu&apos;à une minute)
+            <span className="spinner !border-slate-300 !border-t-blue-600" aria-hidden />L&apos;assistant réfléchit… (jusqu&apos;à 2 minutes si le modèle principal est surchargé)
           </div>
         )}
         {!busy && last?.role === "assistant" && last.suggestions && last.suggestions.length > 0 && (

@@ -15,7 +15,8 @@ function frError(message: string) {
   if (/already registered/i.test(message)) return "Un compte existe déjà avec cette adresse.";
   if (/password/i.test(message) && /6|characters/i.test(message)) return "Le mot de passe doit contenir au moins 8 caractères.";
   if (/rate limit/i.test(message)) return "Trop de tentatives. Patientez quelques minutes.";
-  return "Une erreur est survenue. Réessayez.";
+  if (/fetch|network|load failed/i.test(message)) return "Le service de connexion est injoignable depuis votre réseau. Réessayez dans un instant.";
+  return `Une erreur est survenue (${message.slice(0, 80)}). Réessayez.`;
 }
 
 export function AuthForm({ mode }: { mode: "login" | "signup" | "forgot" | "reset" }) {
@@ -35,8 +36,13 @@ export function AuthForm({ mode }: { mode: "login" | "signup" | "forgot" | "rese
   async function resend(address: string) {
     setError("");
     setInfo("");
-    const { error } = await createClient().auth.resend({ type: "signup", email: address, options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` } });
-    if (error) return setError(frError(error.message));
+    try {
+      const res = await fetch("/api/auth/resend", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: address, next }) });
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) return setError(body.error ?? "Envoi impossible.");
+    } catch {
+      return setError("Pas de connexion Internet. Vérifiez votre réseau puis réessayez.");
+    }
     setInfo(`Un nouvel e-mail de confirmation a été envoyé à ${address}.`);
   }
 
@@ -50,10 +56,11 @@ export function AuthForm({ mode }: { mode: "login" | "signup" | "forgot" | "rese
     const origin = window.location.origin;
     try {
       if (mode === "login") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-          setUnconfirmed(/email not confirmed/i.test(error.message));
-          return setError(frError(error.message));
+        const res = await fetch("/api/auth/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) });
+        const body = (await res.json().catch(() => ({}))) as { error?: string; details?: string[] };
+        if (!res.ok) {
+          setUnconfirmed(res.status === 403);
+          return setError(body.details?.[0]?.split(" : ").pop() ?? body.error ?? "Connexion impossible.");
         }
         router.replace(next);
         router.refresh();
@@ -78,6 +85,8 @@ export function AuthForm({ mode }: { mode: "login" | "signup" | "forgot" | "rese
         setInfo("Mot de passe modifié.");
         setTimeout(() => router.replace("/espace"), 800);
       }
+    } catch {
+      setError("Impossible de joindre le serveur. Vérifiez votre connexion Internet puis réessayez.");
     } finally {
       setLoading(false);
     }

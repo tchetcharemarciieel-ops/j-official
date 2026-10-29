@@ -105,7 +105,7 @@ export function AuthForm({ mode, onboarding, onSignedUp }: { mode: "login" | "si
         <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
           <p className="font-semibold text-slate-900">Vérifiez votre adresse e-mail</p>
           <p className="mt-1">
-            Un code de vérification vient d&apos;être envoyé à <strong>{sentTo}</strong>. Saisissez-le ci-dessous pour activer votre compte.
+            Un e-mail vient d&apos;être envoyé à <strong>{sentTo}</strong>. Saisissez le code qu&apos;il contient ci-dessous, ou cliquez simplement sur le lien de l&apos;e-mail s&apos;il en contient un.
           </p>
           <p className="mt-2 text-xs text-slate-500">Pensez à regarder dans les courriers indésirables (spam).</p>
         </div>

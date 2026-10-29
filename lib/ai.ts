@@ -601,3 +601,23 @@ export async function aiPlanQuery(spec: AppSpec, question: string): Promise<{ pl
   );
   return { plan: data, usage };
 }
+
+// ---------- Assistant conversationnel (MiniSoft RCA Assistant) ----------
+
+export type ChatTurn = { role: "user" | "assistant"; text: string };
+const assistantSchema = z.object({
+  reply: z.string().describe("réponse en français, texte simple : titres en **gras**, listes avec « - » ou « 1. », code entre ``` ```"),
+  suggestions: z.array(z.string()).describe("2 à 4 relances courtes que l'utilisateur pourrait envoyer ensuite"),
+  problem: z.string().describe("assistant client uniquement : résumé du besoin prêt à transformer en mini-logiciel quand il est assez clair, sinon chaîne vide"),
+});
+export type AssistantAnswer = z.infer<typeof assistantSchema>;
+
+/** Une réponse de l'assistant à partir de la conversation (les 20 derniers messages). */
+export async function aiAssistant(system: string, turns: ChatTurn[]): Promise<{ answer: AssistantAnswer; usage: AiUsage }> {
+  const transcript = turns
+    .slice(-20)
+    .map((t) => `${t.role === "user" ? "UTILISATEUR" : "ASSISTANT"} :\n${t.text.slice(0, 6000)}`)
+    .join("\n\n---\n\n");
+  const { data, usage } = await call(system, `Conversation (la dernière intervention est celle de l'utilisateur, à laquelle tu réponds) :\n\n${transcript}`, assistantSchema, 12000);
+  return { answer: { reply: data.reply.slice(0, 20000), suggestions: data.suggestions.slice(0, 4).map((s) => s.slice(0, 160)), problem: data.problem.slice(0, 2000) }, usage };
+}

@@ -5,13 +5,14 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { SlidingPill, useSlidingIndicator } from "@/components/ui/SlidingIndicator";
-import { Bot, Building2, CreditCard, LayoutDashboard, LayoutTemplate, LifeBuoy, Menu, Settings, ShieldCheck, SquareStack, Users, X, type LucideIcon } from "lucide-react";
+import { Bot, Building2, Sparkles, CreditCard, LayoutDashboard, LayoutTemplate, LifeBuoy, Menu, Settings, ShieldCheck, SquareStack, Users, X, type LucideIcon } from "lucide-react";
 
 export const ADMIN_NAV: { href: string; label: string; icon: LucideIcon; badge?: "support" }[] = [
   { href: "/admin", label: "Vue d'ensemble", icon: LayoutDashboard },
   { href: "/admin/utilisateurs", label: "Utilisateurs", icon: Users },
   { href: "/admin/entreprises", label: "Entreprises", icon: Building2 },
   { href: "/admin/logiciels", label: "Mini-logiciels", icon: SquareStack },
+  { href: "/admin/assistant", label: "Assistant", icon: Sparkles },
   { href: "/admin/ia", label: "Intelligence artificielle", icon: Bot },
   { href: "/admin/abonnements", label: "Abonnements et paiements", icon: CreditCard },
   { href: "/admin/modeles", label: "Modèles", icon: LayoutTemplate },

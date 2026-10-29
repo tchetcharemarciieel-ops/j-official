@@ -5,12 +5,13 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { SlidingPill, useSlidingIndicator } from "@/components/ui/SlidingIndicator";
-import { BarChart3, Database, LayoutDashboard, LifeBuoy, Menu, Plus, Settings, SquareStack, Users, X, type LucideIcon } from "lucide-react";
+import { Sparkles, BarChart3, Database, LayoutDashboard, LifeBuoy, Menu, Plus, Settings, SquareStack, Users, X, type LucideIcon } from "lucide-react";
 
 export const ESPACE_NAV: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/espace", label: "Vue d'ensemble", icon: LayoutDashboard },
   { href: "/espace/logiciels", label: "Mes logiciels", icon: SquareStack },
   { href: "/creer", label: "Créer un logiciel", icon: Plus },
+  { href: "/espace/assistant", label: "Assistant", icon: Sparkles },
   { href: "/espace/donnees", label: "Mes données", icon: Database },
   { href: "/espace/equipe", label: "Mon équipe", icon: Users },
   { href: "/espace/statistiques", label: "Statistiques", icon: BarChart3 },

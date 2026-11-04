@@ -32,6 +32,8 @@ export const COLLECTIONS = [
   "vseat",
   "valert",
   "vcam",
+  // Menu en ligne : statistiques par jour (scans, visiteurs, plats consultés, commandes).
+  "qstat",
 ] as const;
 export type Col = (typeof COLLECTIONS)[number];
 export const entityKey = (c: Col) => `hx:${c}`;
@@ -95,6 +97,8 @@ export type Settings = {
   tints: Partial<Record<PhotoCategory, string>>;
   /** Vision IA : délai d'alerte (minutes) et alerte sonore. */
   vision?: { alert_minutes?: number; sound?: boolean };
+  /** Menu en ligne et QR codes (voir lib/venue/online.ts). */
+  online?: Partial<import("./online").OnlineSettings>;
   updated_by: string;
 };
 
@@ -182,7 +186,21 @@ export type Equip = { zone: DataZone; room_id: string | null; name: string; cate
 // ---------- Tables et réservations ----------
 
 export type TableZone = "salle" | "terrasse" | "restaurant";
-export type Table = { zone: TableZone; number: string; seats: number; shape: "carree" | "ronde" | "rectangulaire"; location: string; table_price: number | null; chair_price: number | null; active: boolean; /** Position sur le plan Vision IA (en % de la largeur et de la hauteur). */ pos?: { x: number; y: number } | null };
+export type Table = {
+  zone: TableZone;
+  number: string;
+  seats: number;
+  shape: "carree" | "ronde" | "rectangulaire";
+  location: string;
+  table_price: number | null;
+  chair_price: number | null;
+  active: boolean;
+  /** Position sur le plan Vision IA (en % de la largeur et de la hauteur). */
+  pos?: { x: number; y: number } | null;
+  /** Jeton secret du QR code de la table (lien du menu) et son état. */
+  qr_token?: string | null;
+  qr_active?: boolean;
+};
 export const BOOKING_STATUSES = ["confirmee", "arrivee", "terminee", "annulee", "absente"] as const;
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
 export const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = { confirmee: "Confirmée", arrivee: "Clients installés", terminee: "Terminée", annulee: "Annulée", absente: "Clients absents" };
@@ -231,7 +249,7 @@ export function recipeCost(m: MenuItem, items: Doc<Item>[]) {
 export const ORDER_STATUSES = ["en_attente", "en_preparation", "prete", "servie", "annulee"] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = { en_attente: "En attente", en_preparation: "En préparation", prete: "Prête", servie: "Servie", annulee: "Annulée" };
-export type OrderLine = { id: string; menu_id: string; label: string; qty: number; unit_price: number; note: string; kitchen: boolean };
+export type OrderLine = { id: string; menu_id: string; label: string; qty: number; unit_price: number; note: string; kitchen: boolean; /** Options choisies (comprises dans le prix unitaire). */ options?: { name: string; price: number }[] };
 export type HistoryEntry = { from: string | null; to: string; at: string; by: string; note?: string };
 export type PayStatus = "non_paye" | "partiel" | "paye" | "chambre";
 export const PAY_STATUS_LABELS: Record<PayStatus, string> = { non_paye: "Non payée", partiel: "Partiellement payée", paye: "Payée", chambre: "Ajoutée à la note de chambre" };
@@ -274,7 +292,10 @@ export type Payment = {
   tendered: number | null;
   change: number | null;
   reference: string;
-  status: "en_attente" | "confirme" | "annule";
+  /** « echoue » et « rembourse » : renvoyés par un prestataire de paiement (ALETCHCARD), jamais déduits. */
+  status: "en_attente" | "confirme" | "annule" | "echoue" | "rembourse";
+  /** Prestataire : absent = saisi par l'équipe ; « demo » = paiement de démonstration (jamais réel). */
+  provider?: "aletchcard" | "demo";
   receipt_no: string | null;
   at: string;
   confirmed_at: string | null;

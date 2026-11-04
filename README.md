@@ -45,6 +45,20 @@ Ouvert depuis la zone « Accueil / Caisse » (ou « Restaurant » à l'hôtel), 
 - **Mode démonstration** : simulateur d'arrivées et de départs, toujours signalé, refusé par le serveur sur les données réelles.
 - Données dans `records` (`hx:vseat`, `hx:valert`, `hx:vcam`) : aucune migration nécessaire. Les passages et alertes chargés sont ceux des 90 derniers jours.
 
+### Restaurant en ligne (menu QR, commandes, cuisine, agent)
+
+Code : `lib/venue/online.ts` (modèle, suivi public, rapport), `lib/venue/online-ops.ts` (opérations `online.*` et `qr.*`), `lib/venue/public.ts` (accès public), pages `app/r/[slug]` (menu général), `app/r/[slug]/t/[jeton]` (table), `app/r/[slug]/suivi/[jeton]` (suivi), écrans `components/public/` et `components/runtime/venue/online/`, tests `tests/online.test.ts`.
+
+- **Adresses** : `/r/<adresse-du-logiciel>` pour le menu ; chaque table a un QR code `/r/<adresse>/t/<jeton aléatoire>` (au lieu de `table-04`, devinable) : le client ne peut pas changer de table. Régénérer un QR code invalide l'ancien ; un QR désactivé affiche un message.
+- **Menu client** : photos, descriptions, options payantes, instructions, panier, commande sans compte ni application. Prix et options toujours recalculés par le serveur ; double validation sans doublon ; limite de requêtes par adresse IP.
+- **Paiement** : « à la caisse ou au serveur » (confirmé par l'équipe). Une commande n'est « payée » qu'après un encaissement confirmé. Option « envoyer en cuisine seulement après paiement confirmé ». **ALETCHCARD** : affiché « bientôt disponible », aucun point d'accès inventé ; à intégrer avec la documentation officielle (création de transaction, notification serveur signée, vérification). Statuts de paiement prévus : en attente, confirmé, échoué, remboursé.
+- **Suivi** : lien secret, mise à jour automatique (interrogation toutes les 5 s, sans exposer la base aux visiteurs), notifications du navigateur après accord explicite proposé après la commande, bouton « OK, c'est bon » qui ferme seulement la session du menu sur ce téléphone.
+- **Écran cuisine (KDS)** : zone Cuisine (ou `?cuisine=1`), colonnes Nouvelles / Acceptées / En préparation / Prêtes, son, retard, statut du paiement, « Signaler un problème » (visible par la caisse et le client).
+- **Rôles** : client (public) ; serveur (employé) ; cuisinier (poste « Cuisinier » relié au compte) pour accepter et signaler ; caisse (poste « Caisse et accueil ») ; gérants pour le menu, les QR codes et l'analyse IA.
+- **Agent restaurant** (zone Bureau) : commandes en retard, temps de préparation et d'acceptation, rapport imprimable, recommandations calculées, analyse IA facultative sur des chiffres agrégés (aucune donnée personnelle, crédits d'IA).
+- **Statistiques QR** : scans, visiteurs uniques par jour (empreinte anonyme), commandes générées, plats consultés (`hx:qstat`).
+- **Mode démonstration** : « Tester (démo) » dans l'aperçu ou `?demo=1` pour le propriétaire connecté : commandes de démonstration et confirmation de paiement simulée, jamais sur les données réelles.
+
 ## Mise en service
 
 1. Créer un projet Supabase, puis exécuter `supabase/migrations/0001_init.sql` (éditeur SQL ou `supabase db push`).

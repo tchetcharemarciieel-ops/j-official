@@ -19,6 +19,7 @@ import { VenuePanel } from "../venue/VenuePanel";
 import { VenueSetup } from "../venue/VenueSetup";
 import { ZONE_META } from "../venue/zones";
 import { VisionModule } from "../venue/vision/VisionModule";
+import { KdsModule } from "../venue/online/kds";
 import { AlertsBanner, useVisionAlerts } from "../venue/vision/useVisionAlerts";
 import { canVision } from "@/lib/venue/vision";
 import type { Doc as VDoc, Staff } from "@/lib/venue/model";
@@ -107,6 +108,11 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
   // Géré depuis la zone « Accueil / Caisse » par les gérants et le personnel de caisse.
   const visionOn = Boolean(venueKind && venue.state && !needsSetup && (venueKind === "restaurant" || vSettings.has_restaurant === true) && canVision(venue.state.role, venue.state.me, venue.state.data.staff as VDoc<Staff>[]));
   const [visionOpen, setVisionOpen] = useState(false);
+  // Écran cuisine : ouvert depuis la zone Cuisine, ou directement avec l'adresse « ?cuisine=1 » (tablette de la cuisine).
+  const [kdsOpen, setKdsOpen] = useState(false);
+  useEffect(() => {
+    if (venueKind && new URLSearchParams(window.location.search).get("cuisine") === "1") setKdsOpen(true);
+  }, [venueKind]);
   const visionAlerts = useVisionAlerts(venue, visionOn, projectId);
   const venueView = useMemo(
     () => (venueKind ? venueScene(venueKind, venue.state, vSettings, vZone, (z) => (setVZone(z), setVRoom(null)), vRoom, (id) => (setVZone("chambres"), setVRoom(id))) : undefined),
@@ -340,7 +346,8 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
         </aside>
       </div>
       )}
-      {venueKind && vZone && !setupOpen && !needsSetup && <VenuePanel kind={venueKind} zones={vZones} zone={vZone} onZone={(z) => (setVZone(z), setVRoom(null))} onClose={() => (setVZone(null), setVRoom(null))} api={venue} projectId={projectId} mode={mode} appName={title} notify={notify} roomId={vRoom} onRoom={setVRoom} request={null} onVision={visionOn ? () => (setVisionOpen(true), setVZone(null)) : undefined} visionAlerts={visionAlerts.open.length} />}
+      {venueKind && vZone && !setupOpen && !needsSetup && <VenuePanel kind={venueKind} zones={vZones} zone={vZone} onZone={(z) => (setVZone(z), setVRoom(null))} onClose={() => (setVZone(null), setVRoom(null))} api={venue} projectId={projectId} mode={mode} appName={title} notify={notify} roomId={vRoom} onRoom={setVRoom} request={null} onVision={visionOn ? () => (setVisionOpen(true), setVZone(null)) : undefined} visionAlerts={visionAlerts.open.length} onKds={() => (setKdsOpen(true), setVZone(null))} />}
+      {venueKind && kdsOpen && venue.state && <KdsModule api={venue} kind={venueKind} mode={mode} projectId={projectId} appName={title} notify={notify} onClose={() => setKdsOpen(false)} />}
       {visionOn && visionOpen && venueKind && <VisionModule api={venue} kind={venueKind} mode={mode} projectId={projectId} appName={title} notify={notify} alerts={visionAlerts} onClose={() => setVisionOpen(false)} />}
       {visionOn && <AlertsBanner alerts={visionAlerts} api={venue} notify={notify} onOpen={visionOpen ? undefined : () => setVisionOpen(true)} />}
       {garageMode && zone && <GaragePanel zone={zone} onZone={setZone} onClose={() => setZone(null)} api={garage} projectId={projectId} mode={mode} appName={title} notify={notify} jobRequest={jobRequest} />}

@@ -27,6 +27,7 @@ import {
   Refrigerator,
   ShieldCheck,
   ShoppingBag,
+  Smartphone,
   Snowflake,
   SprayCan,
   Sun,
@@ -47,6 +48,9 @@ import { CashReport, KitchenQueue, MenuView, OrderComposer, OrdersList, PaymentF
 import { Dashboard, FinanceView, ReportsView, StaffView, TasksAlerts } from "./m-office";
 import { ArrivalsView, AvailabilityView, GuestsView, RoomsList, StayPaymentsView, StaysView } from "./m-hotel";
 import { useState } from "react";
+import { Bot, Globe, QrCode } from "lucide-react";
+import { OnlineMenuAdmin, OnlineOrders, QrCodesView } from "./online/admin";
+import { RestaurantAgent } from "./online/agent";
 import { Card } from "./ui";
 
 export type ZoneMeta = { label: string; icon: LucideIcon; description: string };
@@ -96,6 +100,16 @@ function tablesOptions(zone: "salle" | "terrasse" | "restaurant"): Option[] {
   ];
 }
 
+
+/** Restaurant en ligne : commandes QR, menu public et QR codes (accueil / caisse). */
+function onlineOptions(): Option[] {
+  return [
+    { id: "commandes_en_ligne", icon: Smartphone, title: "Commandes en ligne", description: "Commandes des clients par QR code, paiement, envoi en cuisine", render: () => <OnlineOrders />, hint: (d) => { const k = (d.order as Doc<Order & { channel?: string; held?: boolean }>[]).filter((o) => o.data.channel === "qr" && o.data.status !== "annulee" && o.data.status !== "servie" && o.data.pay_status !== "paye").length; return k ? { text: `${n(k, "commande")} à encaisser`, tone: "active" } : null; } },
+    { id: "menu_en_ligne", icon: Globe, title: "Menu en ligne", description: "Publier le menu, photos, descriptions, options, disponibilité", render: () => <OnlineMenuAdmin />, hint: (d) => ((d.settings[0]?.data as { online?: { published?: boolean } } | undefined)?.online?.published ? { text: "Publié", tone: "active" } : { text: "Non publié" }) },
+    { id: "qr", icon: QrCode, title: "QR codes", description: "QR du menu et de chaque table : télécharger, imprimer, tester, statistiques", render: () => <QrCodesView /> },
+  ];
+}
+
 /** Fonctions de chaque zone (exactement celles demandées pour chaque zone). */
 export function zoneOptions(kind: VenueKind, zone: VenueZone, roomService: boolean): Option[] {
   if (kind === "restaurant") {
@@ -140,6 +154,7 @@ export function zoneOptions(kind: VenueKind, zone: VenueZone, roomService: boole
           { id: "paiement", icon: CreditCard, title: "Encaisser un paiement", description: "Montant, mode de paiement, monnaie à rendre, statut", render: () => <PaymentsView />, hint: (d) => { const p = d.payment as Doc<Payment>[]; const k = (d.order as Doc<Order>[]).filter((o) => o.data.status !== "annulee" && orderDue(o.data, p, o.id) > 0).length; return k ? { text: `${n(k, "commande")} à encaisser`, tone: "active" } : null; } },
           { id: "recus", icon: Receipt, title: "Reçus et factures", description: "Numéro de commande, articles, total, date, mode de paiement", render: () => <ReceiptsView /> },
           { id: "rapport", icon: BarChart3, title: "Rapport de caisse", description: "Ventes du jour, commandes, montants encaissés, historique", render: () => <CashReport /> },
+          ...onlineOptions(),
         ];
       case "bureau":
         return [
@@ -148,6 +163,7 @@ export function zoneOptions(kind: VenueKind, zone: VenueZone, roomService: boole
           { id: "finances", icon: Wallet, title: "Dépenses et bénéfices", description: "Dépenses, recettes et bénéfice estimé", render: () => <FinanceView /> },
           { id: "rapports", icon: BarChart3, title: "Rapports et statistiques", description: "Résultats par jour, semaine ou mois", render: () => <ReportsView /> },
           { id: "taches", icon: ClipboardList, title: "Tâches et alertes", description: "Tâches et signalements de toutes les zones", render: () => <TasksAlerts />, hint: (d) => { const t = (d.task as Doc<Task>[]).filter((x) => taskOpen(x.data)); return t.length ? { text: n(t.length, "tâche"), tone: t.some((x) => taskLate(x.data)) ? "alert" : "active" } : null; } },
+          { id: "agent", icon: Bot, title: "Agent restaurant", description: "Commandes en retard, temps de préparation, rapport du jour, conseils", render: () => <RestaurantAgent /> },
         ];
     }
   }
@@ -167,6 +183,7 @@ export function zoneOptions(kind: VenueKind, zone: VenueZone, roomService: boole
         { id: "carte", icon: UtensilsCrossed, title: "Menu et prix", description: "Plats et boissons, catégories et prix", render: () => <MenuView /> },
         { id: "cuisine", icon: ChefHat, title: "Cuisine et stock", description: "Commandes à préparer, ingrédients et mouvements", render: () => <KitchenStock /> },
         { id: "caisse", icon: Wallet, title: "Caisse et facturation", description: "Paiements reçus, reçus, ventes et dépenses", render: () => <HotelCash /> },
+        ...onlineOptions(),
       ];
     case "cuisine":
       return [
@@ -183,6 +200,7 @@ export function zoneOptions(kind: VenueKind, zone: VenueZone, roomService: boole
         { id: "personnel", icon: Users, title: "Personnel", description: "Comptes, rôles, employés et horaires", render: () => <StaffView /> },
         { id: "rapports", icon: BarChart3, title: "Rapports et statistiques", description: "Taux d'occupation, recettes et dépenses par période", render: () => <ReportsView /> },
         { id: "taches", icon: ClipboardList, title: "Tâches et alertes", description: "Problèmes signalés dans toutes les zones", render: () => <TasksAlerts />, hint: (d) => { const t = (d.task as Doc<Task>[]).filter((x) => taskOpen(x.data)); return t.length ? { text: n(t.length, "tâche"), tone: t.some((x) => taskLate(x.data) || x.data.urgent) ? "alert" : "active" } : null; } },
+        { id: "agent", icon: Bot, title: "Agent restaurant", description: "Commandes en retard, temps de préparation, rapport du jour, conseils", render: () => <RestaurantAgent /> },
       ];
   }
   return [];

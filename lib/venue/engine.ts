@@ -54,6 +54,7 @@ import {
   type VenueRole,
 } from "./model";
 import { visionOps } from "./vision-ops";
+import { onlineOps } from "./online-ops";
 
 /**
  * Moteur des opérations du restaurant et de l'hôtel. Chaque opération vérifie le rôle, valide
@@ -83,6 +84,8 @@ export type OpContext = {
   demo?: boolean;
   /** Requête authentifiée d'une passerelle caméra (identifiant de la caméra). */
   gateway?: string;
+  /** Requête d'un client depuis le menu public (QR code) : seules les opérations « online.* » publiques l'acceptent. */
+  public?: boolean;
 };
 export type Effect = { type: "order_ready"; orderId: string; number: string; where: string } | { type: "temp_alert"; value: number; reason: string } | { type: "new_order"; orderId: string; number: string } | { type: "vision_alert"; table: string; minutes: number; kind: string };
 /** `secret` : valeur à montrer une seule fois (clé de passerelle), jamais enregistrée en clair. */
@@ -222,10 +225,15 @@ async function deductOrder(ctx: OpContext, orderId: string): Promise<string> {
 async function refreshOrderPay(ctx: OpContext, orderId: string) {
   const pays = (await ctx.store.list("payment")) as Doc<Payment>[];
   const { confirmed } = paidSums(pays, "order", orderId);
-  await mutate<Order>(ctx, "order", orderId, "Commande", (o) => {
+  await mutate<Order & { held?: boolean; sent_at?: string | null }>(ctx, "order", orderId, "Commande", (o) => {
     if (o.pay_status === "chambre") return null;
-    const pay_status = confirmed <= 0 ? "non_paye" : confirmed >= o.total ? "paye" : "partiel";
-    return o.paid === confirmed && o.pay_status === pay_status ? null : { ...o, paid: confirmed, pay_status };
+    const pay_status: Order["pay_status"] = confirmed <= 0 ? "non_paye" : confirmed >= o.total ? "paye" : "partiel";
+    if (o.paid === confirmed && o.pay_status === pay_status) return null;
+    const next = { ...o, paid: confirmed, pay_status };
+    if (pay_status === "paye" && o.pay_status !== "paye") next.history = [...o.history, hist(ctx, o.pay_status, "payee", "Paiement confirmé")];
+    // Commande en ligne retenue jusqu'au paiement : envoyée en cuisine dès la confirmation.
+    if (pay_status === "paye" && o.held) return { ...next, held: false, sent_at: nowIso(ctx), history: [...next.history, hist(ctx, "attente_paiement", "envoyee_cuisine", "Paiement confirmé : commande envoyée en cuisine")] };
+    return next;
   });
 }
 
@@ -909,23 +917,21 @@ export const OPS: Record<string, Handler> = {
   },
 };
 
-Object.assign(
-  OPS,
-  visionOps({
-    need,
-    nowIso,
-    newId,
-    ok,
-    must,
-    mutate,
-    findBy,
-    settings,
-    saveSettings,
-    fail: (status, message) => {
-      throw new OpError(status, message);
-    },
-  }),
-);
+const kit = {
+  need,
+  nowIso,
+  newId,
+  ok,
+  must,
+  mutate,
+  findBy,
+  settings,
+  saveSettings,
+  fail: (status: number, message: string): never => {
+    throw new OpError(status, message);
+  },
+};
+Object.assign(OPS, visionOps(kit), onlineOps({ ...kit, number, hist, refreshOrderPay }));
 
 export async function runOp(ctx: OpContext, op: string, input: unknown): Promise<OpResult> {
   const h = Object.prototype.hasOwnProperty.call(OPS, op) ? OPS[op] : undefined;

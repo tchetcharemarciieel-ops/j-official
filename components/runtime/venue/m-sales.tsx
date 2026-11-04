@@ -643,7 +643,8 @@ export function KitchenQueue() {
   const tables = docs<Table>(v.data.table);
   const rooms = docs<Room>(v.data.room);
   const stays = docs<Stay>(v.data.stay);
-  const orders = docs<Order>(v.data.order).filter((o) => ["en_attente", "en_preparation", "prete"].includes(o.data.status) && o.data.lines.some((l) => l.kitchen)).sort((a, b) => a.created_at.localeCompare(b.created_at));
+  // Les commandes en ligne en attente de paiement n'arrivent en cuisine qu'après confirmation.
+  const orders = docs<Order>(v.data.order).filter((o) => ["en_attente", "en_preparation", "prete"].includes(o.data.status) && o.data.lines.some((l) => l.kitchen) && (o.data as { held?: boolean }).held !== true).sort((a, b) => a.created_at.localeCompare(b.created_at));
   const [tab, setTab] = useState<"en_attente" | "en_preparation" | "prete">("en_attente");
   const list = orders.filter((o) => o.data.status === tab);
   const where = (o: Order) => (o.stay_id ? `Chambre ${rooms.find((r) => r.id === stays.find((s) => s.id === o.stay_id)?.data.room_id)?.data.number ?? "?"}` : o.table_id ? `Table ${tables.find((t) => t.id === o.table_id)?.data.number ?? "?"}` : "Comptoir");

@@ -9,7 +9,8 @@ import type { Role } from "@/lib/spec";
 import type { DataMode } from "../useAppData";
 
 export type Member = { id: string; name: string; role: Role };
-export type VenueState = { data: VenueData; members: Member[]; role: VenueRole; me: string; kind: VenueKind };
+/** `slug` : adresse publique du logiciel (menu en ligne /r/…), absente dans la démo sans compte. */
+export type VenueState = { data: VenueData; members: Member[]; role: VenueRole; me: string; kind: VenueKind; slug?: string };
 
 const LOCAL_ID = "00000000-0000-4000-8000-000000000001";
 const localKey = (projectId: string) => `msvenue:${projectId}`;

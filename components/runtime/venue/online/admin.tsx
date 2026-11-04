@@ -1,0 +1,410 @@
+"use client";
+
+import QRCode from "qrcode";
+import { Ban, Copy, Download, Eye, ExternalLink, FlaskConical, ImagePlus, Plus, Printer, QrCode, RefreshCw, Send, Smartphone, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { MENU_CATEGORY_LABELS, ORDER_STATUS_LABELS, PAY_STATUS_LABELS, fmtMoney, today, type Doc, type Payment, type Table } from "@/lib/venue/model";
+import { onlineSettings, type DayStat, type FullOrder, type OnlineItem, type MenuOption } from "@/lib/venue/online";
+import { MenuView, PaymentForm } from "../m-sales";
+import { Btn, Card, Empty, Field, inp, isMgr, Modal, Pill, PrintDoc, Stat, Tabs, useV } from "../ui";
+
+const hhmm = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "—");
+
+/** Réduit une image (photo de plat, logo) avant l'envoi : JPEG ou PNG de petite taille. */
+async function shrink(file: File, max: number, type: "image/jpeg" | "image/png" = "image/jpeg"): Promise<string> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((res, rej) => {
+      const i = new Image();
+      i.onload = () => res(i);
+      i.onerror = () => rej(new Error("Image illisible."));
+      i.src = url;
+    });
+    const r = Math.min(1, max / Math.max(img.width, img.height));
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.width * r);
+    c.height = Math.round(img.height * r);
+    c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL(type, 0.78);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/** Adresses publiques : menu général et menu d'une table (jeton secret). */
+export function usePublicUrls() {
+  const { v, mode } = useV();
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const base = v.slug ? `${origin}/r/${v.slug}` : null;
+  const test = mode === "live" ? "" : "?demo=1";
+  return { base, test, live: mode === "live", available: Boolean(v.slug) };
+}
+
+function NoPublicUrl() {
+  return <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">Démo sans compte : le menu en ligne et les QR codes fonctionnent une fois votre logiciel créé avec un compte (aperçu ou version publiée).</p>;
+}
+
+// ---------- Menu en ligne ----------
+
+export function OnlineMenuAdmin() {
+  const { v, level, act, settings } = useV();
+  const o = onlineSettings(settings);
+  const { base, test, live, available } = usePublicUrls();
+  const [f, setF] = useState({ published: o.published, ordering: o.ordering, pay_counter: o.pay_counter, kitchen_after_payment: o.kitchen_after_payment, welcome: o.welcome });
+  const [logo, setLogo] = useState<string | null | undefined>(undefined);
+  const [edit, setEdit] = useState<Doc<OnlineItem> | null>(null);
+  const [preview, setPreview] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const mgr = isMgr(level);
+  const items = (v.data.menu as Doc<OnlineItem>[]).filter((m) => m.data.active).sort((a, b) => a.data.category.localeCompare(b.data.category) || a.data.name.localeCompare(b.data.name));
+  return (
+    <div className="space-y-4">
+      {!available && <NoPublicUrl />}
+      <Card title="Publication" actions={<Pill tone={o.published ? "green" : "slate"}>{o.published ? "Publié" : "Non publié"}</Pill>}>
+        <form
+          className="space-y-3"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setBusy(true);
+            await act("online.settings", { ...f, ...(logo !== undefined ? { logo } : {}) });
+            setBusy(false);
+          }}
+        >
+          <Toggle checked={f.published} onChange={(x) => setF({ ...f, published: x })} disabled={!mgr} label="Menu en ligne publié" hint="Visible par les clients qui scannent un QR code." />
+          <Toggle checked={f.ordering} onChange={(x) => setF({ ...f, ordering: x })} disabled={!mgr} label="Commande depuis le téléphone" hint="Sinon, le menu est seulement consultable." />
+          <Toggle checked={f.pay_counter} onChange={(x) => setF({ ...f, pay_counter: x })} disabled={!mgr} label="Paiement à la caisse ou au serveur" hint="Espèces ou mobile money, confirmé par l'équipe." />
+          <Toggle checked={f.kitchen_after_payment} onChange={(x) => setF({ ...f, kitchen_after_payment: x })} disabled={!mgr} label="Envoyer en cuisine seulement après paiement confirmé" hint="Sinon, la commande arrive en cuisine dès sa validation et se règle ensuite." />
+          <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600"><b>ALETCHCARD</b> : affiché « bientôt disponible ». L&apos;intégration sera faite avec la documentation officielle de l&apos;API ; aucun paiement n&apos;est simulé en dehors du mode test.</p>
+          <Field label="Message d'accueil (facultatif)"><input className={inp} maxLength={300} value={f.welcome} onChange={(e) => setF({ ...f, welcome: e.target.value })} disabled={!mgr} placeholder="Ex. : Bienvenue ! Commandez depuis votre table." /></Field>
+          <Field label="Logo (menu et centre des QR codes)">
+            <div className="flex items-center gap-3">
+              {(logo ?? o.logo) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={(logo ?? o.logo)!} alt="Logo" className="h-14 w-14 rounded-xl border border-slate-200 object-cover" />
+              ) : (
+                <span className="grid h-14 w-14 place-items-center rounded-xl border border-dashed border-slate-300 text-slate-400"><ImagePlus className="h-5 w-5" aria-hidden /></span>
+              )}
+              {mgr && <input type="file" accept="image/png,image/jpeg,image/webp" className="text-sm" onChange={async (e) => { const file = e.target.files?.[0]; if (file) setLogo(await shrink(file, 256, "image/png")); }} />}
+              {mgr && (logo ?? o.logo) && <Btn small kind="ghost" onClick={() => setLogo(null)}><Trash2 className="h-3.5 w-3.5" aria-hidden />Retirer</Btn>}
+            </div>
+          </Field>
+          {mgr && <Btn type="submit" busy={busy}>Enregistrer</Btn>}
+        </form>
+      </Card>
+
+      <Card title="Plats du menu en ligne" actions={available && base && <Btn small kind="ghost" onClick={() => setPreview(true)}><Smartphone className="h-3.5 w-3.5" aria-hidden />Aperçu téléphone</Btn>}>
+        {items.length === 0 ? (
+          <Empty text="Aucun plat à la carte. Ajoutez vos plats ci-dessous (nom, catégorie, prix), puis complétez-les ici (photo, description, options)." />
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {items.map((m) => (
+              <li key={m.id} className="flex items-center gap-3 py-2">
+                {m.data.photo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={m.data.photo} alt="" className="h-12 w-12 rounded-lg object-cover" />
+                ) : (
+                  <span className="grid h-12 w-12 place-items-center rounded-lg bg-slate-100 text-slate-400"><ImagePlus className="h-4 w-4" aria-hidden /></span>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">{m.data.name} <span className="text-xs font-normal text-slate-500">· {MENU_CATEGORY_LABELS[m.data.category]} · {fmtMoney(m.data.price)}</span></p>
+                  <p className="truncate text-xs text-slate-500">{m.data.description || "Pas de description"}{m.data.options?.length ? ` · ${m.data.options.length} option(s)` : ""}</p>
+                </div>
+                {m.data.available === false ? <Pill tone="red">Épuisé</Pill> : <Pill tone="green">Disponible</Pill>}
+                {level >= 1 && <Btn small kind="ghost" onClick={() => act("online.available", { menu_id: m.id, available: m.data.available === false })}>{m.data.available === false ? "Remettre" : "Épuisé"}</Btn>}
+                {mgr && <Btn small kind="ghost" onClick={() => setEdit(m)}>Compléter</Btn>}
+              </li>
+            ))}
+          </ul>
+        )}
+        <details className="mt-3 rounded-xl border border-slate-200 p-3 text-sm"><summary className="cursor-pointer font-medium">Ajouter ou modifier les plats de la carte (nom, catégorie, prix)</summary><div className="mt-3"><MenuView /></div></details>
+      </Card>
+      {edit && <ItemForm item={edit} onClose={() => setEdit(null)} />}
+      {preview && base && (
+        <Modal title="Aperçu sur téléphone" onClose={() => setPreview(false)}>
+          <div className="mx-auto h-[640px] w-[340px] overflow-hidden rounded-[2rem] border-8 border-slate-900 bg-white">
+            <iframe title="Aperçu du menu" src={`${base}${test}`} className="h-full w-full" />
+          </div>
+          <p className="mt-2 text-center text-xs text-slate-500">{live ? (o.published ? "Menu réel, tel que vos clients le voient." : "Le menu n'est pas encore publié : les clients voient ce message.") : "Aperçu en mode test (commandes de démonstration, aucun paiement réel)."}</p>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function Toggle({ checked, onChange, label, hint, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string; disabled?: boolean }) {
+  return (
+    <label className="flex items-start gap-3">
+      <input type="checkbox" className="mt-1 h-4 w-4" checked={checked} onChange={(e) => onChange(e.target.checked)} disabled={disabled} />
+      <span><span className="block text-sm font-medium">{label}</span>{hint && <span className="block text-xs text-slate-500">{hint}</span>}</span>
+    </label>
+  );
+}
+
+function ItemForm({ item, onClose }: { item: Doc<OnlineItem>; onClose: () => void }) {
+  const { act } = useV();
+  const [description, setDescription] = useState(item.data.description ?? "");
+  const [photo, setPhoto] = useState<string | null>(item.data.photo ?? null);
+  const [options, setOptions] = useState<(Omit<MenuOption, "price"> & { price: string })[]>((item.data.options ?? []).map((o) => ({ ...o, price: String(o.price) })));
+  const [available, setAvailable] = useState(item.data.available !== false);
+  const [busy, setBusy] = useState(false);
+  return (
+    <Modal title={`Menu en ligne · ${item.data.name}`} onClose={onClose}>
+      <form
+        className="space-y-3"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setBusy(true);
+          const r = await act("online.item", { menu_id: item.id, description, photo, options: options.filter((o) => o.name.trim()).map((o) => ({ id: o.id || undefined, name: o.name, price: Number(o.price || 0) })), available });
+          setBusy(false);
+          if (r) onClose();
+        }}
+      >
+        <Field label="Photo">
+          <div className="flex items-center gap-3">
+            {photo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={photo} alt="" className="h-20 w-28 rounded-xl object-cover" />
+            ) : (
+              <span className="grid h-20 w-28 place-items-center rounded-xl border border-dashed border-slate-300 text-slate-400"><ImagePlus className="h-5 w-5" aria-hidden /></span>
+            )}
+            <div className="space-y-1">
+              <input type="file" accept="image/png,image/jpeg,image/webp" className="text-sm" onChange={async (e) => { const f = e.target.files?.[0]; if (f) setPhoto(await shrink(f, 800)); }} />
+              {photo && <button type="button" onClick={() => setPhoto(null)} className="block text-xs text-red-600 underline">Retirer la photo</button>}
+            </div>
+          </div>
+        </Field>
+        <Field label="Description"><textarea className={inp} rows={3} maxLength={500} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ingrédients, accompagnement, quantité…" /></Field>
+        <fieldset>
+          <legend className="mb-1 text-sm font-medium">Options (suppléments, cuisson…)</legend>
+          <ul className="space-y-1.5">
+            {options.map((o, i) => (
+              <li key={o.id || i} className="flex gap-2">
+                <input className={inp} placeholder="Nom de l'option" maxLength={60} value={o.name} onChange={(e) => setOptions(options.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
+                <input className={`${inp} !w-32`} inputMode="numeric" placeholder="Prix (FCFA)" value={o.price} onChange={(e) => setOptions(options.map((x, j) => (j === i ? { ...x, price: e.target.value.replace(/\D/g, "") } : x)))} />
+                <button type="button" aria-label="Retirer l'option" onClick={() => setOptions(options.filter((_, j) => j !== i))} className="rounded-lg px-2 text-slate-500 hover:bg-slate-100"><Trash2 className="h-4 w-4" aria-hidden /></button>
+              </li>
+            ))}
+          </ul>
+          {options.length < 15 && <button type="button" onClick={() => setOptions([...options, { id: "", name: "", price: "0" }])} className="mt-1.5 inline-flex items-center gap-1 text-sm text-blue-700"><Plus className="h-4 w-4" aria-hidden />Ajouter une option</button>}
+        </fieldset>
+        <Toggle checked={available} onChange={setAvailable} label="Disponible aujourd'hui" hint="Décochez quand le plat est épuisé." />
+        <div className="flex justify-end gap-2"><Btn kind="ghost" onClick={onClose}>Annuler</Btn><Btn type="submit" busy={busy}>Enregistrer</Btn></div>
+      </form>
+    </Modal>
+  );
+}
+
+// ---------- Commandes en ligne (caisse) ----------
+
+export function OnlineOrders() {
+  const { v, act, level } = useV();
+  const [pay, setPay] = useState<string | null>(null);
+  const tables = v.data.table as Doc<Table>[];
+  const pays = v.data.payment as Doc<Payment>[];
+  const orders = (v.data.order as Doc<FullOrder>[]).filter((o) => o.data.channel === "qr" && o.created_at.slice(0, 10) >= today(new Date(Date.now() - 2 * 86_400_000))).sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const pendingPay = (o: Doc<FullOrder>) => pays.some((p) => p.data.target === "order" && p.data.target_id === o.id && p.data.status === "en_attente");
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-slate-500">Commandes passées par les clients avec le QR code (2 derniers jours). Une commande n&apos;est « payée » qu&apos;après un encaissement confirmé par l&apos;équipe.</p>
+      {orders.length === 0 ? (
+        <Empty text="Aucune commande en ligne pour le moment." icon={QrCode} />
+      ) : (
+        <ul className="space-y-2">
+          {orders.map((o) => (
+            <li key={o.id} className="rounded-2xl border border-slate-200 bg-white p-3 text-sm">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="font-bold">{o.data.number}</span>
+                <span className="text-xs text-slate-500">{o.data.table_id ? `Table ${tables.find((t) => t.id === o.data.table_id)?.data.number ?? "?"}` : "Sans table"} · {hhmm(o.created_at)}{o.data.customer ? ` · ${o.data.customer}` : ""}</span>
+                <span className="ml-auto font-semibold">{fmtMoney(o.data.total)}</span>
+              </div>
+              <p className="mt-1 text-xs text-slate-600">{o.data.lines.map((l) => `${l.qty} × ${l.label}`).join(", ")}</p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <Pill>{ORDER_STATUS_LABELS[o.data.status]}</Pill>
+                <Pill tone={o.data.pay_status === "paye" ? "green" : pendingPay(o) ? "amber" : "slate"}>{pendingPay(o) ? "Paiement en attente de confirmation" : PAY_STATUS_LABELS[o.data.pay_status]}</Pill>
+                {o.data.held && <Pill tone="amber">Retenue : en attente du paiement</Pill>}
+                {o.data.problem && <Pill tone="red">Problème : {o.data.problem.text}</Pill>}
+              </div>
+              {level >= 1 && o.data.status !== "annulee" && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {o.data.pay_status !== "paye" && <Btn small onClick={() => setPay(o.id)}>Encaisser</Btn>}
+                  {o.data.held && <Btn small kind="ghost" onClick={() => act("online.release", { id: o.id }, { confirm: "Envoyer en cuisine avant le paiement ? Le paiement restera à encaisser." })}><Send className="h-3.5 w-3.5" aria-hidden />Envoyer en cuisine</Btn>}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {pay && <PaymentForm target="order" targetId={pay} onClose={() => setPay(null)} />}
+    </div>
+  );
+}
+
+// ---------- QR codes ----------
+
+/** Dessine un QR code (avec logo au centre si demandé : correction d'erreur élevée pour rester lisible). */
+async function qrCanvas(url: string, size: number, logo: string | null): Promise<HTMLCanvasElement> {
+  const c = document.createElement("canvas");
+  await QRCode.toCanvas(c, url, { width: size, margin: 2, errorCorrectionLevel: logo ? "H" : "M", color: { dark: "#0f172a", light: "#ffffff" } });
+  if (logo) {
+    const img = await new Promise<HTMLImageElement>((res, rej) => {
+      const i = new Image();
+      i.onload = () => res(i);
+      i.onerror = rej;
+      i.src = logo;
+    });
+    const ctx = c.getContext("2d")!;
+    // Logo limité à 20 % de la largeur, sur fond blanc : le code reste lisible grâce au niveau H.
+    const s = Math.round(size * 0.2);
+    const x = Math.round((size - s) / 2);
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(x - 6, x - 6, s + 12, s + 12);
+    ctx.drawImage(img, x, x, s, s);
+  }
+  return c;
+}
+
+function QrImage({ url, logo, size = 220 }: { url: string; logo: string | null; size?: number }) {
+  const [src, setSrc] = useState("");
+  useEffect(() => {
+    let alive = true;
+    void qrCanvas(url, size * 2, logo).then((c) => alive && setSrc(c.toDataURL("image/png")));
+    return () => {
+      alive = false;
+    };
+  }, [url, logo, size]);
+  // eslint-disable-next-line @next/next/no-img-element
+  return src ? <img src={src} alt={`QR code vers ${url}`} width={size} height={size} className="rounded-lg" /> : <span className="block animate-pulse rounded-lg bg-slate-100" style={{ width: size, height: size }} />;
+}
+
+export function QrCodesView() {
+  const { v, level, act, settings, appName } = useV();
+  const o = onlineSettings(settings);
+  const { base, test, available } = usePublicUrls();
+  const [withLogo, setWithLogo] = useState(Boolean(o.logo));
+  const [print, setPrint] = useState(false);
+  const [tab, setTab] = useState<"codes" | "stats">("codes");
+  const mgr = isMgr(level);
+  const tables = (v.data.table as Doc<Table>[]).filter((t) => t.data.active).sort((a, b) => a.data.number.localeCompare(b.data.number, "fr", { numeric: true }));
+  const logo = withLogo ? o.logo : null;
+  const menuUrl = base && o.menu_token ? `${base}?q=${o.menu_token}` : null;
+  const tableUrl = (t: Doc<Table>) => (base && t.data.qr_token ? `${base}/t/${t.data.qr_token}` : null);
+  const png = async (url: string, name: string) => {
+    const c = await qrCanvas(url, 1024, logo);
+    const a = document.createElement("a");
+    a.href = c.toDataURL("image/png");
+    a.download = `${name}.png`;
+    a.click();
+  };
+  const codes = [...(menuUrl ? [{ key: "menu", label: "Menu général", url: menuUrl, active: o.menu_qr_active }] : []), ...tables.filter((t) => tableUrl(t)).map((t) => ({ key: t.id, label: `Table ${t.data.number}`, url: tableUrl(t)!, active: t.data.qr_active !== false }))];
+
+  if (!available) return <NoPublicUrl />;
+  return (
+    <div className="space-y-4">
+      <Tabs label="QR codes" value={tab} onChange={setTab} tabs={[{ id: "codes", label: "QR codes", icon: QrCode }, { id: "stats", label: "Statistiques", icon: Eye }]} />
+      {tab === "stats" ? (
+        <QrStats />
+      ) : (
+        <>
+          {!o.published && <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">Le menu en ligne n&apos;est pas publié : les clients verront « menu non publié ». Publiez-le dans « Menu en ligne ». Vous pouvez tester en mode démonstration.</p>}
+          <Card title="Options" actions={codes.length > 0 && <Btn small onClick={() => setPrint(true)}><Printer className="h-3.5 w-3.5" aria-hidden />Imprimer / PDF</Btn>}>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={withLogo} disabled={!o.logo} onChange={(e) => setWithLogo(e.target.checked)} />Logo au centre {o.logo ? "(correction d'erreur élevée pour rester lisible)" : "(ajoutez un logo dans « Menu en ligne »)"}</label>
+            <p className="mt-2 text-xs text-slate-500">Les QR codes ne contiennent qu&apos;une adresse avec un identifiant aléatoire : aucune donnée secrète. Le client ne peut pas changer la table de sa commande.</p>
+          </Card>
+          <Card title="Menu général">
+            {menuUrl ? (
+              <QrRow label="Menu général" url={menuUrl} active={o.menu_qr_active} logo={logo} test={test} mgr={mgr} onPng={() => png(menuUrl, "qr-menu")} onRegen={() => act("qr.menu", { action: "generate" }, { confirm: "Régénérer ce QR code ? L'ancien, déjà imprimé, ne fonctionnera plus." })} onToggle={() => act("qr.menu", { action: o.menu_qr_active ? "disable" : "enable" })} />
+            ) : mgr ? (
+              <Btn small onClick={() => act("qr.menu", { action: "generate" })}><QrCode className="h-3.5 w-3.5" aria-hidden />Créer le QR code du menu</Btn>
+            ) : (
+              <p className="text-sm text-slate-500">Pas encore créé.</p>
+            )}
+          </Card>
+          <Card title="Tables" actions={mgr && tables.some((t) => !t.data.qr_token) && <Btn small onClick={async () => { for (const t of tables.filter((x) => !x.data.qr_token)) await act("qr.table", { table_id: t.id, action: "generate" }, { quiet: true }); }}><QrCode className="h-3.5 w-3.5" aria-hidden />Créer les QR codes manquants</Btn>}>
+            {tables.length === 0 ? (
+              <Empty text="Aucune table : ajoutez vos tables (zone Salle de restaurant ou Vision IA) pour créer leurs QR codes." />
+            ) : (
+              <ul className="space-y-3">
+                {tables.map((t) => {
+                  const url = tableUrl(t);
+                  return (
+                    <li key={t.id}>
+                      {url ? (
+                        <QrRow label={`Table ${t.data.number}`} url={url} active={t.data.qr_active !== false} logo={logo} test={test} mgr={mgr} onPng={() => png(url, `qr-table-${t.data.number}`)} onRegen={() => act("qr.table", { table_id: t.id, action: "generate" }, { confirm: `Régénérer le QR code de la table ${t.data.number} ? L'ancien ne fonctionnera plus.` })} onToggle={() => act("qr.table", { table_id: t.id, action: t.data.qr_active === false ? "enable" : "disable" })} />
+                      ) : (
+                        <div className="flex items-center justify-between rounded-xl border border-dashed border-slate-300 px-3 py-2 text-sm"><span>Table {t.data.number} : pas de QR code</span>{mgr && <Btn small kind="ghost" onClick={() => act("qr.table", { table_id: t.id, action: "generate" })}>Créer</Btn>}</div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Card>
+        </>
+      )}
+      {print && (
+        <PrintDoc title="QR codes à imprimer" onClose={() => setPrint(false)}>
+          <p className="no-print mb-3 text-xs text-slate-500">Pour un PDF : « Imprimer / PDF », puis choisissez « Enregistrer au format PDF ». Seuls les QR codes actifs sont imprimés.</p>
+          <div className="grid grid-cols-2 gap-4">
+            {codes.filter((c) => c.active).map((c) => (
+              <div key={c.key} className="break-inside-avoid rounded-2xl border-2 border-slate-900 p-4 text-center">
+                <p className="text-lg font-bold">{appName}</p>
+                <div className="my-2 flex justify-center"><QrImage url={c.url} logo={logo} size={200} /></div>
+                <p className="text-xl font-extrabold">{c.label}</p>
+                <p className="text-xs">Scannez pour voir le menu{o.ordering ? " et commander" : ""}</p>
+                <p className="mt-1 text-[10px] text-slate-500">Aucune application à installer</p>
+              </div>
+            ))}
+          </div>
+        </PrintDoc>
+      )}
+    </div>
+  );
+}
+
+function QrRow({ label, url, active, logo, test, mgr, onPng, onRegen, onToggle }: { label: string; url: string; active: boolean; logo: string | null; test: string; mgr: boolean; onPng: () => void; onRegen: () => void; onToggle: () => void }) {
+  return (
+    <div className={`flex flex-col gap-3 rounded-2xl border p-3 sm:flex-row sm:items-center ${active ? "border-slate-200" : "border-red-200 bg-red-50/40"}`}>
+      <div className={active ? "" : "opacity-40"}><QrImage url={url} logo={logo} size={120} /></div>
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <p className="font-semibold">{label} {!active && <span className="text-xs font-normal text-red-600">· désactivé (affiche un message explicatif)</span>}</p>
+        <p className="truncate text-xs text-slate-500">{url}</p>
+        <div className="flex flex-wrap gap-1.5">
+          <Btn small kind="ghost" onClick={onPng}><Download className="h-3.5 w-3.5" aria-hidden />PNG</Btn>
+          <Btn small kind="ghost" onClick={() => navigator.clipboard?.writeText(url)}><Copy className="h-3.5 w-3.5" aria-hidden />Copier</Btn>
+          <a href={`${url}${url.includes("?") ? test.replace("?", "&") : test}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50">{test ? <FlaskConical className="h-3.5 w-3.5" aria-hidden /> : <ExternalLink className="h-3.5 w-3.5" aria-hidden />}{test ? "Tester (démo)" : "Ouvrir"}</a>
+          {mgr && <Btn small kind="ghost" onClick={onRegen}><RefreshCw className="h-3.5 w-3.5" aria-hidden />Régénérer</Btn>}
+          {mgr && <Btn small kind="ghost" onClick={onToggle}><Ban className="h-3.5 w-3.5" aria-hidden />{active ? "Désactiver" : "Réactiver"}</Btn>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QrStats() {
+  const { v } = useV();
+  const days = v.data.qstat as Doc<DayStat>[];
+  const since = today(new Date(Date.now() - 29 * 86_400_000));
+  const inP = days.filter((d) => d.data.date >= since);
+  const scans = inP.reduce((a, d) => a + Object.values(d.data.scans).reduce((x, y) => x + y, 0), 0);
+  const visitors = inP.reduce((a, d) => a + d.data.visitors.length, 0);
+  const orders = inP.reduce((a, d) => a + d.data.orders, 0);
+  const views = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const d of inP) for (const [k, n] of Object.entries(d.data.views)) m.set(k, (m.get(k) ?? 0) + n);
+    return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+  }, [inP]);
+  const menu = v.data.menu as Doc<OnlineItem>[];
+  return (
+    <Card title="30 derniers jours">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <Stat label="Scans" value={scans} />
+        <Stat label="Visiteurs (uniques par jour)" value={visitors} />
+        <Stat label="Commandes générées" value={orders} tone="green" />
+        <Stat label="Taux de commande" value={visitors ? `${Math.round((orders / visitors) * 100)} %` : "—"} />
+      </div>
+      <h5 className="mb-1 mt-4 text-xs font-semibold text-slate-600">Plats les plus consultés</h5>
+      {views.length === 0 ? <p className="text-sm text-slate-500">Pas encore de données.</p> : <ul className="space-y-1 text-sm">{views.map(([id, n]) => <li key={id} className="flex justify-between"><span>{menu.find((m) => m.id === id)?.data.name ?? "Plat retiré"}</span><span className="font-semibold">{n}</span></li>)}</ul>}
+      <p className="mt-3 text-[11px] text-slate-500">Compteurs anonymes : aucun nom, aucune adresse, aucun numéro de téléphone n&apos;est enregistré.</p>
+    </Card>
+  );
+}

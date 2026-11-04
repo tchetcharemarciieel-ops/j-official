@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, X } from "lucide-react";
+import { ChefHat, Eye, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PHOTO_CATEGORY_LABELS, type Doc, type Photo, type PhotoCategory, type VenueKind, type VenueZone } from "@/lib/venue/model";
 import type { DataMode } from "../useAppData";
@@ -29,10 +29,12 @@ type Props = {
   /** Ouvre Vision IA (accueil / caisse, pour les gérants et le personnel de caisse). */
   onVision?: () => void;
   visionAlerts?: number;
+  /** Ouvre l'écran cuisine (KDS) en plein écran. */
+  onKds?: () => void;
 };
 
 /** Panneau latéral gauche : s'ouvre au clic sur une zone du plan, sans quitter la vue 3D. */
-export function VenuePanel({ kind, zones, zone, onZone, onClose, api, projectId, mode, appName, notify, roomId, onRoom, request, onVision, visionAlerts = 0 }: Props) {
+export function VenuePanel({ kind, zones, zone, onZone, onClose, api, projectId, mode, appName, notify, roomId, onRoom, request, onVision, visionAlerts = 0, onKds }: Props) {
   const [option, setOption] = useState<string | null>(null);
   const panel = useRef<HTMLElement>(null);
   const meta = ZONE_META[kind][zone]!;
@@ -80,6 +82,7 @@ export function VenuePanel({ kind, zones, zone, onZone, onClose, api, projectId,
   }, [hasPhotos, photos, api]);
   const zonePhotos = (photos ?? []).filter((p) => p.data.category === photoCat);
   const isRooms = kind === "hotel" && zone === "chambres";
+  const kitchenCount = (s?.data.order ?? []).filter((o) => ["en_attente", "en_preparation", "prete"].includes(String(o.data.status)) && !(o.data as { held?: boolean }).held).length;
 
   return (
     <aside
@@ -141,6 +144,11 @@ export function VenuePanel({ kind, zones, zone, onZone, onClose, api, projectId,
                   {onVision && (zone === "caisse" || (kind === "hotel" && zone === "restaurant")) && (
                     <li>
                       <OptionCard icon={Eye} title="Vision IA — tables en direct" description="Occupation des tables, caméras, commandes, délais de service et alertes" hint={visionAlerts ? `${visionAlerts} alerte(s) en cours` : "Géré par l'accueil / la caisse"} tone={visionAlerts ? "alert" : "active"} onClick={onVision} />
+                    </li>
+                  )}
+                  {onKds && zone === "cuisine" && (
+                    <li>
+                      <OptionCard icon={ChefHat} title="Écran cuisine (KDS)" description="Nouvelles commandes en temps réel : accepter, préparer, prête, signaler un problème" hint={kitchenCount ? `${kitchenCount} commande(s) en cours` : undefined} tone={kitchenCount ? "active" : undefined} onClick={onKds} />
                     </li>
                   )}
                   {options.map((o) => {

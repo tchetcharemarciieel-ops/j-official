@@ -50,7 +50,9 @@ export const GET = route(async (req, { params }: Ctx) => {
   }
   // Empreinte de la clé des passerelles caméra : jamais envoyée au navigateur.
   data.vcam = data.vcam.map((c) => ({ ...c, data: { ...c.data, token_hash: null } }));
-  return NextResponse.json({ data, members: team, role: ctx.role, me: ctx.profile.id, kind: ctx.kind });
+  // Jetons de suivi des commandes en ligne : jamais renvoyés à l'équipe (ils restent au client).
+  data.order = data.order.map((o) => (o.data.tracking_token ? { ...o, data: { ...o.data, tracking_token: "masque" } } : o));
+  return NextResponse.json({ data, members: team, role: ctx.role, me: ctx.profile.id, kind: ctx.kind, slug: ctx.project.slug });
 });
 
 const SENSITIVE = new Set(["payment.cancel", "order.cancel", "item.count", "expense.delete", "stay.status", "photo.delete"]);

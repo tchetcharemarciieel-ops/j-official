@@ -205,8 +205,9 @@ export function lateness(seat: Doc<Seat>, orders: Doc<Order>[], vs: VisionSettin
   if (vs.alert_minutes > 0 && !firstService(seat, orders) && arrived >= vs.alert_minutes) out.push({ kind: "service", minutes: arrived, order_id: null });
   if (vs.order_minutes > 0 && mine.length === 0 && !seat.data.served_at && arrived >= vs.order_minutes) out.push({ kind: "commande", minutes: arrived, order_id: null });
   for (const o of mine) {
-    if (vs.prep_minutes > 0 && (o.data.status === "en_attente" || o.data.status === "en_preparation")) {
-      const m = minutesBetween(o.created_at, now);
+    const held = (o.data as { held?: boolean }).held === true;
+    if (vs.prep_minutes > 0 && !held && (o.data.status === "en_attente" || o.data.status === "en_preparation")) {
+      const m = minutesBetween((o.data as { sent_at?: string | null }).sent_at ?? o.created_at, now);
       if (m >= vs.prep_minutes) out.push({ kind: "preparation", minutes: m, order_id: o.id });
     }
     if (vs.ready_minutes > 0 && o.data.status === "prete") {
@@ -242,7 +243,8 @@ export function liveTables(tables: Doc<Table>[], seats: Doc<Seat>[], bookings: D
       let since: number | null = null;
       if (active) {
         const ready = os.filter((o) => o.data.status === "prete");
-        const cooking = os.filter((o) => o.data.status === "en_attente" || o.data.status === "en_preparation");
+        // Commande en ligne en attente de paiement : pas encore en cuisine.
+        const cooking = os.filter((o) => (o.data.status === "en_attente" || o.data.status === "en_preparation") && (o.data as { held?: boolean }).held !== true);
         if (ready.length) {
           status = "plat_pret";
           const r = ready.map(readyAt).filter((x): x is string => Boolean(x)).sort()[0];

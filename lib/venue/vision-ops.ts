@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { BOOKING_ACTIVE, type Booking, type Col, type Doc, type Order, type Settings, type Table } from "./model";
-import { ALERT_KIND_LABELS, alertKey, currentBooking, lateness, minutesBetween, seatActive, thresholdOf, visionSettings, type Camera, type Seat, type SeatSource, type VisionAlert } from "./vision";
+import { BOOKING_ACTIVE, type Booking, type Col, type Doc, type Order, type Settings, type Staff, type Table } from "./model";
+import { ALERT_KIND_LABELS, CASHIER_ROLE, alertKey, canVision, currentBooking, lateness, minutesBetween, seatActive, thresholdOf, visionSettings, type Camera, type Seat, type SeatSource, type VisionAlert } from "./vision";
 import type { OpContext, OpResult } from "./engine";
 
 /**
@@ -46,6 +46,13 @@ function randomToken() {
 
 export function visionOps(k: Kit) {
   const now = (ctx: OpContext) => ctx.now?.() ?? new Date();
+
+  /** Vision IA est géré par les gérants et le personnel « caisse / accueil » (la passerelle caméra est authentifiée à part). */
+  async function needVision(ctx: OpContext, what: string) {
+    k.need(ctx, 1, what);
+    if (ctx.gateway) return;
+    if (!canVision(ctx.actor.role, ctx.actor.id, (await ctx.store.list("staff")) as Doc<Staff>[])) k.fail(403, `Vision IA est géré par l'accueil / la caisse : demandez au gérant de vous attribuer le poste « ${CASHIER_ROLE} » dans la fiche du personnel.`);
+  }
 
   /** Termine un passage (la table passe « À nettoyer ») et clôt ses alertes. */
   async function endSeat(ctx: OpContext, seatId: string, reason: "libere" | "parti") {
@@ -96,7 +103,7 @@ export function visionOps(k: Kit) {
     },
 
     async "vision.seat"(ctx: OpContext, raw: unknown) {
-      k.need(ctx, 1, "l'installation des clients");
+      await needVision(ctx, "l'installation des clients");
       const i = z.object({ table_id: id, guests: z.coerce.number().int().min(1, "Au moins 1 personne").max(60), booking_id: z.string().max(64).nullish().transform((v) => v || null), idem }).parse(raw);
       const table = await k.must<Table>(ctx, "table", i.table_id, "Table");
       if (!table.data.active) k.fail(409, "Cette table n'est plus en service.");
@@ -106,7 +113,7 @@ export function visionOps(k: Kit) {
     },
 
     async "vision.served"(ctx: OpContext, raw: unknown) {
-      k.need(ctx, 1, "le suivi du service");
+      await needVision(ctx, "le suivi du service");
       const i = z.object({ seat_id: id }).parse(raw);
       const { doc, written } = await k.mutate<Seat>(ctx, "vseat", i.seat_id, "Passage", (s) => {
         if (s.ended_at) k.fail(409, "Ces clients sont déjà partis.");
@@ -118,7 +125,7 @@ export function visionOps(k: Kit) {
     },
 
     async "vision.release"(ctx: OpContext, raw: unknown) {
-      k.need(ctx, 1, "la libération d'une table");
+      await needVision(ctx, "la libération d'une table");
       const i = z.object({ seat_id: id }).parse(raw);
       const s = await k.must<Seat>(ctx, "vseat", i.seat_id, "Passage");
       const ended = await endSeat(ctx, i.seat_id, s.data.served_at ? "libere" : "parti");
@@ -127,7 +134,7 @@ export function visionOps(k: Kit) {
 
     /** Table débarrassée : elle redevient « Libre ». */
     async "vision.clean"(ctx: OpContext, raw: unknown) {
-      k.need(ctx, 1, "la remise en état d'une table");
+      await needVision(ctx, "la remise en état d'une table");
       const i = z.object({ seat_id: id }).parse(raw);
       const { written } = await k.mutate<Seat>(ctx, "vseat", i.seat_id, "Passage", (s) => {
         if (!s.ended_at) k.fail(409, "Les clients sont encore installés : libérez d'abord la table.");
@@ -143,7 +150,7 @@ export function visionOps(k: Kit) {
      * Les alertes dont la cause a disparu (client servi, plat prêt…) sont clôturées.
      */
     async "vision.tick"(ctx: OpContext) {
-      k.need(ctx, 1, "la vérification des délais");
+      await needVision(ctx, "la vérification des délais");
       const vs = visionSettings((await k.settings(ctx)).data);
       const seats = ((await ctx.store.list("vseat")) as Doc<Seat>[]).filter((s) => seatActive(s.data));
       const orders = (await ctx.store.list("order")) as Doc<Order>[];
@@ -179,7 +186,7 @@ export function visionOps(k: Kit) {
     },
 
     async "vision.ack"(ctx: OpContext, raw: unknown) {
-      k.need(ctx, 1, "la prise en charge d'une alerte");
+      await needVision(ctx, "la prise en charge d'une alerte");
       const i = z.object({ alert_id: id }).parse(raw);
       const { written } = await k.mutate<VisionAlert>(ctx, "valert", i.alert_id, "Alerte", (a) => (a.ack_at ? null : { ...a, ack_at: k.nowIso(ctx), ack_by: ctx.actor.id }));
       return written ? k.ok("Alerte prise en charge.") : k.ok("Alerte déjà prise en charge.", { duplicate: true });
@@ -191,7 +198,7 @@ export function visionOps(k: Kit) {
      * authentifiée de cette caméra. Aucune image n'est acceptée, seulement des états de table.
      */
     async "vision.detect"(ctx: OpContext, raw: unknown) {
-      k.need(ctx, 1, "l'enregistrement des détections");
+      await needVision(ctx, "l'enregistrement des détections");
       const i = z
         .object({
           source: z.enum(["demo", "camera"]),

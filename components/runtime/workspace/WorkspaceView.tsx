@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Box, Eye, LayoutDashboard, Map as MapIcon, Settings2 } from "lucide-react";
+import { Box, LayoutDashboard, Map as MapIcon, Settings2 } from "lucide-react";
 import { Component, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/fetcher";
 import type { AppPrefs } from "@/lib/app-prefs";
@@ -20,6 +20,8 @@ import { VenueSetup } from "../venue/VenueSetup";
 import { ZONE_META } from "../venue/zones";
 import { VisionModule } from "../venue/vision/VisionModule";
 import { AlertsBanner, useVisionAlerts } from "../venue/vision/useVisionAlerts";
+import { canVision } from "@/lib/venue/vision";
+import type { Doc as VDoc, Staff } from "@/lib/venue/model";
 import { LEVEL as VENUE_LEVEL, activeZones, type VenueZone } from "@/lib/venue/model";
 import type { DataMode, Rec } from "../useAppData";
 import { KIND_ICONS, ROLE_COLORS } from "./kinds";
@@ -102,7 +104,8 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
   const [setupOpen, setSetupOpen] = useState(false);
   const needsSetup = Boolean(venueKind && venue.state && (!vSettings.answered || (venueKind === "hotel" && vSettings.photos_step === null)));
   // Vision IA : tables en direct et délais de service (restaurant, ou hôtel avec restaurant).
-  const visionOn = Boolean(venueKind && venue.state && !needsSetup && (venueKind === "restaurant" || vSettings.has_restaurant === true));
+  // Géré depuis la zone « Accueil / Caisse » par les gérants et le personnel de caisse.
+  const visionOn = Boolean(venueKind && venue.state && !needsSetup && (venueKind === "restaurant" || vSettings.has_restaurant === true) && canVision(venue.state.role, venue.state.me, venue.state.data.staff as VDoc<Staff>[]));
   const [visionOpen, setVisionOpen] = useState(false);
   const visionAlerts = useVisionAlerts(venue, visionOn, projectId);
   const venueView = useMemo(
@@ -181,12 +184,6 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
               <MapIcon className="h-4 w-4" aria-hidden />Plan 2D
             </button>
           </div>
-          {visionOn && (
-            <button type="button" onClick={() => (setVisionOpen(true), setVZone(null))} className="relative inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:brightness-110" style={{ background: "var(--app-primary)" }}>
-              <Eye className="h-4 w-4" aria-hidden />Vision IA
-              {visionAlerts.open.length > 0 && <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white ring-2 ring-white">{visionAlerts.open.length}</span>}
-            </button>
-          )}
           {venueKind && venue.state && VENUE_LEVEL[venue.state.role] >= 2 && !needsSetup && (
             <button type="button" onClick={() => (setSetupOpen(true), setVZone(null))} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
               <Settings2 className="h-4 w-4" aria-hidden />Configurer le plan
@@ -240,13 +237,6 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
               {venue.error && <p className="mt-2 text-xs text-red-600">{venue.error}</p>}
               {venueView.photoTinted && <p className="mt-2 text-xs text-slate-500">Couleurs de certaines zones reprises de vos photos (référence visuelle, pas une mesure).</p>}
               {Boolean(vSettings.dims.length || vSettings.dims.width) && <p className="mt-1 text-xs text-slate-500">Dimensions déclarées : {vSettings.dims.length ?? "?"} × {vSettings.dims.width ?? "?"} m (le plan reste schématique).</p>}
-              {visionOn && (
-                <button type="button" onClick={() => (setVisionOpen(true), setVZone(null))} className="mt-3 flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm hover:bg-slate-100">
-                  <Eye className="h-4 w-4 shrink-0" style={{ color: "var(--app-primary)" }} aria-hidden />
-                  <span className="min-w-0 flex-1"><span className="block font-semibold">Vision IA — tables en direct</span><span className="block text-xs text-slate-500">Occupation, commandes et délais de service</span></span>
-                  {visionAlerts.open.length > 0 && <span className="rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white">{visionAlerts.open.length}</span>}
-                </button>
-              )}
               <p className="mt-2 text-xs text-slate-500">Les tables du logiciel restent accessibles dans l&apos;interface classique.</p>
             </section>
           ) : garageMode && garageView ? (
@@ -350,7 +340,7 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
         </aside>
       </div>
       )}
-      {venueKind && vZone && !setupOpen && !needsSetup && <VenuePanel kind={venueKind} zones={vZones} zone={vZone} onZone={(z) => (setVZone(z), setVRoom(null))} onClose={() => (setVZone(null), setVRoom(null))} api={venue} projectId={projectId} mode={mode} appName={title} notify={notify} roomId={vRoom} onRoom={setVRoom} request={null} />}
+      {venueKind && vZone && !setupOpen && !needsSetup && <VenuePanel kind={venueKind} zones={vZones} zone={vZone} onZone={(z) => (setVZone(z), setVRoom(null))} onClose={() => (setVZone(null), setVRoom(null))} api={venue} projectId={projectId} mode={mode} appName={title} notify={notify} roomId={vRoom} onRoom={setVRoom} request={null} onVision={visionOn ? () => (setVisionOpen(true), setVZone(null)) : undefined} visionAlerts={visionAlerts.open.length} />}
       {visionOn && visionOpen && venueKind && <VisionModule api={venue} kind={venueKind} mode={mode} projectId={projectId} appName={title} notify={notify} alerts={visionAlerts} onClose={() => setVisionOpen(false)} />}
       {visionOn && <AlertsBanner alerts={visionAlerts} api={venue} notify={notify} onOpen={visionOpen ? undefined : () => setVisionOpen(true)} />}
       {garageMode && zone && <GaragePanel zone={zone} onZone={setZone} onClose={() => setZone(null)} api={garage} projectId={projectId} mode={mode} appName={title} notify={notify} jobRequest={jobRequest} />}

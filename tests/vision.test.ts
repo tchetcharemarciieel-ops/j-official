@@ -20,6 +20,8 @@ function setup(opts: { demo?: boolean } = {}) {
 const k = () => crypto.randomUUID();
 
 async function withTable(run: ReturnType<typeof setup>["run"], number = "4", seats = 4) {
+  // L'employé STAFF tient la caisse : il gère Vision IA.
+  if (number === "4" || number === "1") await run("staff.save", { name: "Awa", role: "Caisse et accueil", phone: "", member_id: STAFF, notes: "", schedule: [] }).catch(() => undefined);
   return (await run("table.save", { zone: "salle", number, seats })).id!;
 }
 
@@ -80,6 +82,20 @@ describe("Vision IA : statuts des tables", () => {
     const t = await withTable(run, "1", 2);
     await expect(run("vision.seat", { table_id: t, guests: 5, idem: k() })).rejects.toBeInstanceOf(OpError);
     await expect(run("vision.seat", { table_id: t, guests: 1, idem: k() }, "viewer")).rejects.toBeInstanceOf(OpError);
+  });
+});
+
+describe("Vision IA : accès", () => {
+  it("géré par les gérants et la caisse, refusé à un serveur sans poste caisse", async () => {
+    const store = new MemoryStore();
+    const ctx = (role: "owner" | "employee", id: string): OpContext => ({ store, actor: { id, role }, members: [OWNER, STAFF], kind: "restaurant" });
+    const t = (await runOp(ctx("owner", OWNER), "table.save", { zone: "salle", number: "9", seats: 4 })).id!;
+    await expect(runOp(ctx("employee", STAFF), "vision.seat", { table_id: t, guests: 2, idem: k() })).rejects.toThrow(/caisse/);
+    await runOp(ctx("owner", OWNER), "staff.save", { name: "Awa", role: "Serveuse", phone: "", member_id: STAFF, notes: "", schedule: [] });
+    await expect(runOp(ctx("employee", STAFF), "vision.seat", { table_id: t, guests: 2, idem: k() })).rejects.toThrow(/caisse/);
+    const staff = store.data.staff[0]!;
+    await runOp(ctx("owner", OWNER), "staff.save", { id: staff.id, name: "Awa", role: "Caisse et accueil", phone: "", member_id: STAFF, notes: "", schedule: [] });
+    expect((await runOp(ctx("employee", STAFF), "vision.seat", { table_id: t, guests: 2, idem: k() })).id).toBeTruthy();
   });
 });
 

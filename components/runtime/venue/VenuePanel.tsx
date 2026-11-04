@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { Eye, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PHOTO_CATEGORY_LABELS, type Doc, type Photo, type PhotoCategory, type VenueKind, type VenueZone } from "@/lib/venue/model";
 import type { DataMode } from "../useAppData";
@@ -26,10 +26,13 @@ type Props = {
   onRoom: (id: string | null) => void;
   /** Fonction à ouvrir directement (lien depuis une autre zone). */
   request: { option: string; n: number } | null;
+  /** Ouvre Vision IA (accueil / caisse, pour les gérants et le personnel de caisse). */
+  onVision?: () => void;
+  visionAlerts?: number;
 };
 
 /** Panneau latéral gauche : s'ouvre au clic sur une zone du plan, sans quitter la vue 3D. */
-export function VenuePanel({ kind, zones, zone, onZone, onClose, api, projectId, mode, appName, notify, roomId, onRoom, request }: Props) {
+export function VenuePanel({ kind, zones, zone, onZone, onClose, api, projectId, mode, appName, notify, roomId, onRoom, request, onVision, visionAlerts = 0 }: Props) {
   const [option, setOption] = useState<string | null>(null);
   const panel = useRef<HTMLElement>(null);
   const meta = ZONE_META[kind][zone]!;
@@ -135,6 +138,11 @@ export function VenuePanel({ kind, zones, zone, onZone, onClose, api, projectId,
                 </>
               ) : (
                 <ul className="space-y-2">
+                  {onVision && (zone === "caisse" || (kind === "hotel" && zone === "restaurant")) && (
+                    <li>
+                      <OptionCard icon={Eye} title="Vision IA — tables en direct" description="Occupation des tables, caméras, commandes, délais de service et alertes" hint={visionAlerts ? `${visionAlerts} alerte(s) en cours` : "Géré par l'accueil / la caisse"} tone={visionAlerts ? "alert" : "active"} onClick={onVision} />
+                    </li>
+                  )}
                   {options.map((o) => {
                     const h = o.hint?.(s!.data) ?? null;
                     return (

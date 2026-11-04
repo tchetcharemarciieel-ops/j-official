@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, BellRing, Camera, Copy, KeyRound, Plus, Power, ShieldCheck, Volume2 } from "lucide-react";
+import { BarChart3, BellRing, Camera, Copy, Download, KeyRound, PlayCircle, Plus, Power, ShieldCheck, Volume2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { periodPreset, type Doc, type Order, type Period, type Table, type TableZone } from "@/lib/venue/model";
 import { ALERT_KIND_HINTS, ALERT_KIND_LABELS, ALERT_KINDS, CAMERA_ONLINE_MS, countByStatus, fmtMinutes, minutesBetween, visionStats, type Camera as Cam, type Seat, type VisionAlert, type VisionSettings } from "@/lib/venue/vision";
@@ -155,6 +155,31 @@ export function VisionSettingsView({ vs, onTest }: { vs: VisionSettings; onTest:
   );
 }
 
+/** Fichier de configuration de la passerelle, prérempli (zones à ajuster avec « --apercu »). */
+function downloadConfig(cam: Doc<Cam>, tables: Doc<Table>[], endpoint: string, key = "") {
+  const mine = tables.filter((t) => cam.data.table_ids.includes(t.id));
+  const cols = Math.max(1, Math.ceil(Math.sqrt(mine.length)));
+  const cfg = {
+    endpoint,
+    camera_id: cam.id,
+    key,
+    source: "rtsp://utilisateur:motdepasse@ADRESSE_IP_DE_LA_CAMERA:554/stream1",
+    stable_seconds: 20,
+    interval_seconds: 2,
+    tables: mine.map((t, i) => {
+      const x = (i % cols) / cols;
+      const y = Math.floor(i / cols) / cols;
+      const r = (n: number) => Math.round(n * 100) / 100;
+      return { nom: `Table ${t.data.number}`, table_id: t.id, zone: [[r(x + 0.02), r(y + 0.02)], [r(x + 1 / cols - 0.02), r(y + 0.02)], [r(x + 1 / cols - 0.02), r(y + 1 / cols - 0.02)], [r(x + 0.02), r(y + 1 / cols - 0.02)]] };
+    }),
+  };
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(cfg, null, 2)], { type: "application/json" }));
+  a.download = "config.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 /** Caméras : déclaration, position, clé de la passerelle et mode d'intégration. */
 export function CamerasView({ now }: { now: number }) {
   const { v, level, act, mode, projectId } = useV();
@@ -167,6 +192,12 @@ export function CamerasView({ now }: { now: number }) {
   const endpoint = typeof window !== "undefined" ? `${window.location.origin}/api/apps/${projectId}/venue/vision` : `/api/apps/${projectId}/venue/vision`;
   return (
     <div className="space-y-4">
+      <Card title={<span className="flex items-center gap-2"><PlayCircle className="h-4 w-4" aria-hidden />Vidéo : installer et connecter une caméra</span>}>
+        <video controls preload="none" playsInline poster="/vision/tutoriel-camera.jpg" className="aspect-video w-full rounded-xl bg-slate-900">
+          <source src="/vision/tutoriel-camera.mp4" type="video/mp4" />
+        </video>
+        <p className="mt-2 text-xs text-slate-500">Durée : 2 min 25. Sous-titrée, sans son.</p>
+      </Card>
       <Card title={<span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-green-700" aria-hidden />Confidentialité</span>}>
         <ul className="list-disc space-y-1 pl-5 text-sm text-slate-600">
           <li>Aucune image ni vidéo n&apos;est envoyée à MiniSoft RCA : seulement « table occupée / libre » et un nombre de personnes.</li>
@@ -191,6 +222,7 @@ export function CamerasView({ now }: { now: number }) {
                   {mgr && (
                     <div className="flex flex-wrap gap-1.5">
                       <Btn small kind="ghost" onClick={() => setEdit(c)}>Modifier</Btn>
+                      <Btn small kind="ghost" onClick={() => downloadConfig(c, v.data.table as Doc<Table>[], endpoint)} title="Fichier config.json de la passerelle (sans la clé)"><Download className="h-3.5 w-3.5" aria-hidden />Configuration</Btn>
                       <Btn small kind="soft" onClick={async () => { const r = await act("vision.camera.token", { id: c.id }, { confirm: c.data.token_hint ? "Générer une nouvelle clé ? L'ancienne cessera de fonctionner." : undefined }); if (r?.secret) setSecret({ token: r.secret, cam: c }); }}><KeyRound className="h-3.5 w-3.5" aria-hidden />{c.data.token_hint ? "Nouvelle clé" : "Générer la clé"}</Btn>
                       <Btn small kind="ghost" onClick={() => act("vision.camera.toggle", { id: c.id, active: !c.data.active }, { confirm: c.data.active ? "Désactiver cette caméra ? Sa clé sera révoquée." : undefined })}><Power className="h-3.5 w-3.5" aria-hidden />{c.data.active ? "Désactiver" : "Réactiver"}</Btn>
                     </div>
@@ -202,12 +234,18 @@ export function CamerasView({ now }: { now: number }) {
         )}
       </Card>
       <Card title="Connecter une vraie caméra">
-        <ol className="list-decimal space-y-1 pl-5 text-sm text-slate-600">
-          <li>Installez sur place une <b>passerelle de détection</b> (petit ordinateur relié à vos caméras IP, avec un modèle de détection de personnes). Elle analyse les images localement.</li>
-          <li>Déclarez la caméra ici, sélectionnez les tables qu&apos;elle voit, puis générez sa clé.</li>
-          <li>Configurez la passerelle pour envoyer l&apos;état stabilisé des tables (après quelques secondes sans changement) :</li>
+        <ol className="list-decimal space-y-1.5 pl-5 text-sm text-slate-600">
+          <li><b>Caméra</b> : une caméra IP (Wi-Fi ou câble) compatible <b>RTSP</b> ou <b>ONVIF</b>, fixée en hauteur avec une vue dégagée sur les tables, branchée sur le réseau du restaurant.</li>
+          <li><b>Passerelle</b> : un ordinateur sur place (PC, mini-PC ou Raspberry Pi 5) allumé pendant le service, avec Python 3. Installez : <code className="rounded bg-slate-100 px-1">pip install opencv-python ultralytics requests</code></li>
+          <li>Téléchargez le <a className="font-medium text-blue-700 underline" href="/vision/minisoft_passerelle.py" download>programme de la passerelle</a>.</li>
+          <li>Ici : <b>Ajouter une caméra</b>, cochez les tables qu&apos;elle voit, placez-la sur le plan, puis <b>Générer la clé</b> et téléchargez la configuration (avec la clé).</li>
+          <li>Dans <code className="rounded bg-slate-100 px-1">config.json</code>, mettez l&apos;adresse RTSP de la caméra. Lancez <code className="rounded bg-slate-100 px-1">python3 minisoft_passerelle.py --apercu</code> et ajustez la zone de chaque table d&apos;après l&apos;image locale (grille de 0 à 1).</li>
+          <li>Vérifiez la connexion : <code className="rounded bg-slate-100 px-1">python3 minisoft_passerelle.py --test</code>. La caméra passe « Connectée » ici.</li>
+          <li>Démarrez : <code className="rounded bg-slate-100 px-1">python3 minisoft_passerelle.py</code>. Les tables se mettent à jour seules sur le plan.</li>
         </ol>
-        <pre className="mt-2 overflow-x-auto rounded-xl bg-slate-900 p-3 text-[11px] text-slate-100">{`POST ${endpoint}
+        <details className="mt-3 text-sm">
+          <summary className="cursor-pointer font-medium text-slate-700">Pour un intégrateur : format d&apos;envoi</summary>
+          <pre className="mt-2 overflow-x-auto rounded-xl bg-slate-900 p-3 text-[11px] text-slate-100">{`POST ${endpoint}
 Authorization: Bearer <clé de la caméra>
 Content-Type: application/json
 
@@ -215,7 +253,8 @@ Content-Type: application/json
   "observations": [
     { "table_id": "<identifiant de la table>", "occupied": true, "people": 3 },
     { "table_id": "<…>", "occupied": false } ] }`}</pre>
-        <p className="mt-2 text-xs text-slate-500">Seuls les états de table sont acceptés (aucune image). Limite : environ un envoi par seconde. {mode !== "live" ? "Les caméras ne fonctionnent qu'avec le logiciel publié (données réelles)." : ""}</p>
+        </details>
+        <p className="mt-2 text-xs text-slate-500">Seuls les états de table sont acceptés (aucune image). Environ un envoi par seconde au maximum. {mode !== "live" ? "Les caméras ne fonctionnent qu'avec le logiciel publié (données réelles)." : ""}</p>
       </Card>
       {edit && <CameraForm cam={edit === "new" ? null : edit} zones={zones} onClose={() => setEdit(null)} />}
       {secret && (
@@ -223,6 +262,8 @@ Content-Type: application/json
           <p className="text-sm text-slate-700">Copiez cette clé dans la passerelle de détection. <b>Elle ne sera plus affichée</b> : en cas de perte, générez-en une nouvelle.</p>
           <div className="mt-3 flex items-center gap-2"><code className="flex-1 break-all rounded-lg bg-slate-100 p-2 text-xs">{secret.token}</code><Btn small kind="ghost" onClick={() => navigator.clipboard?.writeText(secret.token)}><Copy className="h-3.5 w-3.5" aria-hidden />Copier</Btn></div>
           <p className="mt-3 text-xs text-slate-500">Identifiant de la caméra : <code>{secret.cam.id}</code></p>
+          <div className="mt-3"><Btn small onClick={() => downloadConfig(secret.cam, v.data.table as Doc<Table>[], endpoint, secret.token)}><Download className="h-3.5 w-3.5" aria-hidden />Télécharger config.json (avec la clé)</Btn></div>
+          <p className="mt-1 text-[11px] text-slate-500">Gardez ce fichier sur l&apos;ordinateur de la passerelle uniquement : il contient la clé.</p>
         </Modal>
       )}
     </div>

@@ -35,12 +35,13 @@ Configuration : exécuter `supabase/migrations/0008_venue_rls.sql` (dépenses r�
 
 ### MiniSoft Vision IA — Restaurant
 
-Bouton « Vision IA » de l'espace de travail (restaurant, ou hôtel avec restaurant). Code : `lib/venue/vision.ts` (statuts, délais, statistiques), `lib/venue/vision-ops.ts` (opérations `vision.*`), `components/runtime/venue/vision/` (écrans), tests `tests/vision.test.ts`.
+Ouvert depuis la zone « Accueil / Caisse » (ou « Restaurant » à l'hôtel), pas depuis le plan 2D/3D. Géré par les gérants et par les employés dont la fiche du personnel, reliée à leur compte, porte le poste « Caisse et accueil » (contrôlé aussi par le serveur). Code : `lib/venue/vision.ts` (statuts, délais, statistiques), `lib/venue/vision-ops.ts` (opérations `vision.*`), `components/runtime/venue/vision/` (écrans), tests `tests/vision.test.ts`.
 
 - **Plan 2D en direct** : tables disposables par glisser-déposer, statuts Libre, Occupée, Réservée, En attente de service, En attente du plat, Plat prêt, À nettoyer. Les statuts de commande viennent de la cuisine (`order.status`), jamais de la caméra ; le paiement n'est « payé » qu'après un encaissement confirmé.
 - **Service** : installation (chronomètre), « Client servi », commande depuis la table, « Clients partis », puis « Remettre en Libre » après nettoyage.
 - **Alertes** : quatre seuils réglables (premier service, commande non prise, préparation, plat prêt non servi ; 0 = désactivé). Une alerte par passage ou commande et par type (identifiant déduit de son objet, aucun doublon entre appareils), son joué une seule fois par appareil, prise en charge « Je m'en occupe », clôture automatique quand la cause disparaît, historique conservé.
 - **Caméras** : caméra placée sur le plan avec son champ de vision, affichée « Caméra non connectée » tant qu'aucune détection réelle n'est reçue. Une passerelle installée au restaurant (analyse locale des images) envoie seulement l'état des tables à `POST /api/apps/[id]/venue/vision` avec `Authorization: Bearer <clé>` (clé générée dans l'écran Caméras, seule son empreinte SHA-256 est enregistrée). Aucune image, aucun visage.
+- **Passerelle de référence** : `public/vision/minisoft_passerelle.py` (Python, OpenCV + détection de personnes YOLO, analyse locale, état stabilisé 20 s, modes `--test` et `--apercu`), `public/vision/config_exemple.json`, configuration préremplie téléchargeable depuis l'écran Caméras, tutoriel vidéo `public/vision/tutoriel-camera.mp4`.
 - **Mode démonstration** : simulateur d'arrivées et de départs, toujours signalé, refusé par le serveur sur les données réelles.
 - Données dans `records` (`hx:vseat`, `hx:valert`, `hx:vcam`) : aucune migration nécessaire. Les passages et alertes chargés sont ceux des 90 derniers jours.
 

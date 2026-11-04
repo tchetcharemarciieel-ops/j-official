@@ -9,7 +9,19 @@
  * de table déjà stabilisés : « occupée » ou « libre », et éventuellement un nombre de personnes.
  */
 
-import { BOOKING_ACTIVE, inPeriod, toMin, today, type Booking, type Doc, type Order, type Period, type Table, type TableZone } from "./model";
+import { BOOKING_ACTIVE, LEVEL, inPeriod, toMin, today, type Booking, type Doc, type Order, type Period, type Staff, type Table, type TableZone, type VenueRole } from "./model";
+
+/** Poste « caisse / accueil » dans la fiche du personnel (gère Vision IA avec les gérants). */
+export const CASHIER_ROLE = "Caisse et accueil";
+export const isCashierRole = (role: string) => /caiss|accueil|r[ée]ception/i.test(role);
+/**
+ * Vision IA est géré à l'accueil / caisse : gérants (propriétaire, administrateur, gestionnaire)
+ * et employés dont la fiche du personnel, reliée à leur compte, indique un poste caisse ou accueil.
+ */
+export function canVision(role: VenueRole, me: string, staff: Doc<Staff>[]) {
+  if (LEVEL[role] >= 2) return true;
+  return LEVEL[role] >= 1 && staff.some((s) => s.data.active && s.data.member_id === me && isCashierRole(s.data.role));
+}
 
 // ---------- Statuts ----------
 

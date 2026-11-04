@@ -35,6 +35,7 @@ import {
   type Task,
   type Temp,
 } from "@/lib/venue/model";
+import { CASHIER_ROLE } from "@/lib/venue/vision";
 import { ROLE_LABELS } from "@/lib/spec";
 import { Btn, Card, Empty, Field, Modal, PeriodPicker, Pill, ReadOnlyNote, Stat, Tabs, docs, downloadCsv, inp, isMgr, useIdem, useV } from "./ui";
 import { TasksView } from "./m-space";
@@ -209,7 +210,10 @@ function StaffForm({ staff, onClose }: { staff: Doc<Staff> | null; onClose: () =
         }}
       >
         <Field label="Nom"><input className={inp} required maxLength={120} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
-        <Field label="Rôle / poste" hint="Ex. : cuisinier, serveuse, réceptionniste"><input className={inp} required maxLength={60} value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })} /></Field>
+        <Field label="Rôle / poste" hint={`Ex. : cuisinier, serveuse, ${CASHIER_ROLE.toLowerCase()}. Le poste « ${CASHIER_ROLE} », relié à un compte, gère Vision IA.`}>
+          <input className={inp} required maxLength={60} list="staff-roles" value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })} />
+          <datalist id="staff-roles">{[CASHIER_ROLE, "Serveur / serveuse", "Cuisinier / cuisinière", "Gérant", "Plongeur", "Réceptionniste", "Femme / valet de chambre"].map((r) => <option key={r} value={r} />)}</datalist>
+        </Field>
         <Field label="Téléphone"><input className={inp} type="tel" maxLength={40} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></Field>
         <Field label="Compte sur le logiciel (facultatif)"><select className={inp} value={f.member_id} onChange={(e) => setF({ ...f, member_id: e.target.value })}><option value="">Aucun</option>{v.members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select></Field>
         <div className="space-y-2 sm:col-span-2">

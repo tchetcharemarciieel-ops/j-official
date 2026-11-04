@@ -1,0 +1,12 @@
+{
+  "endpoint": "https://minisoft-rca.onrender.com/api/apps/IDENTIFIANT_DU_LOGICIEL/venue/vision",
+  "camera_id": "IDENTIFIANT_DE_LA_CAMERA",
+  "key": "",
+  "source": "rtsp://utilisateur:motdepasse@192.168.1.50:554/stream1",
+  "stable_seconds": 20,
+  "interval_seconds": 2,
+  "tables": [
+    { "nom": "Table 1", "table_id": "IDENTIFIANT_TABLE_1", "zone": [[0.10, 0.55], [0.32, 0.55], [0.32, 0.85], [0.10, 0.85]] },
+    { "nom": "Table 2", "table_id": "IDENTIFIANT_TABLE_2", "zone": [[0.40, 0.50], [0.62, 0.50], [0.62, 0.80], [0.40, 0.80]] }
+  ]
+}

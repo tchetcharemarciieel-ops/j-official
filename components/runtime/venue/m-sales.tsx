@@ -1,7 +1,9 @@
 "use client";
 
-import { Banknote, ChefHat, CircleCheck, Clock, FileText, Minus, Pencil, Plus, Receipt, ShoppingBag, Utensils } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Banknote, ChefHat, CircleCheck, Clock, FileText, ImagePlus, Minus, Pencil, Plus, Receipt, ShoppingBag, Utensils } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { OnlineItem } from "@/lib/venue/online";
+import { shrinkImage } from "./image";
 import {
   MENU_CATEGORIES,
   MENU_CATEGORY_LABELS,
@@ -52,10 +54,10 @@ export function MenuView({ recipes = false }: { recipes?: boolean }) {
       <ReadOnlyNote need={2} />
       <div className="flex flex-wrap gap-2">
         <div className="min-w-40 flex-1"><Search value={q} onChange={setQ} placeholder="Rechercher un plat ou une boisson" /></div>
-        {isMgr(level) && <Btn onClick={() => setEdit("new")}><Plus className="h-4 w-4" aria-hidden />Ajouter</Btn>}
+        {isMgr(level) && <Btn onClick={() => setEdit("new")}><Plus className="h-4 w-4" aria-hidden />Ajouter un plat</Btn>}
       </div>
       {menu.length === 0 ? (
-        <Empty text="La carte est vide. Ajoutez vos plats et boissons avec leurs prix réels." icon={Utensils} />
+        <Empty text="La carte est vide. Ajoutez vos plats et boissons avec leurs prix réels." icon={Utensils}>{isMgr(level) && <Btn small onClick={() => setEdit("new")}><Plus className="h-4 w-4" aria-hidden />Ajouter le premier plat</Btn>}</Empty>
       ) : (
         MENU_CATEGORIES.map((c) => {
           const list = menu.filter((m) => m.data.category === c).sort((a, b) => a.data.name.localeCompare(b.data.name));
@@ -94,31 +96,112 @@ export function MenuView({ recipes = false }: { recipes?: boolean }) {
   );
 }
 
-function MenuForm({ item, recipes, onClose }: { item: Doc<MenuItem> | null; recipes: boolean; onClose: () => void }) {
+/**
+ * Fiche d'un plat ou d'une boisson, en une seule fois : photo, nom, catégorie, prix, description,
+ * options, disponibilité et (facultatif) recette. « Enregistrer et ajouter un autre » enchaîne
+ * les saisies sans fermer la fenêtre.
+ */
+type OnlineFields = Pick<OnlineItem, "description" | "photo" | "options" | "available">;
+
+export function MenuForm({ item, recipes = false, onClose, defaultCategory }: { item: Doc<MenuItem> | null; recipes?: boolean; onClose: () => void; defaultCategory?: MenuCategory }) {
   const { v, act } = useV();
-  const d = item?.data;
+  const d = item?.data as (MenuItem & OnlineFields) | undefined;
   const stock = docs<Item>(v.data.item).filter((i) => i.data.active && i.data.zone !== "toilettes");
-  const [f, setF] = useState({ name: d?.name ?? "", category: d?.category ?? ("plat" as MenuCategory), price: numOrEmpty(d?.price), kitchen: d?.kitchen ?? true, portions: String(d?.portions ?? 1), recipe: d?.recipe.map((r) => ({ item_id: r.item_id, qty: String(r.qty) })) ?? [] });
+  const blank = (category: MenuCategory) => ({ name: "", category, price: "", kitchen: category !== "boisson", portions: "1", recipe: [] as { item_id: string; qty: string }[], description: "", photo: null as string | null, available: true, options: [] as { id: string; name: string; price: string }[] });
+  const [f, setF] = useState(() =>
+    d
+      ? { name: d.name, category: d.category, price: numOrEmpty(d.price), kitchen: d.kitchen, portions: String(d.portions ?? 1), recipe: d.recipe.map((r) => ({ item_id: r.item_id, qty: String(r.qty) })), description: d.description ?? "", photo: d.photo ?? null, available: d.available !== false, options: (d.options ?? []).map((o) => ({ id: o.id, name: o.name, price: String(o.price) })) }
+      : blank(defaultCategory ?? "plat"),
+  );
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [added, setAdded] = useState(0);
+  const nameRef = useRef<HTMLInputElement>(null);
   const cost = recipeCost({ ...(d ?? ({} as MenuItem)), recipe: f.recipe.filter((r) => r.item_id && parseNum(r.qty)).map((r) => ({ item_id: r.item_id, qty: parseNum(r.qty)! })), portions: Number(f.portions) || 1 } as MenuItem, stock);
+  const price = parseNum(f.price);
+
+  const save = async (again: boolean) => {
+    setErr("");
+    if (!f.name.trim()) return setErr("Indiquez le nom du plat ou de la boisson."), nameRef.current?.focus();
+    if (price === null || !Number.isFinite(price) || price < 0) return setErr("Indiquez un prix de vente valide en FCFA (chiffres uniquement).");
+    setBusy(true);
+    const r = await act("menu.save", { id: item?.id, name: f.name.trim(), category: f.category, price, kitchen: f.kitchen, portions: Number(f.portions) || 1, recipe: f.recipe.filter((x) => x.item_id && parseNum(x.qty)).map((x) => ({ item_id: x.item_id, qty: parseNum(x.qty) })) }, { quiet: true });
+    if (!r?.id) return setBusy(false);
+    // Photo, description, options et disponibilité (menu en ligne) dans la même fiche.
+    const extra = f.description.trim() || f.photo || f.options.some((o) => o.name.trim()) || !f.available || d?.description || d?.photo || d?.options?.length;
+    if (extra) {
+      const r2 = await act("online.item", { menu_id: r.id, description: f.description.trim(), photo: f.photo, options: f.options.filter((o) => o.name.trim()).map((o) => ({ id: o.id || undefined, name: o.name.trim(), price: parseNum(o.price) ?? 0 })), available: f.available }, { quiet: true });
+      if (!r2) return setBusy(false);
+    }
+    setBusy(false);
+    if (again) {
+      setAdded((n) => n + 1);
+      setF(blank(f.category));
+      setTimeout(() => nameRef.current?.focus(), 0);
+    } else onClose();
+  };
+
   return (
-    <Modal title={item ? `Modifier « ${d!.name} »` : "Nouvel article"} onClose={onClose} wide={recipes}>
+    <Modal title={item ? `Modifier « ${d!.name} »` : "Ajouter un plat ou une boisson"} onClose={onClose} wide>
       <form
-        className="grid gap-3 sm:grid-cols-2"
-        onSubmit={async (e) => {
+        className="space-y-4"
+        onSubmit={(e) => {
           e.preventDefault();
-          setBusy(true);
-          const r = await act("menu.save", { id: item?.id, name: f.name, category: f.category, price: parseNum(f.price), kitchen: f.kitchen, portions: Number(f.portions) || 1, recipe: f.recipe.filter((x) => x.item_id && parseNum(x.qty)).map((x) => ({ item_id: x.item_id, qty: parseNum(x.qty) })) });
-          setBusy(false);
-          if (r) onClose();
+          void save(false);
         }}
       >
-        <Field label="Nom"><input className={inp} required maxLength={120} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
-        <Field label="Catégorie"><select className={inp} value={f.category} onChange={(e) => setF({ ...f, category: e.target.value as MenuCategory })}>{MENU_CATEGORIES.map((c) => <option key={c} value={c}>{MENU_CATEGORY_LABELS[c]}</option>)}</select></Field>
-        <Field label="Prix de vente (FCFA)"><input className={inp} required inputMode="numeric" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} /></Field>
-        <label className="flex items-center gap-2 self-end pb-2 text-sm"><input type="checkbox" checked={f.kitchen} onChange={(e) => setF({ ...f, kitchen: e.target.checked })} />Préparé en cuisine</label>
+        {added > 0 && <p role="status" className="rounded-xl bg-green-50 px-3 py-2 text-sm font-medium text-green-700">{added} article(s) ajouté(s) à la carte. Saisissez le suivant.</p>}
+        <div className="flex gap-3">
+          <label className="group relative grid h-24 w-24 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 text-slate-400 hover:border-[var(--app-primary)]">
+            {f.photo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={f.photo} alt="Photo du plat" className="h-full w-full object-cover" />
+            ) : (
+              <span className="flex flex-col items-center gap-1 text-[11px]"><ImagePlus className="h-6 w-6" aria-hidden />Photo</span>
+            )}
+            <input type="file" accept="image/png,image/jpeg,image/webp" capture="environment" className="sr-only" onChange={async (e) => { const file = e.target.files?.[0]; e.target.value = ""; if (!file) return; try { setF({ ...f, photo: await shrinkImage(file, 800) }); } catch (x) { setErr(x instanceof Error ? x.message : "Image illisible."); } }} />
+          </label>
+          <div className="min-w-0 flex-1 space-y-3">
+            <Field label="Nom"><input ref={nameRef} className={inp} required maxLength={120} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="Ex. : Poulet braisé" autoFocus /></Field>
+            {f.photo && <button type="button" onClick={() => setF({ ...f, photo: null })} className="text-xs text-red-600 underline">Retirer la photo</button>}
+          </div>
+        </div>
+        <fieldset>
+          <legend className="mb-1 text-sm font-medium text-slate-700">Catégorie</legend>
+          <div className="flex flex-wrap gap-1.5">
+            {MENU_CATEGORIES.map((c) => (
+              <button key={c} type="button" aria-pressed={f.category === c} onClick={() => setF({ ...f, category: c, kitchen: item ? f.kitchen : c !== "boisson" })} className={`tab-press rounded-full px-3 py-1.5 text-sm ${f.category === c ? "font-semibold text-white" : "bg-slate-100 text-slate-700"}`} style={f.category === c ? { background: "var(--app-primary)" } : undefined}>{MENU_CATEGORY_LABELS[c]}</button>
+            ))}
+          </div>
+        </fieldset>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Prix de vente">
+            <div className="relative">
+              <input className={`${inp} pr-16`} required inputMode="numeric" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value.replace(/[^\d]/g, "") })} placeholder="Ex. : 4500" />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">FCFA</span>
+            </div>
+          </Field>
+          <div className="flex flex-col justify-end gap-1.5 pb-1 text-sm">
+            <label className="flex items-center gap-2"><input type="checkbox" checked={f.kitchen} onChange={(e) => setF({ ...f, kitchen: e.target.checked })} />Préparé en cuisine</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={f.available} onChange={(e) => setF({ ...f, available: e.target.checked })} />Disponible aujourd&apos;hui</label>
+          </div>
+        </div>
+        <Field label="Description (facultatif)"><textarea className={inp} rows={2} maxLength={500} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} placeholder="Ingrédients, accompagnement, quantité…" /></Field>
+        <details className="rounded-xl border border-slate-200 p-3" open={f.options.length > 0}>
+          <summary className="cursor-pointer text-sm font-medium">Options et suppléments (facultatif){f.options.length ? ` · ${f.options.length}` : ""}</summary>
+          <ul className="mt-2 space-y-1.5">
+            {f.options.map((o, i) => (
+              <li key={o.id || i} className="flex gap-2">
+                <input className={inp} placeholder="Ex. : Double portion" maxLength={60} value={o.name} onChange={(e) => setF({ ...f, options: f.options.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)) })} aria-label="Nom de l'option" />
+                <input className={`${inp} !w-28`} inputMode="numeric" placeholder="+ FCFA" value={o.price} onChange={(e) => setF({ ...f, options: f.options.map((x, j) => (j === i ? { ...x, price: e.target.value.replace(/[^\d]/g, "") } : x)) })} aria-label="Prix de l'option" />
+                <button type="button" className="rounded-lg px-2 text-slate-500 hover:bg-slate-100" onClick={() => setF({ ...f, options: f.options.filter((_, j) => j !== i) })} aria-label="Retirer l'option"><Minus className="h-4 w-4" aria-hidden /></button>
+              </li>
+            ))}
+          </ul>
+          {f.options.length < 15 && <Btn small kind="soft" className="mt-2" onClick={() => setF({ ...f, options: [...f.options, { id: "", name: "", price: "0" }] })}><Plus className="h-3.5 w-3.5" aria-hidden />Ajouter une option</Btn>}
+        </details>
         {recipes && (
-          <div className="space-y-2 rounded-xl border border-slate-200 p-3 sm:col-span-2">
+          <div className="space-y-2 rounded-xl border border-slate-200 p-3">
             <div className="flex items-end justify-between gap-2">
               <p className="text-sm font-semibold">Recette (facultatif)</p>
               <Field label="Pour combien de portions" className="w-40"><input className={inp} inputMode="numeric" value={f.portions} onChange={(e) => setF({ ...f, portions: e.target.value })} /></Field>
@@ -139,9 +222,27 @@ function MenuForm({ item, recipes, onClose }: { item: Doc<MenuItem> | null; reci
             <p className="text-xs text-slate-500">Les ingrédients sont déduits du stock une seule fois, quand la commande passe en préparation.</p>
           </div>
         )}
-        <div className="flex justify-end gap-2 sm:col-span-2"><Btn kind="ghost" onClick={onClose}>Annuler</Btn><Btn type="submit" busy={busy}>Enregistrer</Btn></div>
+        {err && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{err}</p>}
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Btn kind="ghost" onClick={onClose}>{added ? "Terminer" : "Annuler"}</Btn>
+          {!item && <Btn kind="soft" busy={busy} onClick={() => void save(true)}><Plus className="h-4 w-4" aria-hidden />Enregistrer et ajouter un autre</Btn>}
+          <Btn type="submit" busy={busy}>Enregistrer</Btn>
+        </div>
       </form>
     </Modal>
+  );
+}
+
+/** Bouton « Ajouter un plat » (gérants) : ouvre directement la fiche complète. */
+export function AddDishButton({ label = "Ajouter un plat", small, defaultCategory }: { label?: string; small?: boolean; defaultCategory?: MenuCategory }) {
+  const { level } = useV();
+  const [open, setOpen] = useState(false);
+  if (!isMgr(level)) return null;
+  return (
+    <>
+      <Btn small={small} onClick={() => setOpen(true)}><Plus className="h-4 w-4" aria-hidden />{label}</Btn>
+      {open && <MenuForm item={null} defaultCategory={defaultCategory} onClose={() => setOpen(false)} />}
+    </>
   );
 }
 
@@ -197,6 +298,9 @@ export function OrderComposer({ source, tableZone, onCreated, defaultTable }: { 
   const [stayId, setStayId] = useState("");
   const [customer, setCustomer] = useState("");
   const [busy, setBusy] = useState(false);
+  // Fiche ouverte depuis la carte vide : gardée ouverte après le premier plat (saisie en série).
+  const [adding, setAdding] = useState(false);
+  const addForm = adding && <MenuForm item={null} onClose={() => setAdding(false)} />;
   const menu = docs<MenuItem>(v.data.menu).filter((m) => m.data.active);
   const tables = docs<Table>(v.data.table).filter((t) => t.data.active && (!tableZone ? t.data.zone !== "restaurant" || v.kind === "hotel" : t.data.zone === tableZone));
   const stays = docs<Stay>(v.data.stay).filter((s) => s.data.status === "arrivee");
@@ -205,9 +309,18 @@ export function OrderComposer({ source, tableZone, onCreated, defaultTable }: { 
   const total = lines.reduce((a, [id, q]) => a + q * (menu.find((m) => m.id === id)?.data.price ?? 0), 0);
   const roomService = source === "room_service";
   if (level < 1) return <ReadOnlyNote />;
-  if (menu.length === 0) return <Empty text="La carte est vide : ajoutez d'abord vos plats et boissons (prix réels)." icon={Utensils} />;
+  if (menu.length === 0)
+    return (
+      <>
+        <Empty text={isMgr(level) ? "La carte est vide : ajoutez vos plats et boissons avec leurs prix réels." : "La carte est vide : demandez au gérant d'ajouter les plats et boissons."} icon={Utensils}>
+          {isMgr(level) && <Btn onClick={() => setAdding(true)}><Plus className="h-4 w-4" aria-hidden />Ajouter le premier plat</Btn>}
+        </Empty>
+        {addForm}
+      </>
+    );
   const cats = MENU_CATEGORIES.filter((c) => menu.some((m) => m.data.category === c));
   return (
+    <>
     <div className="space-y-3">
       <div className="flex gap-1 overflow-x-auto pb-1">
         <button type="button" onClick={() => setCat("")} className={`tab-press shrink-0 rounded-lg px-2.5 py-1 text-xs ${cat === "" ? "font-semibold text-white" : "bg-slate-100 text-slate-600"}`} style={cat === "" ? { background: "var(--app-primary)" } : undefined}>Tout</button>
@@ -297,6 +410,8 @@ export function OrderComposer({ source, tableZone, onCreated, defaultTable }: { 
         <p className="mt-1 text-xs text-slate-500">Les prix sont ceux de la carte, vérifiés par le serveur.</p>
       </Card>
     </div>
+    {addForm}
+    </>
   );
 }
 

@@ -1,35 +1,15 @@
 "use client";
 
 import QRCode from "qrcode";
-import { Ban, Copy, Download, Eye, ExternalLink, FlaskConical, ImagePlus, Plus, Printer, QrCode, RefreshCw, Send, Smartphone, Trash2 } from "lucide-react";
+import { Ban, Copy, Download, Eye, ExternalLink, FlaskConical, ImagePlus, Printer, QrCode, RefreshCw, Send, Smartphone, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { MENU_CATEGORY_LABELS, ORDER_STATUS_LABELS, PAY_STATUS_LABELS, fmtMoney, today, type Doc, type Payment, type Table } from "@/lib/venue/model";
-import { onlineSettings, type DayStat, type FullOrder, type OnlineItem, type MenuOption } from "@/lib/venue/online";
-import { MenuView, PaymentForm } from "../m-sales";
+import { onlineSettings, type DayStat, type FullOrder, type OnlineItem } from "@/lib/venue/online";
+import { MenuForm, MenuView, PaymentForm } from "../m-sales";
+import { shrinkImage } from "../image";
 import { Btn, Card, Empty, Field, inp, isMgr, Modal, Pill, PrintDoc, Stat, Tabs, useV } from "../ui";
 
 const hhmm = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "—");
-
-/** Réduit une image (photo de plat, logo) avant l'envoi : JPEG ou PNG de petite taille. */
-async function shrink(file: File, max: number, type: "image/jpeg" | "image/png" = "image/jpeg"): Promise<string> {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = await new Promise<HTMLImageElement>((res, rej) => {
-      const i = new Image();
-      i.onload = () => res(i);
-      i.onerror = () => rej(new Error("Image illisible."));
-      i.src = url;
-    });
-    const r = Math.min(1, max / Math.max(img.width, img.height));
-    const c = document.createElement("canvas");
-    c.width = Math.round(img.width * r);
-    c.height = Math.round(img.height * r);
-    c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
-    return c.toDataURL(type, 0.78);
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
 
 /** Adresses publiques : menu général et menu d'une table (jeton secret). */
 export function usePublicUrls() {
@@ -52,7 +32,7 @@ export function OnlineMenuAdmin() {
   const { base, test, live, available } = usePublicUrls();
   const [f, setF] = useState({ published: o.published, ordering: o.ordering, pay_counter: o.pay_counter, kitchen_after_payment: o.kitchen_after_payment, welcome: o.welcome });
   const [logo, setLogo] = useState<string | null | undefined>(undefined);
-  const [edit, setEdit] = useState<Doc<OnlineItem> | null>(null);
+  const [edit, setEdit] = useState<Doc<OnlineItem> | "new" | null>(null);
   const [preview, setPreview] = useState(false);
   const [busy, setBusy] = useState(false);
   const mgr = isMgr(level);
@@ -84,7 +64,7 @@ export function OnlineMenuAdmin() {
               ) : (
                 <span className="grid h-14 w-14 place-items-center rounded-xl border border-dashed border-slate-300 text-slate-400"><ImagePlus className="h-5 w-5" aria-hidden /></span>
               )}
-              {mgr && <input type="file" accept="image/png,image/jpeg,image/webp" className="text-sm" onChange={async (e) => { const file = e.target.files?.[0]; if (file) setLogo(await shrink(file, 256, "image/png")); }} />}
+              {mgr && <input type="file" accept="image/png,image/jpeg,image/webp" className="text-sm" onChange={async (e) => { const file = e.target.files?.[0]; if (file) setLogo(await shrinkImage(file, 256, "image/png")); }} />}
               {mgr && (logo ?? o.logo) && <Btn small kind="ghost" onClick={() => setLogo(null)}><Trash2 className="h-3.5 w-3.5" aria-hidden />Retirer</Btn>}
             </div>
           </Field>
@@ -92,9 +72,9 @@ export function OnlineMenuAdmin() {
         </form>
       </Card>
 
-      <Card title="Plats du menu en ligne" actions={available && base && <Btn small kind="ghost" onClick={() => setPreview(true)}><Smartphone className="h-3.5 w-3.5" aria-hidden />Aperçu téléphone</Btn>}>
+      <Card title="Plats du menu en ligne" actions={<>{mgr && <Btn small onClick={() => setEdit("new")}>Ajouter un plat</Btn>}{available && base && <Btn small kind="ghost" onClick={() => setPreview(true)}><Smartphone className="h-3.5 w-3.5" aria-hidden />Aperçu téléphone</Btn>}</>}>
         {items.length === 0 ? (
-          <Empty text="Aucun plat à la carte. Ajoutez vos plats ci-dessous (nom, catégorie, prix), puis complétez-les ici (photo, description, options)." />
+          <Empty text="Aucun plat à la carte : ajoutez vos plats avec leur photo, leur prix, une description et leurs options, en une seule fois.">{mgr && <Btn onClick={() => setEdit("new")}>Ajouter le premier plat</Btn>}</Empty>
         ) : (
           <ul className="divide-y divide-slate-100">
             {items.map((m) => (
@@ -111,14 +91,14 @@ export function OnlineMenuAdmin() {
                 </div>
                 {m.data.available === false ? <Pill tone="red">Épuisé</Pill> : <Pill tone="green">Disponible</Pill>}
                 {level >= 1 && <Btn small kind="ghost" onClick={() => act("online.available", { menu_id: m.id, available: m.data.available === false })}>{m.data.available === false ? "Remettre" : "Épuisé"}</Btn>}
-                {mgr && <Btn small kind="ghost" onClick={() => setEdit(m)}>Compléter</Btn>}
+                {mgr && <Btn small kind="ghost" onClick={() => setEdit(m)}>Modifier</Btn>}
               </li>
             ))}
           </ul>
         )}
-        <details className="mt-3 rounded-xl border border-slate-200 p-3 text-sm"><summary className="cursor-pointer font-medium">Ajouter ou modifier les plats de la carte (nom, catégorie, prix)</summary><div className="mt-3"><MenuView /></div></details>
+        <details className="mt-3 rounded-xl border border-slate-200 p-3 text-sm"><summary className="cursor-pointer font-medium">Voir toute la carte (y compris les articles désactivés)</summary><div className="mt-3"><MenuView /></div></details>
       </Card>
-      {edit && <ItemForm item={edit} onClose={() => setEdit(null)} />}
+      {edit && <MenuForm item={edit === "new" ? null : edit} onClose={() => setEdit(null)} />}
       {preview && base && (
         <Modal title="Aperçu sur téléphone" onClose={() => setPreview(false)}>
           <div className="mx-auto h-[640px] w-[340px] overflow-hidden rounded-[2rem] border-8 border-slate-900 bg-white">
@@ -137,60 +117,6 @@ function Toggle({ checked, onChange, label, hint, disabled }: { checked: boolean
       <input type="checkbox" className="mt-1 h-4 w-4" checked={checked} onChange={(e) => onChange(e.target.checked)} disabled={disabled} />
       <span><span className="block text-sm font-medium">{label}</span>{hint && <span className="block text-xs text-slate-500">{hint}</span>}</span>
     </label>
-  );
-}
-
-function ItemForm({ item, onClose }: { item: Doc<OnlineItem>; onClose: () => void }) {
-  const { act } = useV();
-  const [description, setDescription] = useState(item.data.description ?? "");
-  const [photo, setPhoto] = useState<string | null>(item.data.photo ?? null);
-  const [options, setOptions] = useState<(Omit<MenuOption, "price"> & { price: string })[]>((item.data.options ?? []).map((o) => ({ ...o, price: String(o.price) })));
-  const [available, setAvailable] = useState(item.data.available !== false);
-  const [busy, setBusy] = useState(false);
-  return (
-    <Modal title={`Menu en ligne · ${item.data.name}`} onClose={onClose}>
-      <form
-        className="space-y-3"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          setBusy(true);
-          const r = await act("online.item", { menu_id: item.id, description, photo, options: options.filter((o) => o.name.trim()).map((o) => ({ id: o.id || undefined, name: o.name, price: Number(o.price || 0) })), available });
-          setBusy(false);
-          if (r) onClose();
-        }}
-      >
-        <Field label="Photo">
-          <div className="flex items-center gap-3">
-            {photo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={photo} alt="" className="h-20 w-28 rounded-xl object-cover" />
-            ) : (
-              <span className="grid h-20 w-28 place-items-center rounded-xl border border-dashed border-slate-300 text-slate-400"><ImagePlus className="h-5 w-5" aria-hidden /></span>
-            )}
-            <div className="space-y-1">
-              <input type="file" accept="image/png,image/jpeg,image/webp" className="text-sm" onChange={async (e) => { const f = e.target.files?.[0]; if (f) setPhoto(await shrink(f, 800)); }} />
-              {photo && <button type="button" onClick={() => setPhoto(null)} className="block text-xs text-red-600 underline">Retirer la photo</button>}
-            </div>
-          </div>
-        </Field>
-        <Field label="Description"><textarea className={inp} rows={3} maxLength={500} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ingrédients, accompagnement, quantité…" /></Field>
-        <fieldset>
-          <legend className="mb-1 text-sm font-medium">Options (suppléments, cuisson…)</legend>
-          <ul className="space-y-1.5">
-            {options.map((o, i) => (
-              <li key={o.id || i} className="flex gap-2">
-                <input className={inp} placeholder="Nom de l'option" maxLength={60} value={o.name} onChange={(e) => setOptions(options.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
-                <input className={`${inp} !w-32`} inputMode="numeric" placeholder="Prix (FCFA)" value={o.price} onChange={(e) => setOptions(options.map((x, j) => (j === i ? { ...x, price: e.target.value.replace(/\D/g, "") } : x)))} />
-                <button type="button" aria-label="Retirer l'option" onClick={() => setOptions(options.filter((_, j) => j !== i))} className="rounded-lg px-2 text-slate-500 hover:bg-slate-100"><Trash2 className="h-4 w-4" aria-hidden /></button>
-              </li>
-            ))}
-          </ul>
-          {options.length < 15 && <button type="button" onClick={() => setOptions([...options, { id: "", name: "", price: "0" }])} className="mt-1.5 inline-flex items-center gap-1 text-sm text-blue-700"><Plus className="h-4 w-4" aria-hidden />Ajouter une option</button>}
-        </fieldset>
-        <Toggle checked={available} onChange={setAvailable} label="Disponible aujourd'hui" hint="Décochez quand le plat est épuisé." />
-        <div className="flex justify-end gap-2"><Btn kind="ghost" onClick={onClose}>Annuler</Btn><Btn type="submit" busy={busy}>Enregistrer</Btn></div>
-      </form>
-    </Modal>
   );
 }
 

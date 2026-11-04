@@ -44,7 +44,7 @@ import {
 import { BOOKING_ACTIVE, capacity, expiryState, orderDue, roomState, stockAlerts, stockValue, taskLate, taskOpen, today, type Booking, type Doc, type Equip, type Item, type Lot, type Order, type Payment, type Room, type Stay, type Table, type Task, type Temp, type VenueData, type VenueKind, type VenueZone } from "@/lib/venue/model";
 import { BudgetView, BookingsView, CapacityView, EquipList, InstallationsSummary, TablesView, TasksView } from "./m-space";
 import { AlertsView, ColdAlerts, LotsView, MovesView, ProductsView, TempView, ValueView } from "./m-stock";
-import { CashReport, KitchenQueue, MenuView, OrderComposer, OrdersList, PaymentForm, PaymentsView, ReceiptsView, RecipesView } from "./m-sales";
+import { AddDishButton, CashReport, KitchenQueue, MenuView, OrderComposer, OrdersList, PaymentForm, PaymentsView, ReceiptsView, RecipesView } from "./m-sales";
 import { Dashboard, FinanceView, ReportsView, StaffView, TasksAlerts } from "./m-office";
 import { ArrivalsView, AvailabilityView, GuestsView, RoomsList, StayPaymentsView, StaysView } from "./m-hotel";
 import { useState } from "react";
@@ -250,13 +250,14 @@ function TakeOrder() {
   const [pay, setPay] = useState<string | null>(null);
   return (
     <div className="space-y-3">
-      <div className="flex gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         {(["new", "list"] as const).map((t) => <button key={t} type="button" onClick={() => setTab(t)} className={`tab-press rounded-lg px-3 py-1.5 text-sm ${tab === t ? "font-semibold text-white" : "bg-slate-100 text-slate-600"}`} style={tab === t ? { background: "var(--app-primary)" } : undefined}>{t === "new" ? "Nouvelle commande" : "Commandes du jour"}</button>)}
+        <span className="ml-auto"><AddDishButton small /></span>
       </div>
       {tab === "new" ? (
         <>
           <OrderComposer source="caisse" onCreated={(id) => setPay(id)} />
-          <details className="rounded-xl border border-slate-200 bg-white p-3 text-sm"><summary className="cursor-pointer font-medium">Gérer la carte (plats, boissons, prix)</summary><div className="mt-3"><MenuView /></div></details>
+          <details className="rounded-xl border border-slate-200 bg-white p-3 text-sm"><summary className="cursor-pointer font-medium">Modifier la carte (plats, boissons, prix)</summary><div className="mt-3"><MenuView /></div></details>
         </>
       ) : (
         <OrdersList onPay={setPay} />

@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { Box, LayoutDashboard, Map as MapIcon, Settings2 } from "lucide-react";
-import { Component, useEffect, useMemo, useState } from "react";
+import { Component, useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/fetcher";
 import type { AppPrefs } from "@/lib/app-prefs";
 import { ROLE_LABELS, type AppSpec, type Role, type Workspace } from "@/lib/spec";
@@ -18,13 +18,9 @@ import { venueScene } from "../venue/scene";
 import { VenuePanel } from "../venue/VenuePanel";
 import { VenueSetup } from "../venue/VenueSetup";
 import { ZONE_META } from "../venue/zones";
-import { VisionModule } from "../venue/vision/VisionModule";
 import { KdsModule } from "../venue/online/kds";
-import { AlertsBanner, useVisionAlerts } from "../venue/vision/useVisionAlerts";
-import { canVision } from "@/lib/venue/vision";
 import { has, type Permission } from "@/lib/team";
 import { zoneAllowed } from "@/lib/zone-perms";
-import type { Doc as VDoc, Staff } from "@/lib/venue/model";
 import { LEVEL as VENUE_LEVEL, activeZones, type VenueZone } from "@/lib/venue/model";
 import type { DataMode, Rec } from "../useAppData";
 import { KIND_ICONS, ROLE_COLORS } from "./kinds";
@@ -111,19 +107,26 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
   const [vRoom, setVRoom] = useState<string | null>(null);
   const [setupOpen, setSetupOpen] = useState(false);
   const needsSetup = Boolean(venueKind && venue.state && (!vSettings.answered || (venueKind === "hotel" && vSettings.photos_step === null)));
-  // Vision IA : tables en direct et délais de service (restaurant, ou hôtel avec restaurant).
-  // Géré depuis la zone « Accueil / Caisse » par les gérants et le personnel de caisse.
-  const visionOn = Boolean(venueKind && venue.state && !needsSetup && (venueKind === "restaurant" || vSettings.has_restaurant === true) && canVision(venue.state.role, venue.state.me, venue.state.data.staff as VDoc<Staff>[], myPerms));
-  const [visionOpen, setVisionOpen] = useState(false);
   // Écran cuisine : ouvert depuis la zone Cuisine, ou directement avec l'adresse « ?cuisine=1 » (tablette de la cuisine).
   const [kdsOpen, setKdsOpen] = useState(false);
   useEffect(() => {
     if (venueKind && new URLSearchParams(window.location.search).get("cuisine") === "1") setKdsOpen(true);
   }, [venueKind]);
-  const visionAlerts = useVisionAlerts(venue, visionOn, projectId);
+  // Restaurant : la zone Cuisine ouvre directement l'écran cuisine.
+  const kdsAllowed = has(myPerms, ["cuisine", "caisse"]);
+  const openZone = useCallback(
+    (z: VenueZone | null) => {
+      if (z === "cuisine" && venueKind === "restaurant" && kdsAllowed) {
+        setKdsOpen(true);
+        setVZone(null);
+      } else setVZone(z);
+      setVRoom(null);
+    },
+    [venueKind, kdsAllowed],
+  );
   const venueView = useMemo(
-    () => (venueKind ? venueScene(venueKind, venue.state, vSettings, vZone, (z) => (setVZone(z), setVRoom(null)), vRoom, (id) => (setVZone("chambres"), setVRoom(id))) : undefined),
-    [venueKind, venue.state, vSettings, vZone, vRoom],
+    () => (venueKind ? venueScene(venueKind, venue.state, vSettings, vZone, openZone, vRoom, (id) => (setVZone("chambres"), setVRoom(id))) : undefined),
+    [venueKind, venue.state, vSettings, vZone, vRoom, openZone],
   );
   useEffect(() => {
     // Zone retirée du plan (réponse modifiée) : on ferme son panneau.
@@ -240,7 +243,7 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
                   const badge = venueView.areas.find((a) => a.id === z && a.showLabel)?.badge;
                   return (
                     <li key={z}>
-                      <button type="button" onClick={() => (setVZone(z), setVRoom(null))} aria-pressed={vZone === z} className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-slate-50 ${vZone === z ? "bg-slate-100 font-semibold" : ""}`}>
+                      <button type="button" onClick={() => openZone(z)} aria-pressed={vZone === z} className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-slate-50 ${vZone === z ? "bg-slate-100 font-semibold" : ""}`}>
                         <Z.icon className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
                         <span className="min-w-0 flex-1 truncate">{Z.label}</span>
                         {badge && <span className={`shrink-0 text-xs ${badge.tone === "alert" ? "text-red-600" : badge.tone === "active" ? "text-blue-700" : "text-slate-500"}`}>{badge.text}</span>}
@@ -355,10 +358,8 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
         </aside>
       </div>
       )}
-      {venueKind && vZone && !setupOpen && !needsSetup && <VenuePanel kind={venueKind} zones={vZones} zone={vZone} onZone={(z) => (setVZone(z), setVRoom(null))} onClose={() => (setVZone(null), setVRoom(null))} api={venue} projectId={projectId} mode={mode} appName={title} notify={notify} roomId={vRoom} onRoom={setVRoom} request={null} onVision={visionOn ? () => (setVisionOpen(true), setVZone(null)) : undefined} visionAlerts={visionAlerts.open.length} onKds={has(myPerms, ["cuisine", "caisse"]) ? () => (setKdsOpen(true), setVZone(null)) : undefined} perms={myPerms} />}
+      {venueKind && vZone && !setupOpen && !needsSetup && <VenuePanel kind={venueKind} zones={vZones} zone={vZone} onZone={openZone} onClose={() => (setVZone(null), setVRoom(null))} api={venue} projectId={projectId} mode={mode} appName={title} notify={notify} roomId={vRoom} onRoom={setVRoom} request={null} onKds={kdsAllowed ? () => (setKdsOpen(true), setVZone(null)) : undefined} perms={myPerms} />}
       {venueKind && kdsOpen && venue.state && <KdsModule api={venue} kind={venueKind} mode={mode} projectId={projectId} appName={title} notify={notify} onClose={() => setKdsOpen(false)} />}
-      {visionOn && visionOpen && venueKind && <VisionModule api={venue} kind={venueKind} mode={mode} projectId={projectId} appName={title} notify={notify} alerts={visionAlerts} onClose={() => setVisionOpen(false)} />}
-      {visionOn && <AlertsBanner alerts={visionAlerts} api={venue} notify={notify} onOpen={visionOpen ? undefined : () => setVisionOpen(true)} />}
       {garageMode && zone && zoneAllowed(zone, myPerms) && <GaragePanel perms={myPerms} zone={zone} onZone={setZone} onClose={() => setZone(null)} api={garage} projectId={projectId} mode={mode} appName={title} notify={notify} jobRequest={jobRequest} />}
     </div>
   );

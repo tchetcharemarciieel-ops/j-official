@@ -57,12 +57,12 @@ export type ZoneMeta = { label: string; icon: LucideIcon; description: string };
 
 export const ZONE_META: Record<VenueKind, Partial<Record<VenueZone, ZoneMeta>>> = {
   restaurant: {
-    cuisine: { label: "Cuisine", icon: CookingPot, description: "Équipements de la cuisine et budget" },
+    cuisine: { label: "Cuisine", icon: CookingPot, description: "Écran cuisine : commandes à préparer en temps réel" },
     salle: { label: "Salle de restaurant", icon: Utensils, description: "Tables, capacité, réservations et budget" },
     stock: { label: "Stock", icon: Boxes, description: "Produits, entrées et sorties, alertes, valeur" },
     froid: { label: "Chambre froide", icon: Snowflake, description: "Températures, produits, dates, alertes" },
     toilettes: { label: "Toilettes", icon: Bath, description: "Aménagement, nettoyage, fournitures, budget" },
-    caisse: { label: "Accueil / Caisse", icon: ConciergeBell, description: "Commandes, paiements, reçus, rapport de caisse" },
+    caisse: { label: "Accueil / Caisse", icon: ConciergeBell, description: "Commandes, rapport de caisse, menu en ligne, QR codes" },
     bureau: { label: "Bureau", icon: Briefcase, description: "Tableau de bord, personnel, finances, rapports" },
     terrasse: { label: "Terrasse", icon: Umbrella, description: "Mobilier extérieur, capacité, réservations, aménagement" },
   },
@@ -115,10 +115,8 @@ export function zoneOptions(kind: VenueKind, zone: VenueZone, roomService: boole
   if (kind === "restaurant") {
     switch (zone) {
       case "cuisine":
-        return [
-          { id: "equipements", icon: Refrigerator, title: "Équipements et inventaire", description: "Consulter les équipements de la cuisine", render: () => <EquipList zone="cuisine" categories={["equipement", "mobilier", "installation"]} title="Équipements de la cuisine" />, hint: (d) => { const e = equipOf(d, "cuisine"); const ko = e.filter((x) => x.data.owned && ["panne", "endommage", "maintenance"].includes(x.data.condition)).length; return ko ? { text: `${ko} à réparer`, tone: "alert" } : e.length ? { text: n(e.length, "équipement") } : null; } },
-          { id: "budget", icon: Calculator, title: "Estimation du budget", description: "Obtenir une estimation du coût des équipements", render: () => <BudgetView zone="cuisine" /> },
-        ];
+        // Restaurant : la cuisine n'a que l'écran cuisine (ouvert directement depuis le plan).
+        return [];
       case "salle":
         return [...tablesOptions("salle"), { id: "budget", icon: Calculator, title: "Estimation du budget", description: "Estimer le coût du mobilier et de l'aménagement", render: () => <SalleBudget zone="salle" /> }];
       case "terrasse":
@@ -151,8 +149,6 @@ export function zoneOptions(kind: VenueKind, zone: VenueZone, roomService: boole
       case "caisse":
         return [
           { id: "commande", icon: ShoppingBag, title: "Prendre une commande", description: "Plats et boissons, quantités, total automatique", render: () => <TakeOrder /> },
-          { id: "paiement", icon: CreditCard, title: "Encaisser un paiement", description: "Montant, mode de paiement, monnaie à rendre, statut", render: () => <PaymentsView />, hint: (d) => { const p = d.payment as Doc<Payment>[]; const k = (d.order as Doc<Order>[]).filter((o) => o.data.status !== "annulee" && orderDue(o.data, p, o.id) > 0).length; return k ? { text: `${n(k, "commande")} à encaisser`, tone: "active" } : null; } },
-          { id: "recus", icon: Receipt, title: "Reçus et factures", description: "Numéro de commande, articles, total, date, mode de paiement", render: () => <ReceiptsView /> },
           { id: "rapport", icon: BarChart3, title: "Rapport de caisse", description: "Ventes du jour, commandes, montants encaissés, historique", render: () => <CashReport /> },
           ...onlineOptions(),
         ];

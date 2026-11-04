@@ -52,7 +52,7 @@ export function GaragePanel({ zone, onZone, onClose, api, projectId, mode, appNa
   }, [jobRequest?.n]);
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !document.querySelector('[role="dialog"][aria-modal]')) onClose();
+      if (e.key === "Escape" && !e.defaultPrevented && !document.querySelector('[role="dialog"][aria-modal]')) onClose();
     };
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);

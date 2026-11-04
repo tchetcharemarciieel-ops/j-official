@@ -136,7 +136,12 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
     setTheme({ "--app-primary": cs.getPropertyValue("--app-primary") || "#2563eb", "--app-accent": cs.getPropertyValue("--app-accent") } as React.CSSProperties);
   }, []);
   useEffect(() => {
-    const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    // « Échap » ferme seulement cette fenêtre : le panneau qui l'a ouverte reste affiché.
+    const k = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      e.preventDefault();
+      onClose();
+    };
     window.addEventListener("keydown", k);
     ref.current?.focus();
     return () => window.removeEventListener("keydown", k);

@@ -82,7 +82,7 @@ export function useVenue(projectId: string, mode: DataMode, role: Role, kind: Ve
   const run = useCallback(
     async (op: string, input: unknown): Promise<OpResult> => {
       if (local) {
-        const res = await runOp({ store: mem.current!, actor: { id: LOCAL_ID, role: role === "viewer" ? "viewer" : "owner" }, members: [LOCAL_ID], kind: kind! }, op, input);
+        const res = await runOp({ store: mem.current!, actor: { id: LOCAL_ID, role: role === "viewer" ? "viewer" : "owner" }, members: [LOCAL_ID], kind: kind!, demo: true }, op, input);
         setState((s) => (s ? { ...s, data: structuredClone(mem.current!.data) } : s));
         return res;
       }

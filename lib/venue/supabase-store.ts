@@ -6,6 +6,9 @@ import { COLLECTIONS, emptyData, entityKey, colFromEntity, type Col, type Doc, t
 import type { VenueStore } from "./engine";
 
 const COLS = "id,data,created_at,updated_at";
+/** Fiches nombreuses (un passage par groupe de clients) : seules les plus récentes sont chargées. */
+const RECENT: Partial<Record<Col, number>> = { vseat: 90, valert: 90 };
+const since = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
 
 /** Identifiant stable d'un compteur : deux créations simultanées se heurtent à la clé primaire. */
 function counterId(projectId: string, demo: boolean, key: string) {
@@ -28,6 +31,10 @@ export class SupabaseStore implements VenueStore {
   private base(col: Col) {
     return this.db.from("records").select(COLS).eq("project_id", this.projectId).eq("is_demo", this.demo).eq("entity", entityKey(col));
   }
+  private recent(col: Col) {
+    const q = this.base(col);
+    return RECENT[col] ? q.gte("created_at", since(RECENT[col])) : q;
+  }
 
   private async history(col: Col, recordId: string, action: "create" | "update" | "delete", before: unknown, after: unknown) {
     if (col === "counter") return;
@@ -37,18 +44,22 @@ export class SupabaseStore implements VenueStore {
   /** Toutes les données de l'établissement en une requête (les photos ne sont chargées qu'à la demande). */
   async all(): Promise<VenueData> {
     const out = emptyData();
-    const entities = COLLECTIONS.filter((c) => c !== "photo" && c !== "counter").map(entityKey);
-    const { data, error } = await this.db.from("records").select(`entity,${COLS}`).eq("project_id", this.projectId).eq("is_demo", this.demo).in("entity", entities).order("created_at", { ascending: false }).limit(20000);
-    if (error) throw new HttpError(500, "Lecture des données de l'établissement impossible.");
-    for (const r of data ?? []) {
+    const entities = COLLECTIONS.filter((c) => c !== "photo" && c !== "counter" && !RECENT[c]).map(entityKey);
+    const [main, ...recent] = await Promise.all([
+      this.db.from("records").select(`entity,${COLS}`).eq("project_id", this.projectId).eq("is_demo", this.demo).in("entity", entities).order("created_at", { ascending: false }).limit(20000),
+      ...(Object.keys(RECENT) as Col[]).map((c) => this.recent(c).order("created_at", { ascending: false }).limit(5000).then((r) => ({ col: c, ...r }))),
+    ]);
+    if (main.error || recent.some((r) => r.error)) throw new HttpError(500, "Lecture des données de l'établissement impossible.");
+    for (const r of main.data ?? []) {
       const col = colFromEntity(r.entity);
       if (col) out[col].push({ id: r.id, data: r.data, created_at: r.created_at, updated_at: r.updated_at });
     }
+    for (const r of recent) out[r.col] = (r.data ?? []) as Doc[];
     return out;
   }
 
   async list(col: Col) {
-    const { data, error } = await this.base(col).order("created_at", { ascending: false }).limit(20000);
+    const { data, error } = await this.recent(col).order("created_at", { ascending: false }).limit(20000);
     if (error) throw new HttpError(500, "Lecture impossible.");
     return (data ?? []) as Doc[];
   }

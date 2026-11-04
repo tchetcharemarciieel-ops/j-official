@@ -187,13 +187,13 @@ export function RecipesView() {
 
 // ---------- Prise de commande ----------
 
-export function OrderComposer({ source, tableZone, onCreated }: { source: Order["source"]; tableZone?: "salle" | "terrasse" | "restaurant"; onCreated?: (id: string) => void }) {
+export function OrderComposer({ source, tableZone, onCreated, defaultTable }: { source: Order["source"]; tableZone?: "salle" | "terrasse" | "restaurant"; onCreated?: (id: string) => void; defaultTable?: string }) {
   const { v, level, act, settings } = useV();
   const [key, renew] = useIdem();
   const [cart, setCart] = useState<Record<string, number>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [cat, setCat] = useState<MenuCategory | "">("");
-  const [tableId, setTableId] = useState("");
+  const [tableId, setTableId] = useState(defaultTable ?? "");
   const [stayId, setStayId] = useState("");
   const [customer, setCustomer] = useState("");
   const [busy, setBusy] = useState(false);

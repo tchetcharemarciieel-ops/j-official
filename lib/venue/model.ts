@@ -28,6 +28,10 @@ export const COLLECTIONS = [
   "stay",
   "photo",
   "counter",
+  // Vision IA (restaurant) : passages aux tables, alertes de délai, caméras déclarées.
+  "vseat",
+  "valert",
+  "vcam",
 ] as const;
 export type Col = (typeof COLLECTIONS)[number];
 export const entityKey = (c: Col) => `hx:${c}`;
@@ -89,6 +93,8 @@ export type Settings = {
   /** Photos importées : nombre par catégorie et couleur dominante (référence visuelle du plan). */
   photo_counts: Partial<Record<PhotoCategory, number>>;
   tints: Partial<Record<PhotoCategory, string>>;
+  /** Vision IA : délai d'alerte (minutes) et alerte sonore. */
+  vision?: { alert_minutes?: number; sound?: boolean };
   updated_by: string;
 };
 
@@ -176,7 +182,7 @@ export type Equip = { zone: DataZone; room_id: string | null; name: string; cate
 // ---------- Tables et réservations ----------
 
 export type TableZone = "salle" | "terrasse" | "restaurant";
-export type Table = { zone: TableZone; number: string; seats: number; shape: "carree" | "ronde" | "rectangulaire"; location: string; table_price: number | null; chair_price: number | null; active: boolean };
+export type Table = { zone: TableZone; number: string; seats: number; shape: "carree" | "ronde" | "rectangulaire"; location: string; table_price: number | null; chair_price: number | null; active: boolean; /** Position sur le plan Vision IA (en % de la largeur et de la hauteur). */ pos?: { x: number; y: number } | null };
 export const BOOKING_STATUSES = ["confirmee", "arrivee", "terminee", "annulee", "absente"] as const;
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
 export const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = { confirmee: "Confirmée", arrivee: "Clients installés", terminee: "Terminée", annulee: "Annulée", absente: "Clients absents" };

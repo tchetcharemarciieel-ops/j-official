@@ -53,6 +53,7 @@ import {
   type VenueKind,
   type VenueRole,
 } from "./model";
+import { visionOps } from "./vision-ops";
 
 /**
  * Moteur des opérations du restaurant et de l'hôtel. Chaque opération vérifie le rôle, valide
@@ -71,9 +72,21 @@ export interface VenueStore {
 }
 
 export type Actor = { id: string; role: VenueRole };
-export type OpContext = { store: VenueStore; actor: Actor; members: string[]; kind: VenueKind; now?: () => Date; uuid?: () => string };
-export type Effect = { type: "order_ready"; orderId: string; number: string; where: string } | { type: "temp_alert"; value: number; reason: string } | { type: "new_order"; orderId: string; number: string };
-export type OpResult = { message: string; id?: string; effects: Effect[]; duplicate?: boolean };
+export type OpContext = {
+  store: VenueStore;
+  actor: Actor;
+  members: string[];
+  kind: VenueKind;
+  now?: () => Date;
+  uuid?: () => string;
+  /** Données de démonstration (démo sans compte ou aperçu) : seule la simulation Vision IA y est permise. */
+  demo?: boolean;
+  /** Requête authentifiée d'une passerelle caméra (identifiant de la caméra). */
+  gateway?: string;
+};
+export type Effect = { type: "order_ready"; orderId: string; number: string; where: string } | { type: "temp_alert"; value: number; reason: string } | { type: "new_order"; orderId: string; number: string } | { type: "vision_alert"; table: string; minutes: number; kind: string };
+/** `secret` : valeur à montrer une seule fois (clé de passerelle), jamais enregistrée en clair. */
+export type OpResult = { message: string; id?: string; effects: Effect[]; duplicate?: boolean; secret?: string };
 
 export class OpError extends Error {
   constructor(
@@ -895,6 +908,24 @@ export const OPS: Record<string, Handler> = {
     return ok("Photo supprimée.");
   },
 };
+
+Object.assign(
+  OPS,
+  visionOps({
+    need,
+    nowIso,
+    newId,
+    ok,
+    must,
+    mutate,
+    findBy,
+    settings,
+    saveSettings,
+    fail: (status, message) => {
+      throw new OpError(status, message);
+    },
+  }),
+);
 
 export async function runOp(ctx: OpContext, op: string, input: unknown): Promise<OpResult> {
   const h = Object.prototype.hasOwnProperty.call(OPS, op) ? OPS[op] : undefined;

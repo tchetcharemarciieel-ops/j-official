@@ -1,10 +1,11 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { LEVEL, PHOTO_CATEGORY_LABELS, type Doc, type Photo, type PhotoCategory, type VenueKind, type VenueZone } from "@/lib/venue/model";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { PHOTO_CATEGORY_LABELS, type Doc, type Photo, type PhotoCategory, type VenueKind, type VenueZone } from "@/lib/venue/model";
 import type { DataMode } from "../useAppData";
-import { Back, Btn, Modal, OptionCard, VenueCtx } from "./ui";
+import { Back, OptionCard, VenueCtx } from "./ui";
+import { useVenueContext } from "./context";
 import { venueSettings, type VenueApi } from "./useVenue";
 import { RoomDetail, RoomsList } from "./m-hotel";
 import { ZONE_META, zoneOptions } from "./zones";
@@ -30,7 +31,6 @@ type Props = {
 /** Panneau latéral gauche : s'ouvre au clic sur une zone du plan, sans quitter la vue 3D. */
 export function VenuePanel({ kind, zones, zone, onZone, onClose, api, projectId, mode, appName, notify, roomId, onRoom, request }: Props) {
   const [option, setOption] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState<{ message: string; resolve: (ok: boolean) => void } | null>(null);
   const panel = useRef<HTMLElement>(null);
   const meta = ZONE_META[kind][zone]!;
   const settings = venueSettings(api.state, kind);
@@ -48,51 +48,23 @@ export function VenuePanel({ kind, zones, zone, onZone, onClose, api, projectId,
   }, [request]);
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !document.querySelector('[role="dialog"][aria-modal]')) onClose();
+      if (e.key === "Escape" && !e.defaultPrevented && !document.querySelector('[role="dialog"][aria-modal]')) onClose();
     };
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
   }, [onClose]);
 
-  const ask = useCallback((message: string) => new Promise<boolean>((resolve) => setConfirm({ message, resolve })), []);
-  const answer = (ok: boolean) => {
-    confirm?.resolve(ok);
-    setConfirm(null);
-  };
-
+  const goZone = useCallback(
+    (z: string, opt?: string) => {
+      if (!zones.includes(z as VenueZone)) return;
+      if (z === zone) return setOption(opt ?? null);
+      pending.current = opt ?? null;
+      onZone(z as VenueZone);
+    },
+    [zones, zone, onZone],
+  );
   const s = api.state;
-  const ctx = useMemo(() => {
-    if (!s) return null;
-    return {
-      v: s,
-      api,
-      mode,
-      projectId,
-      appName,
-      kind,
-      settings,
-      level: LEVEL[s.role],
-      name: (id: string | null | undefined) => (id ? (s.members.find((m) => m.id === id)?.name ?? "Ancien membre") : "—"),
-      ask,
-      act: async (op: string, input: unknown, opts?: { confirm?: string; quiet?: boolean }) => {
-        if (opts?.confirm && !(await ask(opts.confirm))) return null;
-        try {
-          const r = await api.run(op, input);
-          if (!opts?.quiet) notify(r.duplicate ? "info" : "success", r.message);
-          return r;
-        } catch (e) {
-          notify("error", e instanceof Error ? e.message : "Opération impossible.");
-          return null;
-        }
-      },
-      goZone: (z: string, opt?: string) => {
-        if (!zones.includes(z as VenueZone)) return;
-        if (z === zone) return setOption(opt ?? null);
-        pending.current = opt ?? null;
-        onZone(z as VenueZone);
-      },
-    };
-  }, [s, api, mode, projectId, appName, kind, settings, ask, notify, onZone, zones, zone]);
+  const { ctx, confirmUi } = useVenueContext({ api, mode, projectId, appName, kind, notify, goZone });
 
   const current = options.find((o) => o.id === option);
   // Photos réelles de l'espace (références visuelles), chargées seulement si la zone en a.
@@ -177,15 +149,7 @@ export function VenuePanel({ kind, zones, zone, onZone, onClose, api, projectId,
           </VenueCtx.Provider>
         ) : null}
       </div>
-      {confirm && (
-        <Modal title="Confirmation" onClose={() => answer(false)}>
-          <p className="text-sm text-slate-700">{confirm.message}</p>
-          <div className="mt-4 flex justify-end gap-2">
-            <Btn kind="ghost" onClick={() => answer(false)}>Annuler</Btn>
-            <Btn onClick={() => answer(true)}>Confirmer</Btn>
-          </div>
-        </Modal>
-      )}
+      {confirmUi}
     </aside>
   );
 }

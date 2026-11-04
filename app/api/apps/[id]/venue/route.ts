@@ -48,6 +48,8 @@ export const GET = route(async (req, { params }: Ctx) => {
     data.guest = [];
     data.staff = [];
   }
+  // Empreinte de la clé des passerelles caméra : jamais envoyée au navigateur.
+  data.vcam = data.vcam.map((c) => ({ ...c, data: { ...c.data, token_hash: null } }));
   return NextResponse.json({ data, members: team, role: ctx.role, me: ctx.profile.id, kind: ctx.kind });
 });
 
@@ -60,7 +62,7 @@ export const POST = route(async (req, { params }: Ctx) => {
   const ctx = await venueContext(id, input.mode);
   const team = await members(id);
   try {
-    const result = await runOp({ store: new SupabaseStore(id, input.mode === "demo", ctx.profile.id), actor: { id: ctx.profile.id, role: ctx.role }, members: team.map((m) => m.id), kind: ctx.kind }, input.op, input.input);
+    const result = await runOp({ store: new SupabaseStore(id, input.mode === "demo", ctx.profile.id), actor: { id: ctx.profile.id, role: ctx.role }, members: team.map((m) => m.id), kind: ctx.kind, demo: input.mode === "demo" }, input.op, input.input);
     if (input.mode === "live") {
       if (SENSITIVE.has(input.op) && !result.duplicate) {
         const details = { ...(input.input as Record<string, unknown>) };
@@ -71,6 +73,7 @@ export const POST = route(async (req, { params }: Ctx) => {
       const others = team.filter((m) => m.id !== ctx.profile.id);
       for (const e of result.effects) {
         if (e.type === "order_ready") for (const m of others) rows.push({ user_id: m.id, project_id: id, type: "info", title: `Commande prête : ${e.number}`, body: `La cuisine a terminé la commande ${e.number} (${e.where}).`, link: `/apps/${ctx.project.slug}` });
+        if (e.type === "vision_alert") for (const m of team) rows.push({ user_id: m.id, project_id: id, type: "error", title: `Table ${e.table} : délai dépassé`, body: `${e.kind} : ${e.minutes} min d'attente.`, link: `/apps/${ctx.project.slug}` });
         if (e.type === "temp_alert") for (const m of team.filter((x) => LEVEL[x.role] >= 2 && x.id !== ctx.profile.id)) rows.push({ user_id: m.id, project_id: id, type: "error", title: "Température hors seuil", body: `Relevé saisi : ${e.value} °C, ${e.reason}.`, link: `/apps/${ctx.project.slug}` });
       }
       // Une notification manquée ne doit jamais faire échouer l'opération elle-même.

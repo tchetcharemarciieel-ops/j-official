@@ -4,7 +4,7 @@ import Link from "next/link";
 import { SlidingPill, useSlidingIndicator } from "@/components/ui/SlidingIndicator";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeft, Database, Eye, FlaskConical, History, MessageSquare, Plug, Send, Settings, Users, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Database, Eye, FlaskConical, History, MessageSquare, Send, Settings, Users, type LucideIcon } from "lucide-react";
 import { STATUS } from "@/lib/status";
 import type { AppSpec, Role } from "@/lib/spec";
 import type { CheckResult } from "@/lib/checks";
@@ -17,7 +17,6 @@ import { VersionsTab } from "./tabs/VersionsTab";
 import { PublishTab } from "./tabs/PublishTab";
 import { TeamTab } from "./tabs/TeamTab";
 import { DataTab } from "./tabs/DataTab";
-import { IntegrationsTab } from "./tabs/IntegrationsTab";
 import { SettingsTab } from "./tabs/SettingsTab";
 
 export type VersionRow = {
@@ -62,7 +61,6 @@ const TABS = [
   ["publication", "Publication", Send],
   ["equipe", "Gestion des équipes", Users],
   ["donnees", "Données", Database],
-  ["integrations", "Intégrations", Plug],
   ["parametres", "Paramètres", Settings],
 ] as const satisfies readonly (readonly [string, string, LucideIcon])[];
 export type TabId = (typeof TABS)[number][0];
@@ -133,7 +131,6 @@ export function Workspace({ data, initialTab }: { data: WorkspaceData; initialTa
         {tab === "publication" && <PublishTab data={data} onChanged={refresh} goTo={setTab} />}
         {tab === "equipe" && <TeamTab data={data} onChanged={refresh} />}
         {tab === "donnees" && <DataTab data={data} spec={data.spec} onChanged={refresh} />}
-        {tab === "integrations" && <IntegrationsTab data={data} spec={data.spec} onChanged={refresh} />}
         {tab === "parametres" && <SettingsTab data={data} spec={data.spec} onChanged={refresh} />}
       </div>
     </div>

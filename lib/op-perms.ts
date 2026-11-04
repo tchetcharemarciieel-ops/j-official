@@ -1,0 +1,132 @@
+import { has, type Permission } from "./team";
+
+/**
+ * Permissions exigées par chaque opération des modules métier (au moins une suffit).
+ * Vérifiées par le serveur avant toute opération : un employé ne peut rien faire hors de son
+ * poste, même en appelant l'API directement. Une opération absente de la liste est refusée
+ * aux membres restreints (principe du moindre privilège).
+ */
+const P = (...p: Permission[]) => p;
+
+export const VENUE_OP_PERMS: Record<string, Permission[]> = {
+  "settings.save": P("parametres"),
+  "item.save": P("stock"),
+  "item.toggle": P("stock"),
+  "item.move": P("stock", "cuisine"),
+  "item.count": P("stock"),
+  "lot.save": P("stock", "cuisine"),
+  "lot.close": P("stock", "cuisine"),
+  "equip.save": P("parametres", "stock", "cuisine", "salle", "chambres", "menage"),
+  "equip.delete": P("parametres"),
+  "equip.report": P("stock", "cuisine", "salle", "chambres", "menage", "caisse", "reception", "restaurant"),
+  "table.save": P("parametres", "salle"),
+  "table.toggle": P("parametres"),
+  "booking.save": P("salle", "caisse", "reception", "restaurant"),
+  "booking.status": P("salle", "caisse", "reception", "restaurant"),
+  "menu.save": P("parametres"),
+  "menu.toggle": P("parametres"),
+  "order.create": P("caisse", "salle", "restaurant"),
+  "order.status": P("cuisine", "caisse", "salle", "restaurant"),
+  "order.cancel": P("caisse"),
+  "order.charge_room": P("caisse", "reception", "restaurant"),
+  "order.invoice": P("caisse", "reception"),
+  "payment.add": P("caisse", "reception"),
+  "payment.confirm": P("caisse", "reception"),
+  "payment.cancel": P("caisse", "reception"),
+  "temp.add": P("stock", "cuisine"),
+  "temp.treat": P("stock", "cuisine"),
+  "task.save": P("menage", "chambres", "stock", "cuisine", "salle", "personnel"),
+  "task.status": P("menage", "chambres", "stock", "cuisine", "salle", "caisse", "reception", "restaurant", "personnel"),
+  "expense.save": P("finances"),
+  "expense.delete": P("finances"),
+  "staff.save": P("personnel"),
+  "staff.toggle": P("personnel"),
+  "room.save": P("chambres", "parametres"),
+  "room.state": P("chambres", "reception", "menage"),
+  "room.clean": P("menage", "chambres"),
+  "guest.save": P("reception"),
+  "stay.save": P("reception"),
+  "stay.status": P("reception"),
+  "stay.charge": P("reception", "restaurant", "caisse"),
+  "stay.invoice": P("reception"),
+  "photo.add": P("parametres"),
+  "photo.delete": P("parametres"),
+  // Vision IA
+  "vision.settings": P("parametres"),
+  "vision.place": P("parametres", "vision"),
+  "vision.seat": P("vision", "salle"),
+  "vision.served": P("vision", "salle"),
+  "vision.release": P("vision", "salle"),
+  "vision.clean": P("vision", "salle", "menage"),
+  "vision.tick": P("vision", "salle", "cuisine", "caisse", "restaurant"),
+  "vision.ack": P("vision", "salle", "cuisine", "caisse", "restaurant"),
+  "vision.detect": P("vision"),
+  "vision.camera.save": P("parametres"),
+  "vision.camera.place": P("parametres"),
+  "vision.camera.token": P("parametres"),
+  "vision.camera.toggle": P("parametres"),
+  // Restaurant en ligne (les opérations publiques passent par leur route, sans membre)
+  "online.settings": P("parametres"),
+  "online.item": P("parametres"),
+  "online.available": P("cuisine", "caisse", "parametres"),
+  "qr.table": P("parametres"),
+  "qr.menu": P("parametres"),
+  "online.accept": P("cuisine"),
+  "online.problem": P("cuisine"),
+  "online.release": P("caisse"),
+};
+
+export const GARAGE_OP_PERMS: Record<string, Permission[]> = {
+  "client.save": P("accueil_garage"),
+  "vehicle.save": P("accueil_garage", "atelier"),
+  "job.create": P("accueil_garage"),
+  "job.update": P("accueil_garage", "atelier"),
+  "job.status": P("accueil_garage", "atelier"),
+  "photo.add": P("accueil_garage", "atelier"),
+  "photo.delete": P("accueil_garage"),
+  "quote.save": P("accueil_garage"),
+  "quote.status": P("accueil_garage"),
+  "invoice.create": P("accueil_garage"),
+  "invoice.sale": P("accueil_garage", "pieces"),
+  "invoice.cancel": P("accueil_garage"),
+  "payment.add": P("accueil_garage"),
+  "payment.cancel": P("accueil_garage"),
+  "job.labour": P("atelier", "accueil_garage"),
+  "job.part.add": P("atelier", "pieces"),
+  "job.part.consume": P("atelier", "pieces"),
+  "job.part.remove": P("atelier", "pieces"),
+  "job.missing": P("atelier", "pieces"),
+  "time.start": P("atelier"),
+  "time.stop": P("atelier"),
+  "time.add": P("atelier"),
+  "time.delete": P("atelier"),
+  "qc.save": P("atelier"),
+  "qc.validate": P("atelier"),
+  "tool.report": P("atelier", "pieces"),
+  "tool.resolve": P("atelier", "pieces"),
+  "part.save": P("pieces"),
+  "stock.receive": P("pieces"),
+  "stock.adjust": P("pieces"),
+  "supplier.save": P("pieces"),
+  "po.save": P("pieces"),
+  "po.status": P("pieces"),
+  "po.receive": P("pieces"),
+  "expense.save": P("finances"),
+  "expense.delete": P("finances"),
+  "task.save": P("atelier", "accueil_garage", "pieces", "personnel"),
+  "task.status": P("atelier", "accueil_garage", "pieces", "personnel"),
+  "equip.save": P("parametres", "atelier"),
+  "equip.report": P("atelier", "pieces", "accueil_garage"),
+  "supply.save": P("pieces", "parametres"),
+  "supply.move": P("pieces", "atelier"),
+  "locker.save": P("personnel", "parametres"),
+  "settings.save": P("parametres"),
+};
+
+/** Message clair (et refus) si l'opération n'est pas autorisée pour ces permissions. */
+export function opDenied(table: Record<string, Permission[]>, op: string, perms: Permission[] | null | undefined): string | null {
+  if (perms === null || perms === undefined) return null;
+  const need = table[op];
+  if (!need) return "Cette action n'est pas autorisée pour votre poste.";
+  return has(perms, need) ? null : "Cette action ne fait pas partie de votre poste : demandez à votre responsable de modifier vos autorisations.";
+}

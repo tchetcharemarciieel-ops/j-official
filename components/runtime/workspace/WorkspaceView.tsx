@@ -22,6 +22,8 @@ import { VisionModule } from "../venue/vision/VisionModule";
 import { KdsModule } from "../venue/online/kds";
 import { AlertsBanner, useVisionAlerts } from "../venue/vision/useVisionAlerts";
 import { canVision } from "@/lib/venue/vision";
+import { has, type Permission } from "@/lib/team";
+import { zoneAllowed } from "@/lib/zone-perms";
 import type { Doc as VDoc, Staff } from "@/lib/venue/model";
 import { LEVEL as VENUE_LEVEL, activeZones, type VenueZone } from "@/lib/venue/model";
 import type { DataMode, Rec } from "../useAppData";
@@ -76,11 +78,15 @@ type Props = {
   prefs: AppPrefs;
   savePrefs: (p: AppPrefs) => void;
   onOpen: (target: string, recordId?: string) => void;
-  onClassic: () => void;
+  /** Absent : interface classique non autorisée pour ce poste. */
+  onClassic?: () => void;
+  /** Permissions du poste (null = sans restriction). */
+  perms?: string[] | null;
 };
 
 /** Espace de travail : bureau virtuel du logiciel, relié à ses modules et à ses données. */
-export function WorkspaceView({ projectId, spec, ws, mode, role, readable, records, loading, reload, prefs, savePrefs, onOpen, onClassic }: Props) {
+export function WorkspaceView({ projectId, spec, ws, mode, role, readable, records, loading, reload, prefs, savePrefs, onOpen, onClassic, perms = null }: Props) {
+  const myPerms = perms as Permission[] | null;
   const [members, setMembers] = useState<CrewMember[]>([]);
   const [teamError, setTeamError] = useState(false);
   const [gl, setGl] = useState<{ ok: boolean; low: boolean } | null>(null);
@@ -99,14 +105,15 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
   const venueKind = ws.layout === "restaurant" || ws.layout === "hotel" ? ws.layout : null;
   const venue = useVenue(projectId, mode, role, venueKind);
   const vSettings = useMemo(() => venueSettings(venue.state, venueKind ?? "restaurant"), [venue.state, venueKind]);
-  const vZones = useMemo(() => (venueKind ? activeZones(vSettings) : []), [venueKind, vSettings]);
+  // Zones du plan limitées au poste de l'employé.
+  const vZones = useMemo(() => (venueKind ? activeZones(vSettings).filter((z) => zoneAllowed(z, myPerms)) : []), [venueKind, vSettings, myPerms]);
   const [vZone, setVZone] = useState<VenueZone | null>(null);
   const [vRoom, setVRoom] = useState<string | null>(null);
   const [setupOpen, setSetupOpen] = useState(false);
   const needsSetup = Boolean(venueKind && venue.state && (!vSettings.answered || (venueKind === "hotel" && vSettings.photos_step === null)));
   // Vision IA : tables en direct et délais de service (restaurant, ou hôtel avec restaurant).
   // Géré depuis la zone « Accueil / Caisse » par les gérants et le personnel de caisse.
-  const visionOn = Boolean(venueKind && venue.state && !needsSetup && (venueKind === "restaurant" || vSettings.has_restaurant === true) && canVision(venue.state.role, venue.state.me, venue.state.data.staff as VDoc<Staff>[]));
+  const visionOn = Boolean(venueKind && venue.state && !needsSetup && (venueKind === "restaurant" || vSettings.has_restaurant === true) && canVision(venue.state.role, venue.state.me, venue.state.data.staff as VDoc<Staff>[], myPerms));
   const [visionOpen, setVisionOpen] = useState(false);
   // Écran cuisine : ouvert depuis la zone Cuisine, ou directement avec l'adresse « ?cuisine=1 » (tablette de la cuisine).
   const [kdsOpen, setKdsOpen] = useState(false);
@@ -190,14 +197,16 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
               <MapIcon className="h-4 w-4" aria-hidden />Plan 2D
             </button>
           </div>
-          {venueKind && venue.state && VENUE_LEVEL[venue.state.role] >= 2 && !needsSetup && (
+          {venueKind && venue.state && VENUE_LEVEL[venue.state.role] >= 2 && has(myPerms, "parametres") && !needsSetup && (
             <button type="button" onClick={() => (setSetupOpen(true), setVZone(null))} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
               <Settings2 className="h-4 w-4" aria-hidden />Configurer le plan
             </button>
           )}
-          <button type="button" onClick={onClassic} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
-            <LayoutDashboard className="h-4 w-4" aria-hidden />Interface classique
-          </button>
+          {onClassic && (
+            <button type="button" onClick={onClassic} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
+              <LayoutDashboard className="h-4 w-4" aria-hidden />Interface classique
+            </button>
+          )}
         </div>
       </div>
 
@@ -249,7 +258,7 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
             <section className="rounded-2xl border border-slate-200 bg-white p-4" aria-labelledby="ws-zones">
               <h3 id="ws-zones" className="text-sm font-semibold">Zones du garage</h3>
               <ul className="mt-2 space-y-1">
-                {GARAGE_ZONE_IDS.map((z) => {
+                {GARAGE_ZONE_IDS.filter((z) => zoneAllowed(z, myPerms)).map((z) => {
                   const Z = GARAGE_ZONES[z];
                   const badge = garageView.areas.find((a) => a.id === z)?.badge;
                   return (
@@ -346,11 +355,11 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
         </aside>
       </div>
       )}
-      {venueKind && vZone && !setupOpen && !needsSetup && <VenuePanel kind={venueKind} zones={vZones} zone={vZone} onZone={(z) => (setVZone(z), setVRoom(null))} onClose={() => (setVZone(null), setVRoom(null))} api={venue} projectId={projectId} mode={mode} appName={title} notify={notify} roomId={vRoom} onRoom={setVRoom} request={null} onVision={visionOn ? () => (setVisionOpen(true), setVZone(null)) : undefined} visionAlerts={visionAlerts.open.length} onKds={() => (setKdsOpen(true), setVZone(null))} />}
+      {venueKind && vZone && !setupOpen && !needsSetup && <VenuePanel kind={venueKind} zones={vZones} zone={vZone} onZone={(z) => (setVZone(z), setVRoom(null))} onClose={() => (setVZone(null), setVRoom(null))} api={venue} projectId={projectId} mode={mode} appName={title} notify={notify} roomId={vRoom} onRoom={setVRoom} request={null} onVision={visionOn ? () => (setVisionOpen(true), setVZone(null)) : undefined} visionAlerts={visionAlerts.open.length} onKds={has(myPerms, ["cuisine", "caisse"]) ? () => (setKdsOpen(true), setVZone(null)) : undefined} perms={myPerms} />}
       {venueKind && kdsOpen && venue.state && <KdsModule api={venue} kind={venueKind} mode={mode} projectId={projectId} appName={title} notify={notify} onClose={() => setKdsOpen(false)} />}
       {visionOn && visionOpen && venueKind && <VisionModule api={venue} kind={venueKind} mode={mode} projectId={projectId} appName={title} notify={notify} alerts={visionAlerts} onClose={() => setVisionOpen(false)} />}
       {visionOn && <AlertsBanner alerts={visionAlerts} api={venue} notify={notify} onOpen={visionOpen ? undefined : () => setVisionOpen(true)} />}
-      {garageMode && zone && <GaragePanel zone={zone} onZone={setZone} onClose={() => setZone(null)} api={garage} projectId={projectId} mode={mode} appName={title} notify={notify} jobRequest={jobRequest} />}
+      {garageMode && zone && zoneAllowed(zone, myPerms) && <GaragePanel perms={myPerms} zone={zone} onZone={setZone} onClose={() => setZone(null)} api={garage} projectId={projectId} mode={mode} appName={title} notify={notify} jobRequest={jobRequest} />}
     </div>
   );
 }

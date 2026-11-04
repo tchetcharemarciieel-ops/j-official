@@ -6,6 +6,7 @@ import { getProfile } from "@/lib/auth";
 import { parseSpec, type Role } from "@/lib/spec";
 import { serverConfigured } from "@/lib/config";
 import { AppRuntime } from "@/components/runtime/AppRuntime";
+import { effectivePerms, isSuspended, type MemberRow } from "@/lib/team";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +53,7 @@ export default async function PublishedApp({ params }: Props) {
   if (!profile) redirect(`/connexion?next=/apps/${slug}`);
   if (profile.suspended) redirect("/compte-suspendu");
   const db = adminClient();
-  const { data: member } = await db.from("project_members").select("role").eq("project_id", project.id).eq("user_id", profile.id).maybeSingle();
+  const { data: member } = await db.from("project_members").select("*").eq("project_id", project.id).eq("user_id", profile.id).maybeSingle();
   if (!member)
     return (
       <Notice title="Accès non autorisé" text={`Votre compte (${profile.email}) n'a pas été invité dans « ${project.name} ». Demandez une invitation au propriétaire du logiciel.`}>
@@ -61,7 +62,9 @@ export default async function PublishedApp({ params }: Props) {
         </form>
       </Notice>
     );
+  if (isSuspended(member as MemberRow)) return <Notice title="Accès suspendu" text={`Votre accès à « ${project.name} » a été suspendu par votre responsable. Vos actions passées sont conservées ; contactez-le pour le réactiver.`} />;
   const role = member.role as Role;
+  const perms = effectivePerms(member as MemberRow);
   // Pas encore publié : le propriétaire et les administrateurs ouvrent l'aperçu (données de démonstration).
   if (!project.published_spec) {
     if (role !== "owner" && role !== "admin") return <Notice title="Logiciel pas encore publié" text={`« ${project.name} » n'est pas encore en ligne. Son propriétaire doit le publier pour que l'équipe puisse l'utiliser.`} />;
@@ -74,7 +77,7 @@ export default async function PublishedApp({ params }: Props) {
           <Link href={`/projets/${project.id}?onglet=publication`} className="rounded-lg bg-amber-900 px-3 py-1 text-xs font-semibold text-white">Publier mon logiciel</Link>
           <Link href={`/projets/${project.id}`} className="text-xs underline">Gérer le projet</Link>
         </div>
-        <AppRuntime projectId={project.id} spec={draft.spec} mode="demo" role={role} />
+        <AppRuntime projectId={project.id} spec={draft.spec} mode="demo" role={role} perms={perms} />
       </>
     );
   }
@@ -85,7 +88,7 @@ export default async function PublishedApp({ params }: Props) {
   return (
     <>
       {project.status === "suspended" && <p className="no-print bg-red-600 px-4 py-2 text-center text-sm text-white">Publication suspendue : seuls le propriétaire et les administrateurs y ont accès.</p>}
-      <AppRuntime projectId={project.id} spec={spec.spec} mode="live" role={role} />
+      <AppRuntime projectId={project.id} spec={spec.spec} mode="live" role={role} perms={perms} />
     </>
   );
 }

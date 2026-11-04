@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { assertSameOrigin, readJson, route } from "@/lib/api";
 import { adminClient } from "@/lib/supabase/admin";
-import { appContext } from "@/lib/app-data";
+import { appContext, requireData } from "@/lib/app-data";
 import { can } from "@/lib/permissions";
 import { CREDIT_COSTS } from "@/lib/config";
 import { withCredits } from "@/lib/credits";
@@ -23,6 +23,7 @@ export const POST = route(async (req, { params }: Ctx) => {
   const { id } = await params;
   const input = z.object({ mode: z.enum(["demo", "live"]), question: z.string().trim().min(3).max(500) }).parse(await readJson(req));
   const ctx = await appContext(id, input.mode);
+  requireData(ctx);
   const readableSpec = { ...ctx.spec, entities: ctx.spec.entities.filter((e) => can(e, ctx.role, "read")) };
 
   const { result: plan, engine } = await withCredits<Plan>({ userId: ctx.profile.id, projectId: id, operation: "ask", credits: CREDIT_COSTS.ask }, async (engine) => {

@@ -6,6 +6,8 @@ import { PHOTO_CATEGORY_LABELS, type Doc, type Photo, type PhotoCategory, type V
 import type { DataMode } from "../useAppData";
 import { Back, OptionCard, VenueCtx } from "./ui";
 import { useVenueContext } from "./context";
+import type { Permission } from "@/lib/team";
+import { optionAllowed } from "@/lib/zone-perms";
 import { venueSettings, type VenueApi } from "./useVenue";
 import { RoomDetail, RoomsList } from "./m-hotel";
 import { ZONE_META, zoneOptions } from "./zones";
@@ -31,15 +33,17 @@ type Props = {
   visionAlerts?: number;
   /** Ouvre l'écran cuisine (KDS) en plein écran. */
   onKds?: () => void;
+  /** Permissions du poste : fonctions de la zone masquées si non autorisées (le serveur refuse aussi). */
+  perms?: Permission[] | null;
 };
 
 /** Panneau latéral gauche : s'ouvre au clic sur une zone du plan, sans quitter la vue 3D. */
-export function VenuePanel({ kind, zones, zone, onZone, onClose, api, projectId, mode, appName, notify, roomId, onRoom, request, onVision, visionAlerts = 0, onKds }: Props) {
+export function VenuePanel({ kind, zones, zone, onZone, onClose, api, projectId, mode, appName, notify, roomId, onRoom, request, onVision, visionAlerts = 0, onKds, perms = null }: Props) {
   const [option, setOption] = useState<string | null>(null);
   const panel = useRef<HTMLElement>(null);
   const meta = ZONE_META[kind][zone]!;
   const settings = venueSettings(api.state, kind);
-  const options = zoneOptions(kind, zone, settings.room_service === true);
+  const options = zoneOptions(kind, zone, settings.room_service === true).filter((o) => optionAllowed(zone, o.id, perms));
 
   // Fonction demandée depuis une autre zone : ouverte dès que la nouvelle zone s'affiche.
   const pending = useRef<string | null>(null);

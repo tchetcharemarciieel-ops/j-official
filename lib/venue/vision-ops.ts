@@ -51,7 +51,7 @@ export function visionOps(k: Kit) {
   async function needVision(ctx: OpContext, what: string) {
     k.need(ctx, 1, what);
     if (ctx.gateway) return;
-    if (!canVision(ctx.actor.role, ctx.actor.id, (await ctx.store.list("staff")) as Doc<Staff>[])) k.fail(403, `Vision IA est géré par l'accueil / la caisse : demandez au gérant de vous attribuer le poste « ${CASHIER_ROLE} » dans la fiche du personnel.`);
+    if (!canVision(ctx.actor.role, ctx.actor.id, (await ctx.store.list("staff")) as Doc<Staff>[], ctx.perms)) k.fail(403, `Vision IA est géré par l'accueil / la caisse : demandez au gérant de vous attribuer le poste « ${CASHIER_ROLE} » dans la fiche du personnel.`);
   }
 
   /** Termine un passage (la table passe « À nettoyer ») et clôt ses alertes. */

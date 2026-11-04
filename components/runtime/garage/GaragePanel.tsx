@@ -1,5 +1,7 @@
 "use client";
 
+import type { Permission } from "@/lib/team";
+import { zoneAllowed } from "@/lib/zone-perms";
 import { Armchair, Boxes, Briefcase, ConciergeBell, Wrench, X, type LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { IN_WORKSHOP, LEVEL, type Doc, type Job } from "@/lib/garage/model";
@@ -31,10 +33,12 @@ type Props = {
   notify: (kind: "success" | "error" | "info", message: string) => void;
   /** Dossier à ouvrir depuis le plan (liste des derniers dossiers). */
   jobRequest?: { id: string; n: number } | null;
+  /** Permissions du poste : zones masquées si non autorisées (le serveur refuse aussi). */
+  perms?: Permission[] | null;
 };
 
 /** Panneau latéral gauche du garage : s'ouvre au clic sur une zone, sans quitter le plan. */
-export function GaragePanel({ zone, onZone, onClose, api, projectId, mode, appName, notify, jobRequest }: Props) {
+export function GaragePanel({ zone, onZone, onClose, api, projectId, mode, appName, notify, jobRequest, perms = null }: Props) {
   const [jobs, setJobs] = useState<Partial<Record<ZoneId, string | null>>>({});
   const [confirm, setConfirm] = useState<{ message: string; resolve: (ok: boolean) => void } | null>(null);
   const panel = useRef<HTMLElement>(null);
@@ -116,7 +120,7 @@ export function GaragePanel({ zone, onZone, onClose, api, projectId, mode, appNa
         <button type="button" onClick={onClose} aria-label="Fermer le panneau" className="tab-press rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" aria-hidden /></button>
       </header>
       <nav aria-label="Zones du garage" className="flex gap-1 overflow-x-auto border-b border-slate-200 bg-white px-3 py-2">
-        {(Object.keys(GARAGE_ZONES) as ZoneId[]).map((z) => {
+        {(Object.keys(GARAGE_ZONES) as ZoneId[]).filter((z) => zoneAllowed(z, perms)).map((z) => {
           const Z = GARAGE_ZONES[z];
           const on = z === zone;
           return (

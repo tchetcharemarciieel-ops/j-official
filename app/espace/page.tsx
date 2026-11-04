@@ -9,6 +9,7 @@ import { StatCard } from "@/components/espace/StatCard";
 import { ProjectCard } from "@/components/espace/ProjectCard";
 import { WordsIn } from "@/components/espace/WordsIn";
 import { Welcome } from "@/components/onboarding/Welcome";
+import { PendingInvites } from "@/components/team/PendingInvites";
 import { loadOnboarding } from "@/lib/onboarding-store";
 
 export const metadata = { title: "Vue d'ensemble" };
@@ -48,6 +49,7 @@ export default async function Overview() {
         </div>
       </div>
 
+      <PendingInvites />
       {projects.length === 0 && <Welcome answers={onboarding} firstName={profile.full_name.split(" ")[0] ?? ""} />}
 
       {!profile.company_name && (

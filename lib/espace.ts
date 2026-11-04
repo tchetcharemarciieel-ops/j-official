@@ -28,8 +28,10 @@ export type EspaceProject = {
  */
 export async function loadProjects(profile: Profile): Promise<EspaceProject[]> {
   const db = adminClient();
-  const { data: memberships } = await db.from("project_members").select("project_id,role").eq("user_id", profile.id);
-  const ids = (memberships ?? []).map((m) => m.project_id);
+  const { data: all } = await db.from("project_members").select("*").eq("user_id", profile.id);
+  // Accès suspendu : le logiciel disparaît de l'espace (il réapparaît à la réactivation).
+  const memberships = (all ?? []).filter((m) => m.status !== "suspended");
+  const ids = memberships.map((m) => m.project_id);
   if (!ids.length) return [];
   const { data } = await db
     .from("projects")

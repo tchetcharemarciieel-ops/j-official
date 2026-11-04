@@ -55,6 +55,8 @@ import {
 } from "./model";
 import { visionOps } from "./vision-ops";
 import { onlineOps } from "./online-ops";
+import { VENUE_OP_PERMS, opDenied } from "../op-perms";
+import type { Permission } from "../team";
 
 /**
  * Moteur des opérations du restaurant et de l'hôtel. Chaque opération vérifie le rôle, valide
@@ -86,6 +88,8 @@ export type OpContext = {
   gateway?: string;
   /** Requête d'un client depuis le menu public (QR code) : seules les opérations « online.* » publiques l'acceptent. */
   public?: boolean;
+  /** Permissions du poste de l'employé (null ou absent = droits du rôle, sans restriction de poste). */
+  perms?: Permission[] | null;
 };
 export type Effect = { type: "order_ready"; orderId: string; number: string; where: string } | { type: "temp_alert"; value: number; reason: string } | { type: "new_order"; orderId: string; number: string } | { type: "vision_alert"; table: string; minutes: number; kind: string };
 /** `secret` : valeur à montrer une seule fois (clé de passerelle), jamais enregistrée en clair. */
@@ -936,6 +940,9 @@ Object.assign(OPS, visionOps(kit), onlineOps({ ...kit, number, hist, refreshOrde
 export async function runOp(ctx: OpContext, op: string, input: unknown): Promise<OpResult> {
   const h = Object.prototype.hasOwnProperty.call(OPS, op) ? OPS[op] : undefined;
   if (!h) throw new OpError(400, "Opération inconnue.");
+  // Poste de l'employé : vérifié avant toute opération (les routes publiques et la passerelle n'ont pas de poste).
+  const denied = ctx.public || ctx.gateway ? null : opDenied(VENUE_OP_PERMS, op, ctx.perms);
+  if (denied) throw new OpError(403, denied);
   try {
     return await h(ctx, input);
   } catch (e) {

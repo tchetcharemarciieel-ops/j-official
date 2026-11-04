@@ -1,4 +1,5 @@
 import "server-only";
+import { has } from "./team";
 import { adminClient } from "./supabase/admin";
 import { draftSpec, getAccess, HttpError, publishedSpec, type Access } from "./access";
 import { findEntity, can, readonlyFields, type Action } from "./permissions";
@@ -29,7 +30,16 @@ export async function appContext(projectId: string, mode: Mode): Promise<AppCont
   return { ...access, spec, mode };
 }
 
+/**
+ * Tables de données du logiciel (interface classique, import, questions sur les données) :
+ * réservées aux postes qui ont la permission « Interface classique ».
+ */
+export function requireData(ctx: AppContext) {
+  if (!has(ctx.perms, "donnees")) throw new HttpError(403, "Les tables de données ne font pas partie de votre poste : demandez à votre responsable.");
+}
+
 export function requireEntity(ctx: AppContext, key: string, action: Action): Entity {
+  requireData(ctx);
   const entity = findEntity(ctx.spec, key);
   if (!entity) throw new HttpError(404, "Table introuvable.");
   if (!can(entity, ctx.role, action)) throw new HttpError(403, "Votre rôle ne permet pas cette action.");

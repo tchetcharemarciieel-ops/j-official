@@ -18,7 +18,9 @@ export const isCashierRole = (role: string) => /caiss|accueil|r[ée]ception/i.te
  * Vision IA est géré à l'accueil / caisse : gérants (propriétaire, administrateur, gestionnaire)
  * et employés dont la fiche du personnel, reliée à leur compte, indique un poste caisse ou accueil.
  */
-export function canVision(role: VenueRole, me: string, staff: Doc<Staff>[]) {
+export function canVision(role: VenueRole, me: string, staff: Doc<Staff>[], perms?: readonly string[] | null) {
+  // Poste défini dans « Gestion des équipes » : il fait foi.
+  if (perms) return LEVEL[role] >= 1 && perms.includes("vision");
   if (LEVEL[role] >= 2) return true;
   return LEVEL[role] >= 1 && staff.some((s) => s.data.active && s.data.member_id === me && isCashierRole(s.data.role));
 }

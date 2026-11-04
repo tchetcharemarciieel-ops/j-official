@@ -22,11 +22,13 @@ type Answer = { answer: string; facts: string[]; period: string; basis: string; 
  * Moteur d'exécution : interprète une AppSpec avec des composants validés.
  * Toutes les actions passent par l'API, qui revérifie le rôle à chaque requête.
  */
-export function AppRuntime({ projectId, spec, mode, role, compact = false }: { projectId: string; spec: AppSpec; mode: DataMode; role: Role; compact?: boolean }) {
+export function AppRuntime({ projectId, spec, mode, role, perms = null, compact = false }: { projectId: string; spec: AppSpec; mode: DataMode; role: Role; perms?: string[] | null; compact?: boolean }) {
   const data = useAppData(projectId, mode, spec);
   const notify = useToast();
-  const entities = spec.entities.filter((e) => can(e, role, "read"));
-  const [page, setPage] = useState<string>("__dashboard");
+  // Poste sans « Interface classique » : seules les fonctions de son poste (espace de travail) sont proposées.
+  const dataAllowed = perms === null || perms.includes("donnees");
+  const entities = dataAllowed ? spec.entities.filter((e) => can(e, role, "read")) : [];
+  const [page, setPage] = useState<string>(dataAllowed ? "__dashboard" : "__workspace");
   const [openRecord, setOpenRecord] = useState<string | undefined>();
   const [menuOpen, setMenuOpen] = useState(false);
   const current = entities.find((e) => e.key === page);
@@ -38,10 +40,14 @@ export function AppRuntime({ projectId, spec, mode, role, compact = false }: { p
   useEffect(() => {
     if (!loaded || initial.current) return;
     initial.current = true;
-    if (ws.enabled && prefs.view !== "classic") setPage("__workspace");
-  }, [loaded, prefs.view, ws.enabled]);
+    if (ws.enabled && (prefs.view !== "classic" || !dataAllowed)) setPage("__workspace");
+  }, [loaded, prefs.view, ws.enabled, dataAllowed]);
 
   const go = (target: string, recordId?: string) => {
+    if (target === "__dashboard" && !dataAllowed) {
+      notify("error", "Le tableau de bord général ne fait pas partie de votre poste.");
+      return;
+    }
     if (target === "__workspace" || target === "__dashboard") {
       setPage(target);
       if (ws.enabled) save({ view: target === "__workspace" ? "workspace" : "classic" });
@@ -59,7 +65,7 @@ export function AppRuntime({ projectId, spec, mode, role, compact = false }: { p
     <nav ref={navRef} aria-label={`Menu de ${spec.name}`} className="relative space-y-1">
       <SlidingPill box={navBox} animate={navAnimate} className="rounded-xl shadow-sm" style={{ background: "var(--app-primary)" }} />
       {ws.enabled && <NavItem id="__workspace" active={page === "__workspace"} onClick={() => go("__workspace")} icon={Building2} label="Espace de travail" />}
-      <NavItem id="__dashboard" active={page === "__dashboard"} onClick={() => go("__dashboard")} icon={LayoutDashboard} label="Tableau de bord" />
+      {dataAllowed && <NavItem id="__dashboard" active={page === "__dashboard"} onClick={() => go("__dashboard")} icon={LayoutDashboard} label="Tableau de bord" />}
       {entities.map((e) => (
         <NavItem key={e.key} id={e.key} active={page === e.key} onClick={() => go(e.key)} icon={Table2} label={e.labelPlural} count={data.records[e.key]?.length} />
       ))}
@@ -69,7 +75,7 @@ export function AppRuntime({ projectId, spec, mode, role, compact = false }: { p
   // Barre du bas sur téléphone : accès direct aux premiers modules, le reste dans « Menu ».
   const tabs: { id: string; label: string; icon: LucideIcon }[] = [
     ...(ws.enabled ? [{ id: "__workspace", label: "Espace", icon: Building2 }] : []),
-    { id: "__dashboard", label: "Accueil", icon: LayoutDashboard },
+    ...(dataAllowed ? [{ id: "__dashboard", label: "Accueil", icon: LayoutDashboard }] : []),
     ...entities.map((e) => ({ id: e.key, label: e.labelPlural, icon: Table2 })),
   ].slice(0, 4);
 
@@ -115,7 +121,7 @@ export function AppRuntime({ projectId, spec, mode, role, compact = false }: { p
           {current ? (
             <EntityView key={`${current.key}:${openRecord ?? ""}`} spec={spec} entity={current} role={role} data={data} notify={notify} openRecordId={openRecord} />
           ) : page === "__workspace" && ws.enabled ? (
-            <WorkspaceView projectId={projectId} spec={spec} ws={ws} mode={mode} role={role} readable={entities.map((e) => e.key)} records={data.records} loading={data.loading} reload={data.reload} prefs={prefs} savePrefs={save} onOpen={go} onClassic={() => go("__dashboard")} />
+            <WorkspaceView projectId={projectId} spec={spec} ws={ws} mode={mode} role={role} readable={entities.map((e) => e.key)} records={data.records} loading={data.loading} reload={data.reload} prefs={prefs} savePrefs={save} onOpen={go} onClassic={dataAllowed ? () => go("__dashboard") : undefined} perms={perms} />
           ) : (
             <div className="space-y-6">
               <div>

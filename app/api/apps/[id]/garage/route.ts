@@ -7,6 +7,7 @@ import { adminClient } from "@/lib/supabase/admin";
 import { audit } from "@/lib/audit";
 import { effectiveWorkspace } from "@/lib/workspace";
 import { LEVEL } from "@/lib/garage/model";
+import { has } from "@/lib/team";
 import { OpError, runOp } from "@/lib/garage/engine";
 import { SupabaseStore } from "@/lib/garage/supabase-store";
 import type { Role } from "@/lib/spec";
@@ -23,7 +24,8 @@ async function garageContext(id: string, mode: "demo" | "live"): Promise<AppCont
 
 async function members(projectId: string) {
   const db = adminClient();
-  const { data: rows } = await db.from("project_members").select("user_id,role").eq("project_id", projectId).limit(100);
+  const { data: all } = await db.from("project_members").select("*").eq("project_id", projectId).limit(100);
+  const rows = (all ?? []).filter((m) => m.status !== "suspended");
   const ids = (rows ?? []).map((m) => m.user_id);
   const { data: profiles } = ids.length ? await db.from("profiles").select("id,full_name,email").in("id", ids) : { data: [] as { id: string; full_name: string | null; email: string }[] };
   return (rows ?? []).map((m) => {
@@ -42,8 +44,8 @@ export const GET = route(async (req, { params }: Ctx) => {
   const photosFor = url.searchParams.get("photos");
   if (photosFor) return NextResponse.json({ photos: await store.photos(photosFor) });
   const [data, team] = await Promise.all([store.all(), members(id)]);
-  if (LEVEL[ctx.role] < 2) data.expense = [];
-  return NextResponse.json({ data, members: team, role: ctx.role, me: ctx.profile.id });
+  if (LEVEL[ctx.role] < 2 || !has(ctx.perms, "finances")) data.expense = [];
+  return NextResponse.json({ data, members: team, role: ctx.role, me: ctx.profile.id, perms: ctx.perms, position: ctx.position });
 });
 
 const SENSITIVE = new Set(["payment.cancel", "invoice.cancel", "stock.adjust", "expense.delete", "job.part.remove"]);
@@ -55,7 +57,7 @@ export const POST = route(async (req, { params }: Ctx) => {
   const ctx = await garageContext(id, input.mode);
   const team = await members(id);
   try {
-    const result = await runOp({ store: new SupabaseStore(id, input.mode === "demo", ctx.profile.id), actor: { id: ctx.profile.id, role: ctx.role }, members: team.map((m) => m.id) }, input.op, input.input);
+    const result = await runOp({ store: new SupabaseStore(id, input.mode === "demo", ctx.profile.id), actor: { id: ctx.profile.id, role: ctx.role }, members: team.map((m) => m.id), perms: ctx.perms }, input.op, input.input);
     if (input.mode === "live") {
       if (SENSITIVE.has(input.op)) await audit(`garage.${input.op}`, { projectId: id, actorId: ctx.profile.id, level: "warning", details: { input: input.input as Record<string, unknown> } });
       // Véhicule prêt : toute l'équipe (dont l'accueil) est prévenue, sauf l'auteur de la validation.

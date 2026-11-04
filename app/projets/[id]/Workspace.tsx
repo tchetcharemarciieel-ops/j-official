@@ -60,7 +60,7 @@ const TABS = [
   ["tests", "Tests", FlaskConical],
   ["versions", "Versions", History],
   ["publication", "Publication", Send],
-  ["equipe", "Équipe", Users],
+  ["equipe", "Gestion des équipes", Users],
   ["donnees", "Données", Database],
   ["integrations", "Intégrations", Plug],
   ["parametres", "Paramètres", Settings],

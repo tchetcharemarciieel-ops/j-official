@@ -7,6 +7,7 @@ import { adminClient } from "@/lib/supabase/admin";
 import { audit } from "@/lib/audit";
 import { effectiveWorkspace } from "@/lib/workspace";
 import { LEVEL, type VenueKind } from "@/lib/venue/model";
+import { has } from "@/lib/team";
 import { OpError, runOp } from "@/lib/venue/engine";
 import { SupabaseStore } from "@/lib/venue/supabase-store";
 import type { Role } from "@/lib/spec";
@@ -24,7 +25,9 @@ async function venueContext(id: string, mode: "demo" | "live"): Promise<AppConte
 
 async function members(projectId: string) {
   const db = adminClient();
-  const { data: rows } = await db.from("project_members").select("user_id,role").eq("project_id", projectId).limit(100);
+  // Les membres suspendus ne font plus partie de l'équipe (ni attribution, ni notification).
+  const { data: all } = await db.from("project_members").select("*").eq("project_id", projectId).limit(100);
+  const rows = (all ?? []).filter((m) => m.status !== "suspended");
   const ids = (rows ?? []).map((m) => m.user_id);
   const { data: profiles } = ids.length ? await db.from("profiles").select("id,full_name,email").in("id", ids) : { data: [] as { id: string; full_name: string | null; email: string }[] };
   return (rows ?? []).map((m) => {
@@ -43,16 +46,17 @@ export const GET = route(async (req, { params }: Ctx) => {
   if (url.searchParams.get("photos")) return NextResponse.json({ photos: await store.photos() });
   const [data, team] = await Promise.all([store.all(), members(id)]);
   const level = LEVEL[ctx.role];
-  if (level < 2) data.expense = [];
-  if (level < 1) {
-    data.guest = [];
-    data.staff = [];
-  }
+  // Données visibles selon le rôle, puis selon le poste de l'employé (permissions).
+  if (level < 2 || !has(ctx.perms, "finances")) data.expense = [];
+  if (level < 1 || !has(ctx.perms, ["reception"])) data.guest = [];
+  if (level < 1) data.staff = [];
+  else if (!has(ctx.perms, "personnel")) data.staff = data.staff.map((x) => ({ ...x, data: { name: x.data.name, role: x.data.role, member_id: x.data.member_id, active: x.data.active, phone: "", notes: "", schedule: [] } }));
+  if (!has(ctx.perms, ["caisse", "reception", "finances", "rapports"])) data.payment = [];
   // Empreinte de la clé des passerelles caméra : jamais envoyée au navigateur.
   data.vcam = data.vcam.map((c) => ({ ...c, data: { ...c.data, token_hash: null } }));
   // Jetons de suivi des commandes en ligne : jamais renvoyés à l'équipe (ils restent au client).
   data.order = data.order.map((o) => (o.data.tracking_token ? { ...o, data: { ...o.data, tracking_token: "masque" } } : o));
-  return NextResponse.json({ data, members: team, role: ctx.role, me: ctx.profile.id, kind: ctx.kind, slug: ctx.project.slug });
+  return NextResponse.json({ data, members: team, role: ctx.role, me: ctx.profile.id, kind: ctx.kind, slug: ctx.project.slug, perms: ctx.perms, position: ctx.position });
 });
 
 const SENSITIVE = new Set(["payment.cancel", "order.cancel", "item.count", "expense.delete", "stay.status", "photo.delete"]);
@@ -64,7 +68,7 @@ export const POST = route(async (req, { params }: Ctx) => {
   const ctx = await venueContext(id, input.mode);
   const team = await members(id);
   try {
-    const result = await runOp({ store: new SupabaseStore(id, input.mode === "demo", ctx.profile.id), actor: { id: ctx.profile.id, role: ctx.role }, members: team.map((m) => m.id), kind: ctx.kind, demo: input.mode === "demo" }, input.op, input.input);
+    const result = await runOp({ store: new SupabaseStore(id, input.mode === "demo", ctx.profile.id), actor: { id: ctx.profile.id, role: ctx.role }, members: team.map((m) => m.id), kind: ctx.kind, demo: input.mode === "demo", perms: ctx.perms }, input.op, input.input);
     if (input.mode === "live") {
       if (SENSITIVE.has(input.op) && !result.duplicate) {
         const details = { ...(input.input as Record<string, unknown>) };

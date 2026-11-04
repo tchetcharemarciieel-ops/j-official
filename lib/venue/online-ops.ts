@@ -28,7 +28,8 @@ export function randomToken(bytes = 18) {
 
 /** Cuisine : gérants et personnel au poste de cuisine (ou de caisse, qui gère aussi les commandes). */
 export const isKitchenRole = (role: string) => /cuisin|chef|commis|caiss|accueil/i.test(role);
-export function canKitchen(role: VenueRole, me: string, staff: Doc<Staff>[]) {
+export function canKitchen(role: VenueRole, me: string, staff: Doc<Staff>[], perms?: readonly string[] | null) {
+  if (perms) return LEVEL[role] >= 1 && (perms.includes("cuisine") || perms.includes("caisse"));
   if (LEVEL[role] >= 2) return true;
   return LEVEL[role] >= 1 && staff.some((s) => s.data.active && s.data.member_id === me && isKitchenRole(s.data.role));
 }
@@ -43,7 +44,7 @@ const imageData = (max: number) =>
 export function onlineOps(k: OnlineKit) {
   async function needKitchen(ctx: OpContext, what: string) {
     k.need(ctx, 1, what);
-    if (!canKitchen(ctx.actor.role, ctx.actor.id, (await ctx.store.list("staff")) as Doc<Staff>[])) k.fail(403, "Réservé à la cuisine, à la caisse et aux gérants : demandez au gérant de vous attribuer un poste « Cuisinier » ou « Caisse et accueil ».");
+    if (!canKitchen(ctx.actor.role, ctx.actor.id, (await ctx.store.list("staff")) as Doc<Staff>[], ctx.perms)) k.fail(403, "Réservé à la cuisine, à la caisse et aux gérants : demandez au gérant de vous attribuer un poste « Cuisinier » ou « Caisse et accueil ».");
   }
   const publicOnly = (ctx: OpContext) => {
     if (!ctx.public) k.fail(403, "Opération réservée au menu en ligne.");

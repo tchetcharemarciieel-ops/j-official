@@ -1,4 +1,5 @@
 import "server-only";
+import { effectivePerms, isSuspended, type MemberRow, type Permission } from "./team";
 import { adminClient } from "./supabase/admin";
 import { getProfile, type Profile } from "./auth";
 import { parseSpec, type AppSpec, type Role } from "./spec";
@@ -23,7 +24,8 @@ export type ProjectRow = {
   updated_at: string;
 };
 
-export type Access = { profile: Profile; project: ProjectRow; role: Role };
+/** `perms` : permissions effectives (null = aucune restriction, voir lib/team.ts). */
+export type Access = { profile: Profile; project: ProjectRow; role: Role; perms: Permission[] | null; position: string };
 
 export class HttpError extends Error {
   constructor(
@@ -48,13 +50,16 @@ export async function getAccess(projectId: string, allowed?: Role[]): Promise<Ac
   const db = adminClient();
   const [{ data: project }, { data: member }] = await Promise.all([
     db.from("projects").select("*").eq("id", projectId).maybeSingle(),
-    db.from("project_members").select("role").eq("project_id", projectId).eq("user_id", profile.id).maybeSingle(),
+    // « * » : fonctionne avant comme après l'ajout des colonnes de gestion des équipes.
+    db.from("project_members").select("*").eq("project_id", projectId).eq("user_id", profile.id).maybeSingle(),
   ]);
   // Même réponse « introuvable » si le projet n'existe pas ou si l'utilisateur n'y a pas accès.
   if (!project || !member) throw new HttpError(404, "Projet introuvable.");
+  // Accès suspendu : refusé immédiatement, sur toutes les routes, quel que soit le rôle.
+  if (isSuspended(member as MemberRow)) throw new HttpError(403, "Votre accès à ce logiciel est suspendu. Contactez votre responsable.");
   const role = member.role as Role;
   if (allowed && !allowed.includes(role)) throw new HttpError(403, "Action non autorisée pour votre rôle.");
-  return { profile, project: project as ProjectRow, role };
+  return { profile, project: project as ProjectRow, role, perms: effectivePerms(member as MemberRow), position: String(member.position ?? "") };
 }
 
 export function draftSpec(project: ProjectRow): AppSpec | null {

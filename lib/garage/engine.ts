@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { GARAGE_OP_PERMS, opDenied } from "../op-perms";
+import type { Permission } from "../team";
 import {
   EQUIP_CONDITIONS,
   JOB_STATUS_LABELS,
@@ -63,7 +65,8 @@ export interface GarageStore {
 }
 
 export type Actor = { id: string; role: GarageRole };
-export type OpContext = { store: GarageStore; actor: Actor; members: string[]; now?: () => Date; uuid?: () => string };
+/** `perms` : permissions du poste de l'employé (null ou absent = droits du rôle). */
+export type OpContext = { store: GarageStore; actor: Actor; members: string[]; now?: () => Date; uuid?: () => string; perms?: Permission[] | null };
 export type Effect = { type: "ready"; jobId: string; ref: string; plate: string };
 export type OpResult = { message: string; id?: string; effects: Effect[]; duplicate?: boolean };
 
@@ -1019,6 +1022,8 @@ async function consumeLine(ctx: OpContext, jobId: string, lineId: string): Promi
 export async function runOp(ctx: OpContext, op: string, input: unknown): Promise<OpResult> {
   const h = Object.prototype.hasOwnProperty.call(OPS, op) ? OPS[op] : undefined;
   if (!h) throw new OpError(400, "Opération inconnue.");
+  const denied = opDenied(GARAGE_OP_PERMS, op, ctx.perms);
+  if (denied) throw new OpError(403, denied);
   try {
     return await h(ctx, input);
   } catch (e) {

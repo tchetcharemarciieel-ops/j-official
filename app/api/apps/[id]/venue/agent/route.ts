@@ -9,6 +9,7 @@ import { burstLimited, checkAiQuota } from "@/lib/ai-quota";
 import { withCredits } from "@/lib/credits";
 import { effectiveWorkspace } from "@/lib/workspace";
 import { LEVEL, type Doc } from "@/lib/venue/model";
+import { has } from "@/lib/team";
 import { kitchenReport, reportAdvice, type FullOrder } from "@/lib/venue/online";
 import { visionSettings, visionStats, type Seat, type VisionAlert } from "@/lib/venue/vision";
 import { SupabaseStore } from "@/lib/venue/supabase-store";
@@ -32,7 +33,7 @@ export const POST = route(async (req, { params }: Ctx) => {
   const ctx = await appContext(id, input.mode);
   const layout = effectiveWorkspace(ctx.spec).layout;
   if (layout !== "restaurant" && layout !== "hotel") throw new HttpError(404, "Ce logiciel n'a pas de module restaurant.");
-  if (LEVEL[ctx.role] < 2) throw new HttpError(403, "L'analyse IA est réservée aux gérants.");
+  if (LEVEL[ctx.role] < 2 || !has(ctx.perms, "rapports")) throw new HttpError(403, "L'analyse IA est réservée aux gérants qui ont accès aux rapports.");
   if (burstLimited(`agent:${ctx.profile.id}`)) throw new HttpError(429, "Trop de demandes en peu de temps. Patientez quelques minutes.");
   const store = new SupabaseStore(id, input.mode === "demo", ctx.profile.id);
   const data = await store.all();

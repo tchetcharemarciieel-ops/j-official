@@ -59,6 +59,17 @@ Code : `lib/venue/online.ts` (modèle, suivi public, rapport), `lib/venue/online
 - **Statistiques QR** : scans, visiteurs uniques par jour (empreinte anonyme), commandes générées, plats consultés (`hx:qstat`).
 - **Mode démonstration** : « Tester (démo) » dans l'aperçu ou `?demo=1` pour le propriétaire connecté : commandes de démonstration et confirmation de paiement simulée, jamais sur les données réelles.
 
+## Gestion des équipes
+
+Onglet « Gestion des équipes » de chaque logiciel (`app/projets/[id]/tabs/TeamTab.tsx`). Règles dans `lib/team.ts` (postes par secteur, permissions, `canAssign` contre l'auto-promotion), `lib/op-perms.ts` (permission exigée par chaque opération métier), `lib/zone-perms.ts` (zones et fonctions visibles), serveur dans `lib/team-server.ts` et les routes `app/api/projects/[id]/{team,invitations,members,positions,seats}`. Base : `supabase/migrations/0010_team.sql` (ajouts uniquement). Tests : `tests/team.test.ts`.
+
+- **Postes** : restaurant (Administrateur, Accueil / Caisse, Cuisine, Gestion du stock, Salle de restaurant, Réception, Responsable), hôtel (Administrateur, Réception, Ménage, Cuisine, Restaurant, Gestion des chambres), garage (Administrateur, Accueil, Mécanicien, Gestion des pièces, Responsable), et postes personnalisés.
+- **Invitation** : jeton de 256 bits stocké haché, 7 jours, usage unique, réservé à l'adresse invitée ; e-mail envoyé par le SMTP configuré dans Supabase (modèles « Invite user » et « Magic Link ») avec repli par lien à partager ; renvoi (nouveau lien) et annulation ; la page d'invitation montre l'entreprise et le poste, l'employé crée son propre compte et son mot de passe. Invitations en attente aussi proposées dans « Mon espace ».
+- **Sécurité serveur** : accès suspendu refusé sur toutes les routes (`getAccess`) et par les politiques RLS (`is_member` exige `status = 'active'`) ; chaque opération du restaurant, de l'hôtel et du garage vérifie la permission du poste ; tables de données (« Interface classique ») réservées à la permission « donnees » ; personne ne modifie son propre accès, seul le propriétaire nomme un administrateur, un responsable ne donne jamais plus qu'il n'a ; actions journalisées (`audit_logs`).
+- **Compatibilité** : un membre sans poste garde exactement les droits de son rôle, comme avant.
+- **Licences** : places de la formule du propriétaire + `projects.extra_seats` ; demande d'accès supplémentaires transmise aux administrateurs de la plateforme (aucun tarif affiché).
+- **Configuration Supabase** : Authentication → URL Configuration → ajouter `https://minisoft-rca.onrender.com/**` aux URL de redirection autorisées (retour du lien de l'e-mail vers `/auth/invitation`).
+
 ## Mise en service
 
 1. Créer un projet Supabase, puis exécuter `supabase/migrations/0001_init.sql` (éditeur SQL ou `supabase db push`).

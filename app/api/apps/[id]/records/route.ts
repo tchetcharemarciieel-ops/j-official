@@ -4,6 +4,7 @@ import { assertSameOrigin, readJson, route } from "@/lib/api";
 import { HttpError } from "@/lib/access";
 import { adminClient } from "@/lib/supabase/admin";
 import { afterChange, appContext, requireEntity, stripReadonly } from "@/lib/app-data";
+import { has } from "@/lib/team";
 import { validateRecord } from "@/lib/records";
 import { can } from "@/lib/permissions";
 
@@ -15,7 +16,8 @@ export const GET = route(async (req, { params }: Ctx) => {
   const { id } = await params;
   const mode = modeSchema.parse(new URL(req.url).searchParams.get("mode") ?? "live");
   const ctx = await appContext(id, mode);
-  const readable = ctx.spec.entities.filter((e) => can(e, ctx.role, "read")).map((e) => e.key);
+  // Poste sans « Interface classique » : aucune table de données n'est envoyée (l'espace métier reste disponible).
+  const readable = has(ctx.perms, "donnees") ? ctx.spec.entities.filter((e) => can(e, ctx.role, "read")).map((e) => e.key) : [];
   const result: Record<string, unknown[]> = Object.fromEntries(readable.map((k) => [k, []]));
   if (readable.length) {
     const { data, error } = await adminClient()

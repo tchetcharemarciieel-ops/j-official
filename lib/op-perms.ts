@@ -67,6 +67,7 @@ export const VENUE_OP_PERMS: Record<string, Permission[]> = {
   "vision.camera.toggle": P("parametres"),
   // Restaurant en ligne (les opérations publiques passent par leur route, sans membre)
   "online.settings": P("parametres"),
+  "online.style": P("parametres"),
   "online.item": P("parametres"),
   "online.available": P("cuisine", "caisse", "parametres"),
   "qr.table": P("parametres"),

@@ -7,6 +7,7 @@ import { MENU_CATEGORY_LABELS, ORDER_STATUS_LABELS, PAY_STATUS_LABELS, fmtMoney,
 import { onlineSettings, type DayStat, type FullOrder, type OnlineItem } from "@/lib/venue/online";
 import { MenuForm, MenuView, PaymentForm } from "../m-sales";
 import { shrinkImage } from "../image";
+import { MenuStyleEditor } from "./style";
 import { Btn, Card, Empty, Field, inp, isMgr, Modal, Pill, PrintDoc, Stat, Tabs, useV } from "../ui";
 
 const hhmm = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "—");
@@ -71,6 +72,8 @@ export function OnlineMenuAdmin() {
           {mgr && <Btn type="submit" busy={busy}>Enregistrer</Btn>}
         </form>
       </Card>
+
+      <MenuStyleEditor />
 
       <Card title="Plats du menu en ligne" actions={<>{mgr && <Btn small onClick={() => setEdit("new")}>Ajouter un plat</Btn>}{available && base && <Btn small kind="ghost" onClick={() => setPreview(true)}><Smartphone className="h-3.5 w-3.5" aria-hidden />Aperçu téléphone</Btn>}</>}>
         {items.length === 0 ? (

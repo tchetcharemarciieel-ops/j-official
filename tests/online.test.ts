@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { OpError, runOp, type OpContext } from "@/lib/venue/engine";
 import { MemoryStore } from "@/lib/venue/memory-store";
 import { type Doc, type Payment, type Table } from "@/lib/venue/model";
-import { kitchenReport, publicOrder, type DayStat, type FullOrder, type OnlineItem } from "@/lib/venue/online";
+import { DEFAULT_MENU_STYLE, menuStyle, menuTokens, onColor } from "@/lib/venue/menu-style";
+import { kitchenReport, onlineSettings, publicOrder, type DayStat, type FullOrder, type OnlineItem } from "@/lib/venue/online";
 
 const OWNER = "00000000-0000-4000-8000-0000000000aa";
 const COOK = "00000000-0000-4000-8000-0000000000cc";
@@ -158,5 +159,36 @@ describe("Restaurant en ligne : statistiques et rapport", () => {
     expect(r.orders).toBe(1);
     expect(r.qr).toBe(1);
     expect(r.topItems[0]).toEqual({ label: "Poulet braisé", qty: 1 });
+  });
+});
+
+describe("Restaurant en ligne : apparence du menu", () => {
+  const style = { theme: "nuit", accent: "#e11d48", layout: "grille", font: "elegant", animation: "rebond", corners: "ronds" };
+  it("le gérant enregistre thème, couleur, disposition, police, animation et couverture", async () => {
+    const { store, own } = setup();
+    await own("online.style", { ...style, cover: "data:image/jpeg;base64,AAAA" });
+    const saved = menuStyle(onlineSettings(store.data.settings[0]!.data as never).style);
+    expect(saved).toEqual({ ...style, cover: "data:image/jpeg;base64,AAAA" });
+    // Sans « cover », la couverture existante est conservée ; null la retire.
+    await own("online.style", { ...style, layout: "cartes" });
+    expect(menuStyle(onlineSettings(store.data.settings[0]!.data as never).style)).toMatchObject({ layout: "cartes", cover: "data:image/jpeg;base64,AAAA" });
+    await own("online.style", { ...style, cover: null });
+    expect(menuStyle(onlineSettings(store.data.settings[0]!.data as never).style).cover).toBeNull();
+  });
+
+  it("refuse un thème inconnu, une couleur invalide, et un employé sans droit de paramétrage", async () => {
+    const { own, staff, pub } = setup();
+    await expect(own("online.style", { ...style, theme: "pirate" })).rejects.toBeTruthy();
+    await expect(own("online.style", { ...style, accent: "red; background:url(x)" })).rejects.toBeTruthy();
+    await expect(runOp(pub, "online.style", style)).rejects.toBeInstanceOf(OpError);
+    await expect(runOp({ ...staff("employee", WAITER), perms: ["caisse"] }, "online.style", style)).rejects.toMatchObject({ status: 403 });
+  });
+
+  it("un ancien menu sans réglage garde l'apparence par défaut, avec un texte lisible sur la couleur", () => {
+    expect(menuStyle(undefined)).toEqual(DEFAULT_MENU_STYLE);
+    expect(menuStyle({ theme: "inconnu", accent: "bleu" })).toMatchObject({ theme: "clair", accent: null });
+    expect(onColor("#d4af37")).toBe("#111111");
+    expect(onColor("#2563eb")).toBe("#ffffff");
+    expect(menuTokens(DEFAULT_MENU_STYLE, "#7c3aed").accent).toBe("#7c3aed");
   });
 });

@@ -9,6 +9,7 @@
  * - le menu public n'expose aucune donnée privée (coûts, recettes, stock, équipe, clients).
  */
 
+import { DEFAULT_MENU_STYLE, type MenuStyle } from "./menu-style";
 import { inPeriod, type Doc, type MenuItem, type Order, type Period } from "./model";
 
 export const minutesSince = (iso: string, now = new Date()) => Math.max(0, (now.getTime() - Date.parse(iso)) / 60_000);
@@ -30,8 +31,10 @@ export type OnlineSettings = {
   /** Jeton du QR code du menu général (null = pas encore généré) et son état. */
   menu_token: string | null;
   menu_qr_active: boolean;
+  /** Apparence du menu public (voir menu-style.ts). */
+  style: MenuStyle;
 };
-export const DEFAULT_ONLINE: OnlineSettings = { published: false, ordering: true, pay_counter: true, kitchen_after_payment: false, welcome: "", logo: null, menu_token: null, menu_qr_active: true };
+export const DEFAULT_ONLINE: OnlineSettings = { published: false, ordering: true, pay_counter: true, kitchen_after_payment: false, welcome: "", logo: null, menu_token: null, menu_qr_active: true, style: DEFAULT_MENU_STYLE };
 export function onlineSettings(s: { online?: Partial<OnlineSettings> } | undefined): OnlineSettings {
   return { ...DEFAULT_ONLINE, ...(s?.online ?? {}) };
 }

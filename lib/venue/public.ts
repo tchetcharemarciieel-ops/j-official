@@ -6,6 +6,7 @@ import { runOp, type OpContext } from "./engine";
 import { type Doc, type Settings, type Table, type VenueKind } from "./model";
 import { itemAvailable, onlineSettings, publicOrder, type FullOrder, type OnlineItem } from "./online";
 import { SupabaseStore } from "./supabase-store";
+import { menuStyle } from "./menu-style";
 
 /**
  * Accès public au restaurant (menu par QR code, commande, suivi). Aucune session client :
@@ -72,7 +73,7 @@ export async function publicMenu(p: PublicCtx, tableToken: string | null, menuTo
     .filter((m) => m.data.active)
     .map((m) => ({ id: m.id, name: m.data.name, category: m.data.category, price: m.data.price, description: m.data.description ?? "", photo: m.data.photo ?? null, options: (m.data.options ?? []).map((x) => ({ id: x.id, name: x.name, price: x.price })), available: itemAvailable(m.data) }));
   return {
-    restaurant: { name: p.name, slug: p.project.slug, primary: p.primary, logo: o.logo, welcome: o.welcome },
+    restaurant: { name: p.name, slug: p.project.slug, primary: p.primary, logo: o.logo, welcome: o.welcome, style: menuStyle(o.style) },
     published: o.published,
     ordering: o.published && o.ordering,
     payments: { counter: o.pay_counter || p.demo, aletchcard: false, demo: p.demo },

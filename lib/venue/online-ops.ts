@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MENU_ANIMATIONS, MENU_CORNERS, MENU_FONTS, MENU_LAYOUTS, MENU_THEMES, menuStyle, type MenuAnimation, type MenuCorners, type MenuFont, type MenuLayout, type MenuTheme } from "./menu-style";
 import { LEVEL, orderTotal, today, type Doc, type HistoryEntry, type MenuItem, type Order, type Payment, type Staff, type Table, type VenueRole } from "./model";
 import { itemAvailable, onlineSettings, type DayStat, type FullOrder, type OnlineItem } from "./online";
 import { hashToken, type Kit } from "./vision-ops";
@@ -75,6 +76,27 @@ export function onlineOps(k: OnlineKit) {
       if (i.ordering && !i.pay_counter && !ctx.demo) k.fail(422, "Activez au moins un moyen de paiement : le paiement ALETCHCARD n'est pas encore intégré.");
       await k.saveSettings(ctx, (s) => ({ ...s, online: { ...onlineSettings(s), ...i, logo: i.logo === undefined ? onlineSettings(s).logo : i.logo } }));
       return k.ok(i.published ? "Menu en ligne publié." : "Menu en ligne enregistré (non publié).");
+    },
+
+    async "online.style"(ctx: OpContext, raw: unknown) {
+      k.need(ctx, 2, "l'apparence du menu en ligne");
+      const i = z
+        .object({
+          theme: z.enum(Object.keys(MENU_THEMES) as [MenuTheme, ...MenuTheme[]]),
+          accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable(),
+          layout: z.enum(Object.keys(MENU_LAYOUTS) as [MenuLayout, ...MenuLayout[]]),
+          font: z.enum(Object.keys(MENU_FONTS) as [MenuFont, ...MenuFont[]]),
+          animation: z.enum(Object.keys(MENU_ANIMATIONS) as [MenuAnimation, ...MenuAnimation[]]),
+          corners: z.enum(Object.keys(MENU_CORNERS) as [MenuCorners, ...MenuCorners[]]),
+          cover: imageData(400_000).optional(),
+        })
+        .parse(raw);
+      await k.saveSettings(ctx, (s) => {
+        const cur = onlineSettings(s);
+        const prev = menuStyle(cur.style);
+        return { ...s, online: { ...cur, style: menuStyle({ ...i, cover: i.cover === undefined ? prev.cover : i.cover }) } };
+      });
+      return k.ok("Apparence du menu enregistrée.");
     },
 
     async "online.item"(ctx: OpContext, raw: unknown) {

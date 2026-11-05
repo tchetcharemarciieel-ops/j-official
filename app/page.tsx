@@ -57,7 +57,7 @@ const FAQ = [
   { q: "Qui peut accéder à mes données ?", a: "Seules les personnes que vous invitez, avec le rôle que vous choisissez. Les données de chaque entreprise sont séparées et chaque action est vérifiée sur le serveur." },
   { q: "Puis-je modifier mon logiciel après sa création ?", a: "Oui, par l'assistant intégré ou dans les paramètres (couleurs, logo, textes). Chaque modification crée une nouvelle version testée. Vos données sont conservées et vous pouvez revenir à une version précédente." },
   { q: "Puis-je importer mes fichiers Excel ?", a: "Oui. Vous pouvez importer un fichier Excel ou CSV : les colonnes sont associées aux champs de votre logiciel et les lignes en erreur vous sont signalées." },
-  { q: "Combien coûte la création ?", a: `La formule Découverte est gratuite, avec des crédits limités et sans publication. Une analyse coûte ${CREDIT_COSTS.diagnose} crédits et une modification ${CREDIT_COSTS.modify} crédits. Les formules payantes sont affichées en FCFA dans la section Tarifs.` },
+  { q: "Combien coûte la création ?", a: `La formule Découverte est gratuite, avec des crédits limités et sans publication. Une analyse coûte ${CREDIT_COSTS.diagnose} crédits et une modification ${CREDIT_COSTS.modify} crédits. Les formules payantes, en FCFA, sont présentées dans votre espace (rubrique Abonnement).` },
   { q: "Comment se passe le paiement ?", a: "Le paiement en ligne n'est pas encore disponible : aucun prélèvement n'est effectué. Le passage à une formule payante se fait avec l'équipe MiniSoft RCA et peut être arrêté à tout moment." },
   { q: "Que se passe-t-il si la création échoue ?", a: "Les crédits réservés sont remboursés, l'erreur est expliquée et des corrections automatiques sont proposées lorsque c'est possible." },
 ];
@@ -244,47 +244,6 @@ export default async function Home() {
                 </Reveal>
               ))}
             </ul>
-          </div>
-        </section>
-
-        {/* Tarifs */}
-        <section id="tarifs" className="scroll-mt-20 bg-slate-100 px-4 py-20 sm:px-6">
-          <div className="mx-auto max-w-7xl">
-            <SectionTitle eyebrow="Tarifs" title="Des formules claires, en FCFA" text="Prix mensuels en francs CFA. Les crédits servent à l'analyse et aux modifications ; une opération échouée est remboursée." />
-            {STATIC_SITE && <p className="mx-auto mt-6 max-w-2xl rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-center text-sm text-blue-800">Les comptes et les formules ouvriront avec la version complète. En attendant, la démonstration est gratuite et sans inscription.</p>}
-            <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {plans.map((p, i) => (
-                <Reveal key={p.id} delay={i * 60} className={`flex flex-col rounded-xl border bg-white p-6 ${p.id === "pro" ? "border-blue-600 ring-1 ring-blue-600" : "border-slate-200"}`}>
-                  {p.id === "pro" && <span className="mb-3 self-start rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">Recommandée</span>}
-                  <h3 className="text-xl font-semibold text-slate-900">{p.name}</h3>
-                  <p className="mt-1 text-sm text-slate-600">{p.description}</p>
-                  <p className="mt-5 text-3xl font-bold text-slate-900">
-                    {p.price_xaf === 0 ? "Gratuit" : xaf(p.price_xaf)}
-                    {p.price_xaf > 0 && <span className="text-sm font-normal text-slate-500"> / mois</span>}
-                  </p>
-                  <ul className="mt-5 flex-1 space-y-2.5 text-sm text-slate-700">
-                    {[
-                      `${p.monthly_credits} crédits par mois`,
-                      `${p.max_projects} logiciel${p.max_projects > 1 ? "s" : ""}`,
-                      `${p.max_members} utilisateur${p.max_members > 1 ? "s" : ""} par logiciel`,
-                      p.can_publish ? "Publication avec lien permanent" : "Aperçu uniquement, sans publication",
-                      "Tests, versions et exports",
-                    ].map((t) => (
-                      <li key={t} className="flex gap-2">
-                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-600" aria-hidden />
-                        {t}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link href={siteHref(p.price_xaf === 0 ? "/inscription" : "/espace/abonnement")} className={`btn mt-6 ${p.id === "pro" ? "btn-primary" : "btn-ghost"}`}>
-                    {p.price_xaf === 0 ? "Commencer gratuitement" : "Choisir cette formule"}
-                  </Link>
-                </Reveal>
-              ))}
-            </div>
-            <p className="mx-auto mt-6 max-w-3xl text-center text-xs leading-relaxed text-slate-500">
-              Coût des opérations : analyse {CREDIT_COSTS.diagnose} crédits, modification {CREDIT_COSTS.modify} crédits, question à l&apos;assistant {CREDIT_COSTS.ask} crédit. Le paiement en ligne n&apos;est pas encore activé : aucun prélèvement n&apos;est effectué sans votre accord.
-            </p>
           </div>
         </section>
 

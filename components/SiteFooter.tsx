@@ -29,7 +29,6 @@ export async function SiteFooter() {
             <li><Link href={siteHref("/creer")} className="hover:text-blue-600">Créer un logiciel</Link></li>
             <li><Link href="/modeles" className="hover:text-blue-600">Modèles de logiciels</Link></li>
             <li><Link href="/demo" className="hover:text-blue-600">Démonstration sans compte</Link></li>
-            <li><Link href="/#tarifs" className="hover:text-blue-600">Tarifs</Link></li>
           </ul>
         </div>
         <div>
@@ -70,7 +69,9 @@ export async function SiteFooter() {
       <nav aria-label="Logiciels par secteur" className="mx-auto max-w-7xl border-t border-slate-200 px-4 py-8 sm:px-6">
         <h2 className="text-sm font-semibold text-slate-900">Logiciels par secteur</h2>
         <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-600">
-          {SECTOR_PAGES.filter((p) => !templates.disabled.includes(p.slug)).map((p) => <li key={p.slug}><Link href={`/secteurs/${p.slug}`} className="hover:text-blue-600">{p.seoTitle.replace(/ en FCFA$/, "")}</Link></li>)}
+          {/* Quelques exemples seulement, puis « etc. » vers tous les modèles. */}
+          {SECTOR_PAGES.filter((p) => !templates.disabled.includes(p.slug)).slice(0, 4).map((p) => <li key={p.slug}><Link href={`/secteurs/${p.slug}`} className="hover:text-blue-600">{p.template.name}</Link></li>)}
+          <li><Link href="/modeles" className="font-medium text-blue-700 hover:text-blue-600">etc.</Link></li>
         </ul>
       </nav>
       <p className="border-t border-slate-200 px-4 py-6 text-center text-xs text-slate-500">© {new Date().getFullYear()} {branding.name} · Prix en francs CFA (XAF)</p>

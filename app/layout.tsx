@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/Toaster";
 import { PwaRegister } from "@/components/PwaRegister";
-import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { SITE_URL } from "@/lib/config";
 import { getSite } from "@/lib/site";
 
@@ -48,7 +47,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           Aller au contenu
         </a>
         <Toaster>{children}</Toaster>
-        <WhatsAppButton />
         <PwaRegister />
       </body>
     </html>

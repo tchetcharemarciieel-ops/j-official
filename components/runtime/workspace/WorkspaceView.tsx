@@ -84,7 +84,6 @@ type Props = {
 export function WorkspaceView({ projectId, spec, ws, mode, role, readable, records, loading, reload, prefs, savePrefs, onOpen, onClassic, perms = null }: Props) {
   const myPerms = perms as Permission[] | null;
   const [members, setMembers] = useState<CrewMember[]>([]);
-  const [teamError, setTeamError] = useState(false);
   const [gl, setGl] = useState<{ ok: boolean; low: boolean } | null>(null);
   const [crashed, setCrashed] = useState(false);
 
@@ -140,7 +139,7 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
     let alive = true;
     api<{ members: CrewMember[] }>(`/api/apps/${projectId}/team`)
       .then((r) => alive && setMembers(r.members))
-      .catch(() => alive && setTeamError(true));
+      .catch(() => undefined);
     return () => {
       alive = false;
     };
@@ -337,24 +336,6 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
           </section>
           )}
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-4" aria-labelledby="ws-equipe">
-            <h3 id="ws-equipe" className="text-sm font-semibold">Équipe</h3>
-            {teamError ? (
-              <p className="mt-2 text-sm text-slate-500">Équipe non chargée.</p>
-            ) : members.length === 0 ? (
-              <p className="mt-2 text-sm text-slate-500">Aucun membre.</p>
-            ) : (
-              <ul className="mt-2 space-y-1.5">
-                {members.map((m) => (
-                  <li key={m.id} className="flex items-center gap-2 text-sm">
-                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-[10px] font-bold text-white" style={{ background: ROLE_COLORS[m.role] ?? "#334155" }}>{m.name.slice(0, 1).toUpperCase()}</span>
-                    <span className="min-w-0 flex-1 truncate">{m.name}</span>
-                    <span className="text-xs text-slate-500">{m.demo ? "démo" : ROLE_LABELS[m.role]}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
         </aside>
       </div>
       )}

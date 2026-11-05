@@ -29,6 +29,7 @@ export const ZONE_PERMS: Record<string, Permission[]> = {
 /** Fonctions d'une zone qui demandent une permission plus précise que la zone elle-même. */
 export const OPTION_PERMS: Record<string, Permission[]> = {
   "caisse:commande": P("caisse"),
+  "caisse:carte": P("parametres", "caisse"),
   "caisse:paiement": P("caisse"),
   "caisse:recus": P("caisse"),
   "caisse:rapport": P("caisse", "rapports"),

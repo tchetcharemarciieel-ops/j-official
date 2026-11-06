@@ -76,10 +76,18 @@ export const FONT_STACKS: Record<MenuFont, string> = {
 };
 export const RADIUS: Record<MenuCorners, string> = { doux: "16px", ronds: "26px", carres: "4px" };
 
+/** La couleur se distingue-t-elle assez du fond et des cartes du thème (boutons, prix, catégories) ? */
+export function accentVisible(hex: string, theme: MenuTheme) {
+  const t = MENU_THEMES[theme];
+  return contrast(hex, t.surface) >= 1.8 && contrast(hex, t.bg) >= 1.8;
+}
+
 /** Variables CSS du menu public (couleurs, police, coins). */
 export function menuTokens(style: MenuStyle, fallbackAccent?: string) {
   const t = MENU_THEMES[style.theme];
-  const accent = style.accent ?? (style.theme === "clair" && fallbackAccent && HEX.test(fallbackAccent) ? fallbackAccent : t.accent);
+  const wanted = style.accent ?? (style.theme === "clair" && fallbackAccent && HEX.test(fallbackAccent) ? fallbackAccent : t.accent);
+  // Une couleur trop proche du fond rendrait les boutons invisibles : on garde celle du thème.
+  const accent = accentVisible(wanted, style.theme) ? wanted : t.accent;
   return {
     accent,
     vars: {

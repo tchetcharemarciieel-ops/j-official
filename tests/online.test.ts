@@ -190,5 +190,8 @@ describe("Restaurant en ligne : apparence du menu", () => {
     expect(onColor("#d4af37")).toBe("#111111");
     expect(onColor("#2563eb")).toBe("#ffffff");
     expect(menuTokens(DEFAULT_MENU_STYLE, "#7c3aed").accent).toBe("#7c3aed");
+    // Bleu nuit sur le thème Nuit : boutons invisibles, on garde la couleur du thème.
+    expect(menuTokens({ ...DEFAULT_MENU_STYLE, theme: "nuit", accent: "#0f172a" }).accent).toBe("#f59e0b");
+    expect(menuTokens({ ...DEFAULT_MENU_STYLE, theme: "nuit", accent: "#e11d48" }).accent).toBe("#e11d48");
   });
 });

@@ -12,6 +12,7 @@ import {
   MENU_FONTS,
   MENU_LAYOUTS,
   MENU_THEMES,
+  accentVisible,
   menuStyle,
   menuTokens,
   onColor,
@@ -82,6 +83,7 @@ export function MenuStyleEditor() {
               </label>
               {s.accent && mgr && <button type="button" onClick={() => set({ accent: null })} className="text-xs text-slate-500 underline">Couleur du thème</button>}
             </div>
+            {s.accent && !accentVisible(s.accent, s.theme) && <p role="alert" className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">Cette couleur est trop proche du fond du thème « {MENU_THEMES[s.theme].label} » : les boutons seraient invisibles. Le menu utilise donc la couleur du thème. Choisissez une couleur plus claire ou plus vive.</p>}
           </Group>
 
           <Group label="Disposition des plats">

@@ -90,6 +90,10 @@ export type OpContext = {
   public?: boolean;
   /** Permissions du poste de l'employé (null ou absent = droits du rôle, sans restriction de poste). */
   perms?: Permission[] | null;
+  /** Le restaurant propose le paiement ZingoPay (clé enregistrée et active, vérifié par le serveur). */
+  zingopay?: boolean;
+  /** Appel interne du serveur après vérification du statut auprès de ZingoPay (jamais un client). */
+  internal?: "zingopay";
 };
 export type Effect = { type: "order_ready"; orderId: string; number: string; where: string } | { type: "temp_alert"; value: number; reason: string } | { type: "new_order"; orderId: string; number: string } | { type: "vision_alert"; table: string; minutes: number; kind: string };
 /** `secret` : valeur à montrer une seule fois (clé de passerelle), jamais enregistrée en clair. */

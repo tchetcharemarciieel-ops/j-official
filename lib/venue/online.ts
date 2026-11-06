@@ -55,7 +55,9 @@ export type OnlineOrderFields = {
   /** Jeton secret du lien de suivi (jamais devinable, jamais affiché à l'équipe en clair). */
   tracking_token?: string;
   /** Mode de paiement choisi par le client. */
-  pay_mode?: "caisse" | "aletchcard" | "demo";
+  pay_mode?: "caisse" | "aletchcard" | "demo" | "zingopay";
+  /** Paiement ZingoPay créé pour cette commande (montant exact) ; « paid » n'est écrit qu'après vérification. */
+  zp?: { id: string; pay_url: string; status: string; expires_at: string | null; mode: "test" | "live" } | null;
   /** En attente du paiement avant d'être envoyée en cuisine. */
   held?: boolean;
   sent_at?: string | null;
@@ -89,6 +91,8 @@ export function publicOrder(o: Doc<FullOrder>, table: string | null) {
     paid: d.pay_status === "paye",
     pay_mode: d.pay_mode ?? "caisse",
     held: Boolean(d.held),
+    // Lien de paiement ZingoPay (montant exact) tant que la commande n'est pas payée.
+    zingopay: d.pay_mode === "zingopay" && d.zp && d.pay_status !== "paye" && d.status !== "annulee" ? { pay_url: d.zp.pay_url, expires_at: d.zp.expires_at, test: d.zp.mode === "test" } : null,
     steps: {
       recue: o.created_at,
       payee: d.pay_status === "paye" ? (hist("payee") ?? o.updated_at) : null,

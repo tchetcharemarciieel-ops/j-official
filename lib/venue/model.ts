@@ -294,8 +294,8 @@ export type Payment = {
   reference: string;
   /** « echoue » et « rembourse » : renvoyés par un prestataire de paiement (ALETCHCARD), jamais déduits. */
   status: "en_attente" | "confirme" | "annule" | "echoue" | "rembourse";
-  /** Prestataire : absent = saisi par l'équipe ; « demo » = paiement de démonstration (jamais réel). */
-  provider?: "aletchcard" | "demo";
+  /** Prestataire : absent = saisi par l'équipe ; « demo » = paiement de démonstration (jamais réel) ; « zingopay » = vérifié auprès de ZingoPay. */
+  provider?: "aletchcard" | "demo" | "zingopay";
   receipt_no: string | null;
   at: string;
   confirmed_at: string | null;

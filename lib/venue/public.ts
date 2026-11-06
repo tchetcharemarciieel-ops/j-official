@@ -7,6 +7,7 @@ import { type Doc, type Settings, type Table, type VenueKind } from "./model";
 import { itemAvailable, onlineSettings, publicOrder, type FullOrder, type OnlineItem } from "./online";
 import { SupabaseStore } from "./supabase-store";
 import { menuStyle } from "./menu-style";
+import { zpConfig, type ZpConfig } from "../zingopay";
 
 /**
  * Accès public au restaurant (menu par QR code, commande, suivi). Aucune session client :
@@ -26,7 +27,7 @@ export function limited(key: string, max: number) {
 }
 export const clientIp = (req: Request) => req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "inconnue";
 
-export type PublicCtx = { project: ProjectRow; kind: VenueKind; demo: boolean; store: SupabaseStore; name: string; primary: string };
+export type PublicCtx = { project: ProjectRow; kind: VenueKind; demo: boolean; store: SupabaseStore; name: string; primary: string; zp: ZpConfig | null };
 
 /**
  * Restaurant par son adresse publique. `demo` : l'aperçu de test (données de démonstration),
@@ -47,11 +48,33 @@ export async function publicRestaurant(slug: string, wantDemo: boolean): Promise
   const spec = demo ? (draftSpec(project) ?? publishedSpec(project)) : publishedSpec(project);
   const layout = spec ? effectiveWorkspace(spec).layout : null;
   if (!spec || (layout !== "restaurant" && layout !== "hotel")) throw new HttpError(404, "Ce logiciel n'a pas de menu en ligne.");
-  return { project, kind: layout, demo, store: new SupabaseStore(project.id, demo, project.owner_id), name: spec.name || project.name, primary: spec.theme.primary };
+  const zp = await zpConfig(project.id).catch(() => null);
+  return { project, kind: layout, demo, store: new SupabaseStore(project.id, demo, project.owner_id), name: spec.name || project.name, primary: spec.theme.primary, zp: zp?.enabled ? zp : null };
+}
+
+/**
+ * Restaurant pour un appel serveur à serveur (notification ZingoPay) : aucune session ; le jeu de
+ * données (réel ou démonstration) vient de la référence du paiement, vérifiée auprès de ZingoPay.
+ */
+export async function serverRestaurant(slug: string, demo: boolean): Promise<PublicCtx> {
+  if (!/^[a-z0-9][a-z0-9-]{2,60}$/.test(slug)) throw new HttpError(404, "Restaurant introuvable.");
+  const { data } = await adminClient().from("projects").select("*").eq("slug", slug).maybeSingle();
+  const project = data as ProjectRow | null;
+  if (!project) throw new HttpError(404, "Restaurant introuvable.");
+  const spec = publishedSpec(project) ?? draftSpec(project);
+  const layout = spec ? effectiveWorkspace(spec).layout : null;
+  if (!spec || (layout !== "restaurant" && layout !== "hotel")) throw new HttpError(404, "Ce logiciel n'a pas de menu en ligne.");
+  const zp = await zpConfig(project.id).catch(() => null);
+  return { project, kind: layout, demo, store: new SupabaseStore(project.id, demo, project.owner_id), name: spec.name || project.name, primary: spec.theme.primary, zp };
+}
+
+/** Contexte interne : écrit au nom du propriétaire, seulement après vérification auprès de ZingoPay. */
+export function zpInternalCtx(p: PublicCtx): OpContext {
+  return { ...publicCtx(p), internal: "zingopay" };
 }
 
 export function publicCtx(p: PublicCtx): OpContext {
-  return { store: p.store, actor: { id: p.project.owner_id, role: "employee" }, members: [], kind: p.kind, public: true, demo: p.demo };
+  return { store: p.store, actor: { id: p.project.owner_id, role: "employee" }, members: [], kind: p.kind, public: true, demo: p.demo, zingopay: Boolean(p.zp) };
 }
 
 /** Menu public : plats disponibles et informations visibles par tous, rien d'autre. */
@@ -76,7 +99,7 @@ export async function publicMenu(p: PublicCtx, tableToken: string | null, menuTo
     restaurant: { name: p.name, slug: p.project.slug, primary: p.primary, logo: o.logo, welcome: o.welcome, style: menuStyle(o.style) },
     published: o.published,
     ordering: o.published && o.ordering,
-    payments: { counter: o.pay_counter || p.demo, aletchcard: false, demo: p.demo },
+    payments: { counter: o.pay_counter || p.demo, aletchcard: false, zingopay: Boolean(p.zp), zingopayTest: p.zp?.mode === "test", demo: p.demo },
     kitchenAfterPayment: o.kitchen_after_payment,
     demo: p.demo,
     table,

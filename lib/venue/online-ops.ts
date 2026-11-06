@@ -167,13 +167,14 @@ export function onlineOps(k: OnlineKit) {
           lines: z.array(z.object({ menu_id: id, qty: z.coerce.number().int().min(1).max(50), options: z.array(z.string().max(64)).max(15).default([]), note: z.string().trim().max(200).default("") })).min(1, "Votre panier est vide.").max(40),
           note: z.string().trim().max(300).default(""),
           customer: z.string().trim().max(60).default(""),
-          pay: z.enum(["caisse", "aletchcard", "demo"]),
+          pay: z.enum(["caisse", "aletchcard", "demo", "zingopay"]),
           idem,
         })
         .parse(raw);
       const o = onlineSettings((await k.settings(ctx)).data);
       if (!o.published || !o.ordering) k.fail(409, "La commande en ligne n'est pas ouverte pour le moment : adressez-vous au serveur.");
       if (i.pay === "aletchcard") k.fail(503, "Le paiement ALETCHCARD n'est pas encore disponible : choisissez « Payer à la caisse ».");
+      if (i.pay === "zingopay" && !ctx.zingopay) k.fail(409, "Le paiement ZingoPay n'est pas activé par ce restaurant : choisissez « Payer à la caisse ».");
       if (i.pay === "demo" && !ctx.demo) k.fail(403, "Le paiement de démonstration n'existe que dans le mode démonstration.");
       if (i.pay === "caisse" && !o.pay_counter && !ctx.demo) k.fail(409, "Le paiement à la caisse n'est pas proposé.");
       const same = ((await ctx.store.list("order")) as Doc<FullOrder>[]).find((x) => x.data.idem === `qr:${i.idem}`);
@@ -240,6 +241,35 @@ export function onlineOps(k: OnlineKit) {
       if (!(await k.findBy<Payment>(ctx, "payment", (x) => x.idem === p.idem))) await ctx.store.insert("payment", p);
       await k.refreshOrderPay(ctx, o!.id);
       return k.ok("Paiement de démonstration confirmé.");
+    },
+
+    /** Interne : rattache le paiement ZingoPay créé par le serveur à la commande. */
+    async "online.zp_attach"(ctx: OpContext, raw: unknown) {
+      if (ctx.internal !== "zingopay") k.fail(403, "Opération réservée au serveur.");
+      const i = z.object({ order_id: id, zp: z.object({ id: z.string().min(1).max(80), pay_url: z.string().url().max(300), status: z.string().max(20), expires_at: z.string().max(40).nullable(), mode: z.enum(["test", "live"]) }) }).parse(raw);
+      await k.mutate<FullOrder>(ctx, "order", i.order_id, "Commande", (o) => ({ ...o, zp: i.zp }));
+      return k.ok("Paiement ZingoPay créé.");
+    },
+
+    /**
+     * Interne : paiement confirmé par ZingoPay. N'est appelé qu'après une lecture du statut
+     * auprès de ZingoPay avec la clé du restaurant (status « paid », même référence, même montant).
+     */
+    async "online.zp_paid"(ctx: OpContext, raw: unknown) {
+      if (ctx.internal !== "zingopay") k.fail(403, "Opération réservée au serveur.");
+      const i = z.object({ order_id: id, payment_id: z.string().min(1).max(80), amount: z.number().int().min(1), receipt: z.string().max(120).nullable(), paid_at: z.string().max(40).nullable() }).parse(raw);
+      const o = (await ctx.store.get("order", i.order_id)) as Doc<FullOrder> | null;
+      if (!o) k.fail(404, "Commande introuvable.");
+      if (o!.data.zp?.id !== i.payment_id) k.fail(409, "Ce paiement ZingoPay ne correspond pas à la commande.");
+      if (i.amount !== o!.data.total) k.fail(409, "Montant ZingoPay différent du total de la commande : à vérifier par l'équipe.");
+      const idemKey = `zp:${i.payment_id}`;
+      if (!(await k.findBy<Payment>(ctx, "payment", (x) => x.idem === idemKey))) {
+        const p: Payment = { target: "order", target_id: o!.id, amount: i.amount, method: "mobile_money", tendered: null, change: null, reference: `ZingoPay${o!.data.zp?.mode === "test" ? " (démonstration, argent fictif)" : ""}${i.receipt ? ` · reçu ${i.receipt}` : ""}`, status: "confirme", provider: "zingopay", receipt_no: await k.number(ctx, "REC"), at: i.paid_at ?? k.nowIso(ctx), confirmed_at: k.nowIso(ctx), by: ctx.actor.id, idem: idemKey };
+        await ctx.store.insert("payment", p);
+      }
+      await k.mutate<FullOrder>(ctx, "order", o!.id, "Commande", (x) => (x.zp ? { ...x, zp: { ...x.zp, status: "paid" } } : null)).catch(() => undefined);
+      await k.refreshOrderPay(ctx, o!.id);
+      return k.ok("Paiement ZingoPay confirmé.");
     },
 
     // ----- Écran cuisine -----

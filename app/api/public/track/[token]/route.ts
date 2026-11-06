@@ -4,6 +4,10 @@ import { readJson, route } from "@/lib/api";
 import { HttpError } from "@/lib/access";
 import { OpError } from "@/lib/venue/engine";
 import { clientIp, limited, publicCtx, publicRestaurant, runOp, trackOrder } from "@/lib/venue/public";
+import { startZpPayment, verifyZpOrder } from "@/lib/venue/zp-flow";
+import { ZpError } from "@/lib/zingopay";
+import type { Doc } from "@/lib/venue/model";
+import type { FullOrder } from "@/lib/venue/online";
 
 type Ctx = { params: Promise<{ token: string }> };
 
@@ -18,16 +22,30 @@ export const GET = route(async (req, { params }: Ctx) => {
   return NextResponse.json({ order, restaurant: { name: p.name, primary: p.primary }, demo: p.demo }, { headers: { "cache-control": "no-store" } });
 });
 
-/** Mode démonstration uniquement : simule la confirmation officielle du paiement. */
+/**
+ * Actions du client sur sa commande :
+ * - demo_pay : mode démonstration uniquement, simule la confirmation du paiement ;
+ * - zp_start : (re)crée le lien de paiement ZingoPay au montant exact ;
+ * - zp_check : relit le statut chez ZingoPay ; la commande n'est payée que si ZingoPay le confirme.
+ */
 export const POST = route(async (req, { params }: Ctx) => {
   const { token } = await params;
-  const input = z.object({ action: z.literal("demo_pay"), r: z.string().max(70) }).parse(await readJson(req, 2_000));
-  const p = await publicRestaurant(input.r, true);
+  const input = z.object({ action: z.enum(["demo_pay", "zp_start", "zp_check"]), r: z.string().max(70), demo: z.boolean().optional() }).parse(await readJson(req, 2_000));
+  if (limited(`track-${input.action}:${clientIp(req)}`, input.action === "zp_check" ? 30 : 10)) throw new HttpError(429, "Trop de demandes : patientez un instant.");
   try {
-    const r = await runOp(publicCtx(p), "online.demo_pay", { tracking_token: token });
-    return NextResponse.json({ ok: true, message: r.message });
+    if (input.action === "demo_pay") {
+      const p = await publicRestaurant(input.r, true);
+      const r = await runOp(publicCtx(p), "online.demo_pay", { tracking_token: token });
+      return NextResponse.json({ ok: true, message: r.message });
+    }
+    const p = await publicRestaurant(input.r, input.demo === true);
+    if (!/^[A-Za-z0-9_-]{16,64}$/.test(token)) throw new HttpError(404, "Commande introuvable.");
+    const o = ((await p.store.list("order")) as Doc<FullOrder>[]).find((x) => x.data.tracking_token === token);
+    if (!o) throw new HttpError(404, "Commande introuvable.");
+    if (input.action === "zp_start") return NextResponse.json({ ok: true, pay_url: await startZpPayment(p, o.id) });
+    return NextResponse.json({ ok: true, status: await verifyZpOrder(p, o.id) });
   } catch (e) {
-    if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
+    if (e instanceof OpError || e instanceof ZpError) return NextResponse.json({ error: e.message }, { status: e.status >= 400 && e.status < 600 ? e.status : 502 });
     throw e;
   }
 });

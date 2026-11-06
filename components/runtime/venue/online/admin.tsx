@@ -8,6 +8,7 @@ import { onlineSettings, type DayStat, type FullOrder, type OnlineItem } from "@
 import { MenuForm, MenuView, PaymentForm } from "../m-sales";
 import { shrinkImage } from "../image";
 import { MenuStyleEditor } from "./style";
+import { ZingoPayCard } from "./zingopay";
 import { Btn, Card, Empty, Field, inp, isMgr, Modal, Pill, PrintDoc, Stat, Tabs, useV } from "../ui";
 
 const hhmm = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "—");
@@ -55,7 +56,7 @@ export function OnlineMenuAdmin() {
           <Toggle checked={f.ordering} onChange={(x) => setF({ ...f, ordering: x })} disabled={!mgr} label="Commande depuis le téléphone" hint="Sinon, le menu est seulement consultable." />
           <Toggle checked={f.pay_counter} onChange={(x) => setF({ ...f, pay_counter: x })} disabled={!mgr} label="Paiement à la caisse ou au serveur" hint="Espèces ou mobile money, confirmé par l'équipe." />
           <Toggle checked={f.kitchen_after_payment} onChange={(x) => setF({ ...f, kitchen_after_payment: x })} disabled={!mgr} label="Envoyer en cuisine seulement après paiement confirmé" hint="Sinon, la commande arrive en cuisine dès sa validation et se règle ensuite." />
-          <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600"><b>ALETCHCARD</b> : affiché « bientôt disponible ». L&apos;intégration sera faite avec la documentation officielle de l&apos;API ; aucun paiement n&apos;est simulé en dehors du mode test.</p>
+          <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600"><b>Paiement en ligne ZingoPay (ALETCHCARD)</b> : se règle dans la carte « Paiement en ligne ZingoPay » ci-dessous, avec la clé de votre compte. Aucun paiement n&apos;est simulé en dehors du mode test.</p>
           <Field label="Message d'accueil (facultatif)"><input className={inp} maxLength={300} value={f.welcome} onChange={(e) => setF({ ...f, welcome: e.target.value })} disabled={!mgr} placeholder="Ex. : Bienvenue ! Commandez depuis votre table." /></Field>
           <Field label="Logo (menu et centre des QR codes)">
             <div className="flex items-center gap-3">
@@ -72,6 +73,8 @@ export function OnlineMenuAdmin() {
           {mgr && <Btn type="submit" busy={busy}>Enregistrer</Btn>}
         </form>
       </Card>
+
+      {available && <ZingoPayCard />}
 
       <MenuStyleEditor />
 

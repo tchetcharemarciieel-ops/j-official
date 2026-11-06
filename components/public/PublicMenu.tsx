@@ -10,7 +10,7 @@ type Menu = {
   restaurant: { name: string; slug: string; primary: string; logo: string | null; welcome: string; style?: MenuStyle };
   published: boolean;
   ordering: boolean;
-  payments: { counter: boolean; aletchcard: boolean; demo: boolean };
+  payments: { counter: boolean; aletchcard: boolean; zingopay?: boolean; zingopayTest?: boolean; demo: boolean };
   kitchenAfterPayment: boolean;
   demo: boolean;
   table: { number: string } | null;
@@ -224,7 +224,9 @@ export function PublicMenu({ slug, tableToken, menuToken, demo }: { slug: string
             } catch {
               /* rien */
             }
-            router.push(`/r/${slug}/suivi/${b.tracking}?nouveau=1&s=${encodeURIComponent(skey)}${menu.demo ? "&demo=1" : ""}`);
+            const target = `/r/${slug}/suivi/${b.tracking}?nouveau=1&s=${encodeURIComponent(skey)}${menu.demo ? "&demo=1" : ""}${b.pay_error ? `&zperr=${encodeURIComponent(b.pay_error)}` : ""}`;
+            // ZingoPay : la page de suivi affiche « Payer avec ZingoPay » et vérifie le paiement auprès de ZingoPay.
+            router.push(target);
           }}
         />
       )}
@@ -384,10 +386,10 @@ function ItemSheet({ item, primary, ordering, onClose, onAdd }: { item: Item; pr
   );
 }
 
-function CartSheet({ menu, cart, unit, total, primary, onChange, onClose, onOrder }: { menu: Menu; cart: Line[]; unit: (l: Line) => number; total: number; primary: string; onChange: (c: Line[]) => void; onClose: () => void; onOrder: (extra: { note: string; customer: string; pay: "caisse" | "demo"; idem: string }) => Promise<void> }) {
+function CartSheet({ menu, cart, unit, total, primary, onChange, onClose, onOrder }: { menu: Menu; cart: Line[]; unit: (l: Line) => number; total: number; primary: string; onChange: (c: Line[]) => void; onClose: () => void; onOrder: (extra: { note: string; customer: string; pay: "caisse" | "demo" | "zingopay"; idem: string }) => Promise<void> }) {
   const [note, setNote] = useState("");
   const [customer, setCustomer] = useState("");
-  const [pay, setPay] = useState<"caisse" | "demo">(menu.payments.counter ? "caisse" : "demo");
+  const [pay, setPay] = useState<"caisse" | "demo" | "zingopay">(menu.payments.zingopay ? "zingopay" : menu.payments.counter ? "caisse" : "demo");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const idem = useRef(crypto.randomUUID());
@@ -454,7 +456,11 @@ function CartSheet({ menu, cart, unit, total, primary, onChange, onClose, onOrde
         <legend className="mb-1.5 text-sm font-semibold">Paiement</legend>
         <div className="space-y-1.5">
           {menu.payments.counter && <PayChoice checked={pay === "caisse"} onChange={() => setPay("caisse")} title="Payer à la caisse ou au serveur" text="Espèces ou mobile money. Le paiement est confirmé par l'équipe." />}
-          <PayChoice checked={false} disabled title="ALETCHCARD" text="Bientôt disponible : le paiement en ligne n'est pas encore activé." />
+          {menu.payments.zingopay ? (
+            <PayChoice checked={pay === "zingopay"} onChange={() => setPay("zingopay")} title="Payer avec ZingoPay" text={`Paiement en ligne du montant exact avec votre compte ZingoPay. Confirmé automatiquement.${menu.payments.zingopayTest ? " Démonstration : argent fictif." : ""}`} />
+          ) : (
+            <PayChoice checked={false} disabled title="ZingoPay (ALETCHCARD)" text="Paiement en ligne non activé par ce restaurant." />
+          )}
           {menu.payments.demo && <PayChoice checked={pay === "demo"} onChange={() => setPay("demo")} title="Paiement de démonstration" text="Mode test uniquement : aucun argent réel." />}
         </div>
         {menu.kitchenAfterPayment && <p className="mt-2 text-xs m-muted">Votre commande part en cuisine dès que le paiement est confirmé.</p>}

@@ -15,7 +15,7 @@ const NOTIFY: Partial<Record<TrackStep, string>> = { payee: "Paiement confirmé.
  * n'apparaît « confirmé » qu'après la confirmation enregistrée par le restaurant (ou, plus tard,
  * la confirmation officielle d'ALETCHCARD) : jamais d'après une simple redirection.
  */
-export function OrderTracking({ slug, token, demo, fresh, sessionKey }: { slug: string; token: string; demo: boolean; fresh: boolean; sessionKey: string | null }) {
+export function OrderTracking({ slug, token, demo, fresh, sessionKey, payError }: { slug: string; token: string; demo: boolean; fresh: boolean; sessionKey: string | null; payError?: string | null }) {
   const [order, setOrder] = useState<PublicOrder | null>(null);
   const [rest, setRest] = useState<{ name: string; primary: string } | null>(null);
   const [error, setError] = useState("");
@@ -71,6 +71,48 @@ export function OrderTracking({ slug, token, demo, fresh, sessionKey }: { slug: 
       setError(e instanceof Error ? e.message : "Suivi indisponible.");
     }
   }, [url, announce]);
+
+  // ZingoPay : relit le statut chez ZingoPay (par le serveur, avec la clé du restaurant).
+  const isZp = order?.pay_mode === "zingopay" && !order.paid && !order.cancelled;
+  const zpPost = useCallback(async (action: "zp_check" | "zp_start") => {
+    const r = await fetch(`/api/public/track/${token}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action, r: slug, demo }) });
+    const b = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(b.error ?? "ZingoPay est indisponible pour le moment.");
+    return b as { status?: string; pay_url?: string };
+  }, [token, slug, demo]);
+  const [zpMsg, setZpMsg] = useState(payError ?? "");
+  const checkZp = useCallback(async (manual = false) => {
+    try {
+      const r = await zpPost("zp_check");
+      if (r.status === "paid") await load();
+      else if (manual) setZpMsg(r.status === "expired" ? "Le lien de paiement a expiré : touchez « Payer avec ZingoPay » pour en créer un nouveau." : r.status === "cancelled" ? "Ce paiement a été annulé." : "Paiement pas encore reçu par ZingoPay. Si vous venez de payer, patientez quelques secondes.");
+    } catch (e) {
+      if (manual) setZpMsg(e instanceof Error ? e.message : "Vérification impossible.");
+    }
+  }, [zpPost, load]);
+  useEffect(() => {
+    if (!isZp) return;
+    void checkZp();
+    const t = setInterval(() => document.visibilityState === "visible" && void checkZp(), 10_000);
+    const v = () => document.visibilityState === "visible" && void checkZp();
+    document.addEventListener("visibilitychange", v);
+    return () => (clearInterval(t), document.removeEventListener("visibilitychange", v));
+  }, [isZp, checkZp]);
+  const payZp = async () => {
+    setZpMsg("");
+    // Fenêtre ouverte tout de suite (geste de l'utilisateur), puis dirigée vers le lien ZingoPay.
+    const w = window.open("", "_blank");
+    try {
+      const link = order?.zingopay?.pay_url ?? (await zpPost("zp_start")).pay_url;
+      if (!link) throw new Error("Lien de paiement indisponible.");
+      if (w) w.location.href = link;
+      else window.location.href = link;
+      await load();
+    } catch (e) {
+      w?.close();
+      setZpMsg(e instanceof Error ? e.message : "Paiement indisponible : payez à la caisse.");
+    }
+  };
 
   useEffect(() => {
     void load();
@@ -137,10 +179,21 @@ export function OrderTracking({ slug, token, demo, fresh, sessionKey }: { slug: 
             })}
           </ol>
           <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
-            {order.paid ? "Paiement confirmé par le restaurant." : order.pay_mode === "demo" ? "Paiement de démonstration non encore confirmé." : "Paiement à régler à la caisse ou au serveur : il apparaîtra « confirmé » dès que le restaurant l'aura enregistré."}
+            {order.paid ? (order.pay_mode === "zingopay" ? "Paiement ZingoPay confirmé." : "Paiement confirmé par le restaurant.") : order.pay_mode === "zingopay" ? "Paiement ZingoPay en attente : il apparaîtra « confirmé » dès que ZingoPay l'aura reçu." : order.pay_mode === "demo" ? "Paiement de démonstration non encore confirmé." : "Paiement à régler à la caisse ou au serveur : il apparaîtra « confirmé » dès que le restaurant l'aura enregistré."}
             {order.held && !order.paid ? " Votre commande partira en cuisine dès la confirmation du paiement." : ""}
           </p>
-          {demo && !order.paid && !order.cancelled && (
+          {isZp && (
+            <div className="mt-3 space-y-2">
+              {order.zingopay?.test && <p className="text-center text-xs font-semibold text-amber-700">ZingoPay en démonstration : argent fictif</p>}
+              <button type="button" onClick={payZp} className="flex w-full items-center justify-center gap-2 rounded-full bg-[#C9A227] py-3.5 text-base font-extrabold text-[#082567] shadow-md">
+                <CreditCard className="h-5 w-5" aria-hidden />Payer {money(order.total)} avec ZingoPay
+              </button>
+              <button type="button" onClick={() => void checkZp(true)} className="w-full rounded-full border border-slate-300 py-2.5 text-sm font-semibold text-slate-700">J&apos;ai payé : vérifier le paiement</button>
+              {zpMsg && <p role="status" className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-700">{zpMsg}</p>}
+              <p className="text-center text-[11px] text-slate-500">Vous pouvez aussi payer à la caisse ou au serveur.</p>
+            </div>
+          )}
+          {demo && !order.paid && !order.cancelled && order.pay_mode !== "zingopay" && (
             <button type="button" disabled={busy} onClick={async () => { setBusy(true); await fetch(`/api/public/track/${token}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "demo_pay", r: slug }) }); await load(); setBusy(false); }} className="mt-2 w-full rounded-full border-2 border-dashed border-amber-400 bg-amber-50 py-2.5 text-sm font-semibold text-amber-900">
               Simuler la confirmation officielle du paiement (démo)
             </button>

@@ -4,6 +4,8 @@ import { readJson, route } from "@/lib/api";
 import { HttpError } from "@/lib/access";
 import { OpError } from "@/lib/venue/engine";
 import { clientIp, limited, publicCtx, publicMenu, publicRestaurant, runOp } from "@/lib/venue/public";
+import { startZpPayment } from "@/lib/venue/zp-flow";
+import { ZpError } from "@/lib/zingopay";
 
 type Ctx = { params: Promise<{ slug: string }> };
 const tok = z.string().regex(/^[A-Za-z0-9_-]{8,64}$/).nullish();
@@ -39,7 +41,16 @@ export const POST = route(async (req, { params }: Ctx) => {
     }
     const r = await runOp(publicCtx(p), "online.order", input.order);
     if (!r.secret) throw new HttpError(500, "Commande enregistrée sans lien de suivi.");
-    return NextResponse.json({ ok: true, message: r.message, tracking: r.secret, duplicate: Boolean(r.duplicate) });
+    let pay_url: string | null = null;
+    let pay_error: string | null = null;
+    if ((input.order as { pay?: string } | null)?.pay === "zingopay" && r.id) {
+      try {
+        pay_url = await startZpPayment(p, r.id);
+      } catch (e) {
+        pay_error = e instanceof ZpError || e instanceof OpError ? e.message : "Le paiement ZingoPay n'a pas pu être créé.";
+      }
+    }
+    return NextResponse.json({ ok: true, message: r.message, tracking: r.secret, duplicate: Boolean(r.duplicate), pay_url, pay_error });
   } catch (e) {
     if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
     throw e;

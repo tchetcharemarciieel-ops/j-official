@@ -73,7 +73,7 @@ export function onlineOps(k: OnlineKit) {
     async "online.settings"(ctx: OpContext, raw: unknown) {
       k.need(ctx, 2, "la gestion du menu en ligne");
       const i = z.object({ published: z.boolean(), ordering: z.boolean(), pay_counter: z.boolean(), kitchen_after_payment: z.boolean(), welcome: z.string().trim().max(300).default(""), logo: imageData(250_000).optional() }).parse(raw);
-      if (i.ordering && !i.pay_counter && !ctx.demo) k.fail(422, "Activez au moins un moyen de paiement : le paiement ALETCHCARD n'est pas encore intégré.");
+      if (i.ordering && !i.pay_counter && !ctx.demo) k.fail(422, "Gardez le paiement à la caisse activé pour que les clients puissent commander.");
       await k.saveSettings(ctx, (s) => ({ ...s, online: { ...onlineSettings(s), ...i, logo: i.logo === undefined ? onlineSettings(s).logo : i.logo } }));
       return k.ok(i.published ? "Menu en ligne publié." : "Menu en ligne enregistré (non publié).");
     },
@@ -173,7 +173,7 @@ export function onlineOps(k: OnlineKit) {
         .parse(raw);
       const o = onlineSettings((await k.settings(ctx)).data);
       if (!o.published || !o.ordering) k.fail(409, "La commande en ligne n'est pas ouverte pour le moment : adressez-vous au serveur.");
-      if (i.pay === "aletchcard") k.fail(503, "Le paiement ALETCHCARD n'est pas encore disponible : choisissez « Payer à la caisse ».");
+      if (i.pay === "aletchcard") k.fail(503, "Choisissez « Payer avec ZingoPay » ou « Payer à la caisse ».");
       if (i.pay === "zingopay" && !ctx.zingopay) k.fail(409, "Le paiement ZingoPay n'est pas activé par ce restaurant : choisissez « Payer à la caisse ».");
       if (i.pay === "demo" && !ctx.demo) k.fail(403, "Le paiement de démonstration n'existe que dans le mode démonstration.");
       if (i.pay === "caisse" && !o.pay_counter && !ctx.demo) k.fail(409, "Le paiement à la caisse n'est pas proposé.");

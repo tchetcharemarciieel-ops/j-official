@@ -459,7 +459,7 @@ function CartSheet({ menu, cart, unit, total, primary, onChange, onClose, onOrde
           {menu.payments.zingopay ? (
             <PayChoice checked={pay === "zingopay"} onChange={() => setPay("zingopay")} title="Payer avec ZingoPay" text={`Paiement en ligne du montant exact avec votre compte ZingoPay. Confirmé automatiquement.${menu.payments.zingopayTest ? " Démonstration : argent fictif." : ""}`} />
           ) : (
-            <PayChoice checked={false} disabled title="ZingoPay (ALETCHCARD)" text="Paiement en ligne non activé par ce restaurant." />
+            <PayChoice checked={false} disabled title="ZingoPay" text="Paiement en ligne non activé par ce restaurant." />
           )}
           {menu.payments.demo && <PayChoice checked={pay === "demo"} onChange={() => setPay("demo")} title="Paiement de démonstration" text="Mode test uniquement : aucun argent réel." />}
         </div>

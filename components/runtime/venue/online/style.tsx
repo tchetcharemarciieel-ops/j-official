@@ -126,8 +126,7 @@ export function MenuStyleEditor() {
                       if (!f) return;
                       try {
                         setErr("");
-                        let img = await shrinkImage(f, 1200);
-                        if (img.length > 400_000) img = await shrinkImage(f, 800);
+                        const img = await shrinkImage(f, 1200, "image/jpeg", 380_000);
                         set({ cover: img });
                       } catch (x) {
                         setErr(x instanceof Error ? x.message : "Image illisible.");

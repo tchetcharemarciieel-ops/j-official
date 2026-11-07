@@ -131,7 +131,10 @@ export function MenuForm({ item, recipes = false, onClose, defaultCategory }: { 
     const extra = f.description.trim() || f.photo || f.options.some((o) => o.name.trim()) || !f.available || d?.description || d?.photo || d?.options?.length;
     if (extra) {
       const r2 = await act("online.item", { menu_id: r.id, description: f.description.trim(), photo: f.photo, options: f.options.filter((o) => o.name.trim()).map((o) => ({ id: o.id || undefined, name: o.name.trim(), price: parseNum(o.price) ?? 0 })), available: f.available }, { quiet: true });
-      if (!r2) return setBusy(false);
+      if (!r2) {
+        setBusy(false);
+        return setErr("Le plat est enregistré, mais pas sa photo (ou ses options). Réessayez : si le problème continue, choisissez une autre photo.");
+      }
     }
     setBusy(false);
     if (again) {

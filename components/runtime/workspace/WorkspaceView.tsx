@@ -197,7 +197,8 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <div className="inline-flex rounded-xl border border-slate-200 bg-white p-0.5" role="group" aria-label="Type d'affichage">
+          {/* Sur téléphone, 3D / Plan 2D et « Configurer le plan » sont dans la barre du bas. */}
+          <div className="hidden rounded-xl border border-slate-200 bg-white p-0.5 lg:inline-flex" role="group" aria-label="Type d'affichage">
             <button
               type="button"
               onClick={() => savePrefs({ render: "3d" })}
@@ -214,7 +215,7 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
             </button>
           </div>
           {venueKind && venue.state && VENUE_LEVEL[venue.state.role] >= 2 && has(myPerms, "parametres") && !needsSetup && (
-            <button type="button" onClick={() => (setSetupOpen(true), setVZone(null))} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
+            <button type="button" onClick={() => (setSetupOpen(true), setVZone(null))} className="hidden items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 lg:inline-flex">
               <Settings2 className="h-4 w-4" aria-hidden />Configurer le plan
             </button>
           )}

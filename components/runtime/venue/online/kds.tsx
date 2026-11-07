@@ -57,6 +57,8 @@ export function KdsModule({ api, kind, mode, projectId, appName, notify, onClose
 }
 
 type Col = "nouvelles" | "acceptees" | "preparation" | "pretes";
+/** Gros boutons faciles à toucher en cuisine, avec un retour visuel immédiat à l'appui. */
+const BIG = "!min-h-11 !px-3.5 !py-2.5 !text-sm active:scale-95 transition-transform";
 const COLS: { id: Col; label: string; tone: string }[] = [
   { id: "nouvelles", label: "Nouvelles", tone: "border-red-500" },
   { id: "acceptees", label: "Acceptées", tone: "border-amber-400" },
@@ -80,7 +82,30 @@ function Board({ onClose }: { onClose: () => void }) {
   const orders = useMemo(() => (v.data.order as Doc<FullOrder>[]).filter((o) => ["en_attente", "en_preparation", "prete"].includes(o.data.status) && o.data.lines.some((l) => l.kitchen)), [v]);
   const visible = orders.filter((o) => !o.data.held).sort((a, b) => (a.data.sent_at ?? a.created_at).localeCompare(b.data.sent_at ?? b.created_at));
   const held = orders.filter((o) => o.data.held).length;
-  const col = (o: Doc<FullOrder>): Col => (o.data.status === "prete" ? "pretes" : o.data.status === "en_preparation" ? "preparation" : o.data.accepted_at ? "acceptees" : "nouvelles");
+  const realCol = (o: Doc<FullOrder>): Col => (o.data.status === "prete" ? "pretes" : o.data.status === "en_preparation" ? "preparation" : o.data.accepted_at ? "acceptees" : "nouvelles");
+  // Boutons fluides : la carte change de colonne tout de suite, l'enregistrement suit en arrière-plan
+  // (retour en arrière et message d'erreur si le serveur refuse).
+  const [moved, setMoved] = useState<Record<string, Col | "servie">>({});
+  const col = (o: Doc<FullOrder>): Col | "servie" => moved[o.id] ?? realCol(o);
+  const move = async (o: Doc<FullOrder>, to: Col | "servie", steps: [string, unknown][]) => {
+    if (moved[o.id]) return;
+    setMoved((m) => ({ ...m, [o.id]: to }));
+    navigator.vibrate?.(15);
+    let ok = true;
+    for (const [i, [op, input]] of steps.entries()) {
+      const r = await act(op, input, { quiet: i < steps.length - 1 || to !== "servie" });
+      if (!r) {
+        ok = false;
+        break;
+      }
+    }
+    setMoved((m) => {
+      const n = { ...m };
+      delete n[o.id];
+      return n;
+    });
+    return ok;
+  };
 
   // Son à l'arrivée d'une nouvelle commande (une fois par commande).
   const seen = useRef<Set<string> | null>(null);
@@ -119,8 +144,9 @@ function Board({ onClose }: { onClose: () => void }) {
                   const since = minutesSince(o.data.sent_at ?? o.created_at, new Date(now));
                   const late = prep > 0 && c.id !== "pretes" && since >= prep;
                   const pt = payTag(o);
+                  const pending = Boolean(moved[o.id]);
                   return (
-                    <li key={o.id} className={`rounded-xl border-l-4 bg-white p-3 text-slate-900 ${late ? "border-red-600 ring-2 ring-red-500" : c.tone}`}>
+                    <li key={o.id} className={`kds-card rounded-xl border-l-4 bg-white p-3 text-slate-900 ${late ? "border-red-600 ring-2 ring-red-500" : c.tone} ${pending ? "opacity-90" : ""}`}>
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="text-lg font-extrabold leading-tight">{where(o.data)}</p>
@@ -142,11 +168,12 @@ function Board({ onClose }: { onClose: () => void }) {
                       <span className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${pt.cls.replace("text-green-200", "text-green-800").replace("text-amber-200", "text-amber-800").replace("text-slate-200", "text-slate-700")}`}>{pt.text}</span>
                       {allowed && (
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          {c.id === "nouvelles" && <Btn small onClick={() => act("online.accept", { id: o.id })}><Check className="h-3.5 w-3.5" aria-hidden />Accepter</Btn>}
-                          {(c.id === "nouvelles" || c.id === "acceptees") && <Btn small kind={c.id === "acceptees" ? "primary" : "soft"} onClick={async () => { if (!o.data.accepted_at) await act("online.accept", { id: o.id }, { quiet: true }); await act("order.status", { id: o.id, to: "en_preparation" }); }}><ChefHat className="h-3.5 w-3.5" aria-hidden />Commencer</Btn>}
-                          {c.id === "preparation" && <Btn small onClick={() => act("order.status", { id: o.id, to: "prete" })}><CircleCheck className="h-3.5 w-3.5" aria-hidden />Prête</Btn>}
-                          {c.id === "pretes" && <Btn small kind="soft" onClick={() => act("order.status", { id: o.id, to: "servie" })}><Hand className="h-3.5 w-3.5" aria-hidden />Servie</Btn>}
-                          <Btn small kind="ghost" onClick={() => setProblem(o)}><AlertTriangle className="h-3.5 w-3.5" aria-hidden />{o.data.problem ? "Problème" : "Signaler"}</Btn>
+                          {c.id === "nouvelles" && <Btn small className={BIG} disabled={pending} onClick={() => move(o, "acceptees", [["online.accept", { id: o.id }]])}><Check className="h-4 w-4" aria-hidden />Accepter</Btn>}
+                          {(c.id === "nouvelles" || c.id === "acceptees") && <Btn small className={BIG} disabled={pending} kind={c.id === "acceptees" ? "primary" : "soft"} onClick={() => move(o, "preparation", [...(o.data.accepted_at ? [] : [["online.accept", { id: o.id }] as [string, unknown]]), ["order.status", { id: o.id, to: "en_preparation" }]])}><ChefHat className="h-4 w-4" aria-hidden />Commencer</Btn>}
+                          {c.id === "preparation" && <Btn small className={BIG} disabled={pending} onClick={() => move(o, "pretes", [["order.status", { id: o.id, to: "prete" }]])}><CircleCheck className="h-4 w-4" aria-hidden />Prête</Btn>}
+                          {c.id === "pretes" && <Btn small className={BIG} disabled={pending} kind="soft" onClick={() => move(o, "servie", [["order.status", { id: o.id, to: "servie" }]])}><Hand className="h-4 w-4" aria-hidden />Servie</Btn>}
+                          <Btn small className={BIG} disabled={pending} kind="ghost" onClick={() => setProblem(o)}><AlertTriangle className="h-4 w-4" aria-hidden />{o.data.problem ? "Problème" : "Signaler"}</Btn>
+                          {pending && <span className="inline-flex items-center gap-1 self-center text-[11px] text-slate-500"><span className="spinner !h-3 !w-3 !border-slate-300 !border-t-slate-600" aria-hidden />Enregistrement…</span>}
                         </div>
                       )}
                     </li>

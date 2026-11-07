@@ -413,3 +413,8 @@ select.input option {
   .m-reveal, .m-reveal.is-in { opacity: 1 !important; animation: none !important; transform: none !important; }
   .m-pop, .m-photo { animation: none !important; transition: none !important; }
 }
+
+/* Écran cuisine : la carte glisse doucement dans sa nouvelle colonne. */
+.kds-card { animation: kds-in 0.22s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@keyframes kds-in { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .kds-card { animation: none; } }

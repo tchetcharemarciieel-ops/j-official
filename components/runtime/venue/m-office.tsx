@@ -140,7 +140,7 @@ export function StaffView() {
       <ReadOnlyNote need={2} />
       <Card title="Comptes de l'équipe sur le logiciel">
         <ul className="space-y-1 text-sm">{v.members.map((m) => <li key={m.id} className="flex justify-between"><span>{m.name}</span><Pill>{ROLE_LABELS[m.role]}</Pill></li>)}</ul>
-        <p className="mt-2 text-xs text-slate-500">Les rôles et permissions des comptes (propriétaire, administrateur, gestionnaire, employé, lecture seule) se gèrent dans l&apos;onglet « Équipe » du projet{isMgr(level) && <> : <a className="underline" href={`/projets/${projectId}?onglet=equipe`}>ouvrir</a></>}. Les dépenses et les finances restent réservées aux gérants.</p>
+        <p className="mt-2 text-xs text-slate-500">Les rôles et permissions des comptes (propriétaire, administrateur, gestionnaire, employé, lecture seule) se gèrent dans « Gestion des équipes » du projet{isMgr(level) && <> : <a className="underline" href={`/projets/${projectId}?onglet=equipe`}>ouvrir</a></>}. Les dépenses et les finances restent réservées aux gérants.</p>
       </Card>
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold">Employés et horaires</h4>
@@ -210,7 +210,7 @@ function StaffForm({ staff, onClose }: { staff: Doc<Staff> | null; onClose: () =
         }}
       >
         <Field label="Nom"><input className={inp} required maxLength={120} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
-        <Field label="Rôle / poste" hint={`Ex. : cuisinier, serveuse, ${CASHIER_ROLE.toLowerCase()}. Le poste « ${CASHIER_ROLE} », relié à un compte, gère Vision IA.`}>
+        <Field label="Rôle / poste" hint={`Ex. : cuisinier, serveuse, ${CASHIER_ROLE.toLowerCase()}. Le poste « ${CASHIER_ROLE} », relié à un compte, gère la caisse et les commandes.`}>
           <input className={inp} required maxLength={60} list="staff-roles" value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })} />
           <datalist id="staff-roles">{[CASHIER_ROLE, "Serveur / serveuse", "Cuisinier / cuisinière", "Gérant", "Plongeur", "Réceptionniste", "Femme / valet de chambre"].map((r) => <option key={r} value={r} />)}</datalist>
         </Field>

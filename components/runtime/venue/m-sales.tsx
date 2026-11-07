@@ -53,7 +53,7 @@ export function MenuView({ recipes = false }: { recipes?: boolean }) {
     <div className="space-y-3">
       <ReadOnlyNote need={2} />
       <div className="flex flex-wrap gap-2">
-        <div className="min-w-40 flex-1"><Search value={q} onChange={setQ} placeholder="Rechercher un plat ou une boisson" /></div>
+        <div className="min-w-40 flex-1"><Search value={q} onChange={setQ} placeholder="Rechercher un plat" /></div>
         {isMgr(level) && <Btn onClick={() => setEdit("new")}><Plus className="h-4 w-4" aria-hidden />Ajouter un plat</Btn>}
       </div>
       {menu.length === 0 ? (

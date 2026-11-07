@@ -15,7 +15,7 @@ const fmt = (m: number | null) => (m === null ? "—" : `${m} min`);
  * produit le rapport du jour, uniquement à partir des événements enregistrés.
  */
 export function RestaurantAgent() {
-  const { v, level, settings, mode, projectId } = useV();
+  const { v, level, settings, mode, projectId, act } = useV();
   const [p, setP] = useState<Period>(() => periodPreset("today"));
   const [ai, setAi] = useState<{ text: string; busy: boolean; error: string }>({ text: "", busy: false, error: "" });
   const [print, setPrint] = useState(false);
@@ -66,13 +66,31 @@ export function RestaurantAgent() {
     <div className="space-y-4">
       <Card title={<span className="flex items-center gap-2"><Clock className="h-4 w-4 text-red-600" aria-hidden />En retard maintenant</span>}>
         {r.lateNow.length === 0 ? (
-          <p className="text-sm text-slate-500">{vs.prep_minutes > 0 ? `Aucune commande au-delà de ${vs.prep_minutes} min de préparation.` : "Seuil de préparation désactivé (Vision IA › Paramètres)."}</p>
+          <p className="text-sm text-slate-500">{vs.prep_minutes > 0 ? `Aucune commande au-delà de ${vs.prep_minutes} min de préparation.` : "Seuil de préparation désactivé : réglez-le ci-dessous."}</p>
         ) : (
           <ul className="space-y-1.5">{r.lateNow.map((o) => <li key={o.id} className="flex justify-between rounded-xl bg-red-50 px-3 py-2 text-sm"><span className="font-semibold text-red-800">{o.number}</span><span className="text-red-700">{o.minutes} min en cuisine</span></li>)}</ul>
         )}
-        <p className="mt-2 text-[11px] text-slate-500">La cuisine (écran cuisine) et la caisse (Vision IA) sont alertées automatiquement ; les gérants reçoivent une notification dans les données réelles.</p>
+        <p className="mt-2 text-[11px] text-slate-500">L&apos;écran cuisine signale en rouge les commandes en retard ; les gérants reçoivent une notification dans les données réelles.</p>
+        {mgr && (
+          <form
+            className="mt-3 flex flex-wrap items-end gap-2 border-t border-slate-100 pt-3"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const n = Number(new FormData(e.currentTarget).get("prep"));
+              if (!Number.isFinite(n) || n < 0 || n > 180) return;
+              await act("vision.settings", { ...vs, prep_minutes: Math.round(n) });
+            }}
+          >
+            <label className="text-xs font-medium text-slate-700">
+              Délai de préparation maximum (minutes, 0 = sans alerte)
+              <input name="prep" type="number" inputMode="numeric" min={0} max={180} defaultValue={vs.prep_minutes} key={vs.prep_minutes} className="mt-1 block w-28 rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+            </label>
+            <Btn small type="submit" kind="ghost">Enregistrer</Btn>
+          </form>
+        )}
       </Card>
-      <Card title={<span className="flex items-center gap-2"><Bot className="h-4 w-4" aria-hidden />Rapport</span>} actions={<><PeriodPicker value={p} onChange={setP} /><Btn small kind="ghost" onClick={() => setPrint(true)}><Printer className="h-3.5 w-3.5" aria-hidden />Imprimer</Btn></>}>
+      <Card title={<span className="flex items-center gap-2"><Bot className="h-4 w-4" aria-hidden />Rapport</span>} actions={<Btn small kind="ghost" onClick={() => setPrint(true)}><Printer className="h-3.5 w-3.5" aria-hidden />Imprimer</Btn>}>
+        <div className="mb-3"><PeriodPicker value={p} onChange={setP} /></div>
         {r.orders === 0 && s.seatings === 0 ? <Empty text="Aucune commande ni aucun passage sur cette période." /> : Report}
       </Card>
       {mgr && (

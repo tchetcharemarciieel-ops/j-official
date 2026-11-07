@@ -292,7 +292,7 @@ export function QrCodesView() {
           </Card>
           <Card title="Tables" actions={mgr && tables.some((t) => !t.data.qr_token) && <Btn small onClick={async () => { for (const t of tables.filter((x) => !x.data.qr_token)) await act("qr.table", { table_id: t.id, action: "generate" }, { quiet: true }); }}><QrCode className="h-3.5 w-3.5" aria-hidden />Créer les QR codes manquants</Btn>}>
             {tables.length === 0 ? (
-              <Empty text="Aucune table : ajoutez vos tables (zone Salle de restaurant ou Vision IA) pour créer leurs QR codes." />
+              <Empty text="Aucune table : ajoutez vos tables (zone Salle de restaurant › Tables et chaises) pour créer leurs QR codes." />
             ) : (
               <ul className="space-y-3">
                 {tables.map((t) => {

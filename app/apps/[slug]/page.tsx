@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { adminClient } from "@/lib/supabase/admin";
 import { getProfile } from "@/lib/auth";
 import { parseSpec, type Role } from "@/lib/spec";
@@ -27,8 +27,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: { absolute: p.name },
     manifest: `/apps/${slug}/manifest.webmanifest`,
     robots: { index: false },
-    themeColor: spec.ok ? spec.spec.theme.primary : undefined,
   } as Metadata;
+}
+
+/** Couleur de la barre du navigateur : la couleur du logiciel (exportée via viewport, comme le veut Next 16). */
+export async function generateViewport({ params }: Props): Promise<Viewport> {
+  const { slug } = await params;
+  const p = await load(slug);
+  const spec = p ? parseSpec(p.published_spec ?? p.draft_spec) : null;
+  return spec?.ok ? { themeColor: spec.spec.theme.primary } : {};
 }
 
 function Notice({ title, text, children }: { title: string; text: string; children?: React.ReactNode }) {

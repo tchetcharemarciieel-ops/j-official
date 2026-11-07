@@ -151,17 +151,17 @@ export function AppRuntime({ projectId, spec, mode, role, perms = null, compact 
             </div>
           )}
         </main>
-        <BottomTabs tabs={tabs} page={tabPage} onGo={goTab} menuOpen={menuOpen} onMenu={() => setMenuOpen((o) => !o)} />
+        <BottomTabs withMenu={!ws.enabled} tabs={tabs} page={tabPage} onGo={goTab} menuOpen={menuOpen} onMenu={() => setMenuOpen((o) => !o)} />
       </div>
     </div>
   );
 }
 
 /** Barre d'onglets à encoche : le disque glisse vers l'onglet touché et l'icône s'y loge. */
-function BottomTabs({ tabs, page, onGo, menuOpen, onMenu }: { tabs: { id: string; label: string; icon: LucideIcon }[]; page: string; onGo: (id: string) => void; menuOpen: boolean; onMenu: () => void }) {
-  const active = menuOpen ? "__menu" : tabs.some((t) => t.id === page) ? page : "__menu";
+function BottomTabs({ tabs, page, onGo, menuOpen, onMenu, withMenu = true }: { tabs: { id: string; label: string; icon: LucideIcon }[]; page: string; onGo: (id: string) => void; menuOpen: boolean; onMenu: () => void; withMenu?: boolean }) {
+  const active = withMenu && menuOpen ? "__menu" : tabs.some((t) => t.id === page) ? page : withMenu ? "__menu" : (tabs[0]?.id ?? "");
   const { ref, box, animate } = useSlidingIndicator<HTMLUListElement>(active);
-  const items = [...tabs, { id: "__menu", label: "Menu", icon: Menu }];
+  const items = withMenu ? [...tabs, { id: "__menu", label: "Menu", icon: Menu }] : tabs;
   return (
     <nav aria-label="Navigation rapide" className="no-print sticky bottom-0 z-30 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-7 lg:hidden">
       <ul ref={ref} className="relative mx-auto flex max-w-md rounded-2xl bg-slate-900 px-1 shadow-xl shadow-slate-900/20">

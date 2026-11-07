@@ -59,14 +59,20 @@ export function OnlineMenuAdmin() {
           <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600"><b>Paiement en ligne ZingoPay</b> : se règle dans la carte « Paiement en ligne ZingoPay » ci-dessous, avec la clé de votre compte. Aucun paiement n&apos;est simulé en dehors du mode test.</p>
           <Field label="Message d'accueil (facultatif)"><input className={inp} maxLength={300} value={f.welcome} onChange={(e) => setF({ ...f, welcome: e.target.value })} disabled={!mgr} placeholder="Ex. : Bienvenue ! Commandez depuis votre table." /></Field>
           <Field label="Logo (menu et centre des QR codes)">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               {(logo ?? o.logo) ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={(logo ?? o.logo)!} alt="Logo" className="h-14 w-14 rounded-xl border border-slate-200 object-cover" />
               ) : (
                 <span className="grid h-14 w-14 place-items-center rounded-xl border border-dashed border-slate-300 text-slate-400"><ImagePlus className="h-5 w-5" aria-hidden /></span>
               )}
-              {mgr && <input type="file" accept="image/png,image/jpeg,image/webp" className="text-sm" onChange={async (e) => { const file = e.target.files?.[0]; if (file) setLogo(await shrinkImage(file, 256, "image/png")); }} />}
+              {mgr && (
+                <label className="btn btn-ghost cursor-pointer !min-h-0 px-3 py-1.5 text-xs">
+                  <ImagePlus className="h-3.5 w-3.5" aria-hidden />
+                  {(logo ?? o.logo) ? "Changer le logo" : "Ajouter un logo"}
+                  <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={async (e) => { const file = e.target.files?.[0]; e.target.value = ""; if (file) setLogo(await shrinkImage(file, 256, "image/png")); }} />
+                </label>
+              )}
               {mgr && (logo ?? o.logo) && <Btn small kind="ghost" onClick={() => setLogo(null)}><Trash2 className="h-3.5 w-3.5" aria-hidden />Retirer</Btn>}
             </div>
           </Field>

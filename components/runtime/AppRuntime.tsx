@@ -102,7 +102,7 @@ export function AppRuntime({ projectId, spec, mode, role, perms = null, compact 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="no-print sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur">
           <div className="flex items-center gap-3 lg:hidden">
-            <button className="rounded-lg border border-slate-200 px-3 py-2" onClick={() => setMenuOpen((o) => !o)} aria-expanded={menuOpen} aria-label="Menu"><Menu className="h-4 w-4" aria-hidden /></button>
+            {!ws.enabled && <button className="rounded-lg border border-slate-200 px-3 py-2" onClick={() => setMenuOpen((o) => !o)} aria-expanded={menuOpen} aria-label="Menu"><Menu className="h-4 w-4" aria-hidden /></button>}
             <Brand spec={spec} small />
           </div>
           <h1 className="hidden truncate text-sm font-medium text-slate-500 lg:block">{current ? current.labelPlural : page === "__workspace" ? "Espace de travail" : "Tableau de bord"}</h1>
@@ -116,7 +116,7 @@ export function AppRuntime({ projectId, spec, mode, role, perms = null, compact 
             </span>
           </div>
         </header>
-        {menuOpen && <div className="no-print border-b border-slate-200 bg-white p-3 lg:hidden">{nav}</div>}
+        {menuOpen && !ws.enabled && <div className="no-print border-b border-slate-200 bg-white p-3 lg:hidden">{nav}</div>}
 
         <main className="flex-1 p-4 sm:p-6">
           {data.error && (

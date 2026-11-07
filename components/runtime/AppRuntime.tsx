@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, LayoutDashboard, Menu, MessageSquare, Table2, TriangleAlert, type LucideIcon } from "lucide-react";
+import { Building2, LayoutDashboard, Map as MapIcon, Menu, MessageSquare, Settings2, Table2, TriangleAlert, type LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { can } from "@/lib/permissions";
 import { api } from "@/lib/fetcher";
@@ -72,12 +72,20 @@ export function AppRuntime({ projectId, spec, mode, role, perms = null, compact 
     </nav>
   );
 
-  // Barre du bas sur téléphone : accès direct aux premiers modules, le reste dans « Menu ».
-  const tabs: { id: string; label: string; icon: LucideIcon }[] = [
-    ...(ws.enabled ? [{ id: "__workspace", label: "Espace", icon: Building2 }] : []),
-    ...(dataAllowed ? [{ id: "__dashboard", label: "Accueil", icon: LayoutDashboard }] : []),
-    ...entities.map((e) => ({ id: e.key, label: e.labelPlural, icon: Table2 })),
-  ].slice(0, 4);
+  // Barre du bas sur téléphone. Avec un espace de travail (plan) : Espace, Plan 2D, Configurer le
+  // plan et Menu (les tableaux restent dans « Menu »). Sinon : accès direct aux premiers modules.
+  const canConfigure = (role === "owner" || role === "admin" || role === "manager") && (perms === null || perms.includes("parametres"));
+  const [wsCommand, setWsCommand] = useState<{ kind: "configure"; n: number } | null>(null);
+  const tabs: { id: string; label: string; icon: LucideIcon }[] = ws.enabled
+    ? [{ id: "__workspace", label: "Espace", icon: Building2 }, { id: "__plan2d", label: "Plan 2D", icon: MapIcon }, ...(canConfigure ? [{ id: "__configure", label: "Configurer", icon: Settings2 }] : [])]
+    : [...(dataAllowed ? [{ id: "__dashboard", label: "Accueil", icon: LayoutDashboard }] : []), ...entities.map((e) => ({ id: e.key, label: e.labelPlural, icon: Table2 }))].slice(0, 4);
+  const tabPage = page === "__workspace" && prefs.render === "2d" ? "__plan2d" : page;
+  const goTab = (id: string) => {
+    if (id === "__workspace") return void (save({ render: "3d" }), go("__workspace"));
+    if (id === "__plan2d") return void (save({ render: "2d" }), go("__workspace"));
+    if (id === "__configure") return void (go("__workspace"), setWsCommand({ kind: "configure", n: Date.now() }));
+    go(id);
+  };
 
   return (
     <div style={style} className={`flex bg-slate-50 text-slate-900 ${compact ? "min-h-[640px] rounded-2xl" : "min-h-dvh"}`}>
@@ -121,7 +129,7 @@ export function AppRuntime({ projectId, spec, mode, role, perms = null, compact 
           {current ? (
             <EntityView key={`${current.key}:${openRecord ?? ""}`} spec={spec} entity={current} role={role} data={data} notify={notify} openRecordId={openRecord} />
           ) : page === "__workspace" && ws.enabled ? (
-            <WorkspaceView projectId={projectId} spec={spec} ws={ws} mode={mode} role={role} readable={entities.map((e) => e.key)} records={data.records} loading={data.loading} reload={data.reload} prefs={prefs} savePrefs={save} onOpen={go} onClassic={dataAllowed ? () => go("__dashboard") : undefined} perms={perms} />
+            <WorkspaceView projectId={projectId} spec={spec} ws={ws} mode={mode} role={role} readable={entities.map((e) => e.key)} records={data.records} loading={data.loading} reload={data.reload} prefs={prefs} savePrefs={save} onOpen={go} onClassic={dataAllowed ? () => go("__dashboard") : undefined} perms={perms} command={wsCommand} />
           ) : (
             <div className="space-y-6">
               <div>
@@ -143,7 +151,7 @@ export function AppRuntime({ projectId, spec, mode, role, perms = null, compact 
             </div>
           )}
         </main>
-        <BottomTabs tabs={tabs} page={page} onGo={go} menuOpen={menuOpen} onMenu={() => setMenuOpen((o) => !o)} />
+        <BottomTabs tabs={tabs} page={tabPage} onGo={goTab} menuOpen={menuOpen} onMenu={() => setMenuOpen((o) => !o)} />
       </div>
     </div>
   );

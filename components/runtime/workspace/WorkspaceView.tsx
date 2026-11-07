@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { Box, LayoutDashboard, Map as MapIcon, Settings2 } from "lucide-react";
-import { Component, useCallback, useEffect, useMemo, useState } from "react";
+import { Component, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/fetcher";
 import type { AppPrefs } from "@/lib/app-prefs";
 import { ROLE_LABELS, type AppSpec, type Role, type Workspace } from "@/lib/spec";
@@ -76,12 +76,14 @@ type Props = {
   onOpen: (target: string, recordId?: string) => void;
   /** Absent : interface classique non autorisée pour ce poste. */
   onClassic?: () => void;
+  /** Ordre venu de la barre du bas (téléphone) : ouvrir « Configurer le plan ». */
+  command?: { kind: "configure"; n: number } | null;
   /** Permissions du poste (null = sans restriction). */
   perms?: string[] | null;
 };
 
 /** Espace de travail : bureau virtuel du logiciel, relié à ses modules et à ses données. */
-export function WorkspaceView({ projectId, spec, ws, mode, role, readable, records, loading, reload, prefs, savePrefs, onOpen, onClassic, perms = null }: Props) {
+export function WorkspaceView({ projectId, spec, ws, mode, role, readable, records, loading, reload, prefs, savePrefs, onOpen, onClassic, perms = null, command = null }: Props) {
   const myPerms = perms as Permission[] | null;
   const [members, setMembers] = useState<CrewMember[]>([]);
   const [gl, setGl] = useState<{ ok: boolean; low: boolean } | null>(null);
@@ -106,6 +108,18 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
   const [vRoom, setVRoom] = useState<string | null>(null);
   const [setupOpen, setSetupOpen] = useState(false);
   const needsSetup = Boolean(venueKind && venue.state && (!vSettings.answered || (venueKind === "hotel" && vSettings.photos_step === null)));
+  // « Configurer » touché dans la barre du bas : ouvre le réglage du plan (si le rôle le permet).
+  const handled = useRef(0);
+  const ready = Boolean(venue.state);
+  useEffect(() => {
+    if (command?.kind !== "configure" || !venueKind || !venue.state || handled.current === command.n) return;
+    handled.current = command.n;
+    if (VENUE_LEVEL[venue.state.role] >= 2 && has(myPerms, "parametres")) {
+      setSetupOpen(true);
+      setVZone(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [command?.n, ready]);
   // Écran cuisine : ouvert depuis la zone Cuisine, ou directement avec l'adresse « ?cuisine=1 » (tablette de la cuisine).
   const [kdsOpen, setKdsOpen] = useState(false);
   useEffect(() => {

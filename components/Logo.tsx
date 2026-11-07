@@ -11,7 +11,8 @@ export async function Logo({ href = "/" }: { href?: string }) {
         // eslint-disable-next-line @next/next/no-img-element
         <img src={b.logoUrl} alt="" className="h-9 w-9 rounded-lg object-cover" referrerPolicy="no-referrer" />
       ) : (
-        <span className="grid h-9 w-9 place-items-center rounded-lg bg-slate-900 text-sm font-bold text-white">{b.name.replace(/[^A-Za-zÀ-ÿ ]/g, "").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "MS"}</span>
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src="/brand/minisoft-icone.svg" alt="" className="h-9 w-9 rounded-lg" />
       )}
       <span>
         {first} {rest.length > 0 && <span style={{ color: "var(--brand, #2563eb)" }}>{rest.join(" ")}</span>}

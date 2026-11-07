@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 360">
+  <rect width="1240" height="360" fill="#FFFFFF"/>
+  <g transform="translate(40 40) scale(0.546875)">
+  <defs>
+    <linearGradient id="abg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0B1B3F"/><stop offset="1" stop-color="#132E6B"/></linearGradient>
+    <linearGradient id="am" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#2563EB"/><stop offset="1" stop-color="#38BDF8"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#abg)"/>
+  <!-- M en modules : deux piliers et un V, comme des blocs de logiciel assemblés -->
+  <path d="M132 366V170c0-14 17-21 27-11l97 97 97-97c10-10 27-3 27 11v196" fill="none" stroke="url(#am)" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="338" y="96" width="66" height="66" rx="18" fill="#FACC15"/>
+</g>
+  <text x="370" y="200" font-family="Inter, Arial, sans-serif" font-weight="800" font-size="128" letter-spacing="-4" fill="#0B1B3F">MiniSoft<tspan fill="#2563EB"> RCA</tspan></text>
+  <text x="374" y="268" font-family="Inter, Arial, sans-serif" font-weight="500" font-size="40" fill="#64748B">Logiciels de gestion pour la Centrafrique</text>
+</svg>

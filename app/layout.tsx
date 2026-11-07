@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   title: { default: "MiniSoft RCA — Des logiciels simples pour développer votre entreprise", template: "%s · MiniSoft RCA" },
   description: "Décrivez vos besoins et obtenez un mini-logiciel de gestion adapté à votre activité : commandes, stocks, clients, factures. En français et en FCFA.",
   manifest: "/manifest.webmanifest",
-  icons: { icon: "/icon.svg", apple: "/icon.svg" },
+  icons: { icon: "/icon.svg", apple: "/brand/icon-180.png" },
   appleWebApp: { capable: true, title: "MiniSoft RCA", statusBarStyle: "default" },
 };
 

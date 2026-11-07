@@ -118,7 +118,7 @@ export function MenuStyleEditor() {
                   {s.cover ? "Changer" : "Ajouter une photo"}
                   <input
                     type="file"
-                    accept="image/png,image/jpeg,image/webp"
+                    accept="image/*"
                     className="sr-only"
                     onChange={async (e) => {
                       const f = e.target.files?.[0];

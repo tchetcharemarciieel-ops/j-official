@@ -157,9 +157,9 @@ export function MenuForm({ item, recipes = false, onClose, defaultCategory }: { 
               // eslint-disable-next-line @next/next/no-img-element
               <img src={f.photo} alt="Photo du plat" className="h-full w-full object-cover" />
             ) : (
-              <span className="flex flex-col items-center gap-1 text-[11px]"><ImagePlus className="h-6 w-6" aria-hidden />Photo</span>
+              <span className="flex flex-col items-center gap-1 px-1 text-center text-[11px] leading-tight"><ImagePlus className="h-6 w-6" aria-hidden />Photo<span className="text-[10px] text-slate-400">galerie ou appareil</span></span>
             )}
-            <input type="file" accept="image/png,image/jpeg,image/webp" capture="environment" className="sr-only" onChange={async (e) => { const file = e.target.files?.[0]; e.target.value = ""; if (!file) return; try { setF({ ...f, photo: await shrinkImage(file, 800) }); } catch (x) { setErr(x instanceof Error ? x.message : "Image illisible."); } }} />
+            <input type="file" accept="image/*" className="sr-only" onChange={async (e) => { const file = e.target.files?.[0]; e.target.value = ""; if (!file) return; try { setF({ ...f, photo: await shrinkImage(file, 800) }); } catch (x) { setErr(x instanceof Error ? x.message : "Image illisible."); } }} />
           </label>
           <div className="min-w-0 flex-1 space-y-3">
             <Field label="Nom"><input ref={nameRef} className={inp} required maxLength={120} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="Ex. : Poulet braisé" autoFocus /></Field>

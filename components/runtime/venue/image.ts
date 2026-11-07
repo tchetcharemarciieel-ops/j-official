@@ -1,12 +1,13 @@
 /** Réduit une image (photo de plat, logo) avant l'envoi : petite taille, poids limité. */
 export async function shrinkImage(file: File, max: number, type: "image/jpeg" | "image/png" = "image/jpeg"): Promise<string> {
-  if (!/^image\/(png|jpe?g|webp)$/.test(file.type)) throw new Error("Choisissez une image PNG, JPEG ou WebP.");
+  // Photos de la galerie : PNG, JPEG, WebP, ou HEIC/HEIF des iPhone (converties ici en JPEG/PNG).
+  if (file.type && !/^image\/(png|jpe?g|webp|heic|heif)$/i.test(file.type)) throw new Error("Choisissez une photo (JPEG, PNG, WebP ou photo d'iPhone).");
   const url = URL.createObjectURL(file);
   try {
     const img = await new Promise<HTMLImageElement>((res, rej) => {
       const i = new Image();
       i.onload = () => res(i);
-      i.onerror = () => rej(new Error("Image illisible : choisissez une autre photo."));
+      i.onerror = () => rej(new Error("Ce téléphone ne peut pas lire cette photo : choisissez-en une autre (ou une capture d'écran)."));
       i.src = url;
     });
     const r = Math.min(1, max / Math.max(img.width, img.height));

@@ -70,7 +70,7 @@ export function OnlineMenuAdmin() {
                 <label className="btn btn-ghost cursor-pointer !min-h-0 px-3 py-1.5 text-xs">
                   <ImagePlus className="h-3.5 w-3.5" aria-hidden />
                   {(logo ?? o.logo) ? "Changer le logo" : "Ajouter un logo"}
-                  <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={async (e) => { const file = e.target.files?.[0]; e.target.value = ""; if (file) setLogo(await shrinkImage(file, 256, "image/png")); }} />
+                  <input type="file" accept="image/*" className="sr-only" onChange={async (e) => { const file = e.target.files?.[0]; e.target.value = ""; if (file) setLogo(await shrinkImage(file, 256, "image/png")); }} />
                 </label>
               )}
               {mgr && (logo ?? o.logo) && <Btn small kind="ghost" onClick={() => setLogo(null)}><Trash2 className="h-3.5 w-3.5" aria-hidden />Retirer</Btn>}

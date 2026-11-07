@@ -1,31 +1,29 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Box, LayoutDashboard, Map as MapIcon, Settings2 } from "lucide-react";
+import { Box, Map as MapIcon } from "lucide-react";
 import { Component, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/fetcher";
 import type { AppPrefs } from "@/lib/app-prefs";
-import { ROLE_LABELS, type AppSpec, type Role, type Workspace } from "@/lib/spec";
+import { type AppSpec, type Role, type Workspace } from "@/lib/spec";
 import type { Row } from "@/lib/stats";
-import { GARAGE_ZONE_IDS, LAYOUT_LABELS, SLOTS, assignCrew, boardKpis, demoCrew, placeStations, recentActivity, stationStats, type CrewMember, type GarageZoneId } from "@/lib/workspace";
-import { JOB_STATUS_LABELS, type Doc, type Job, type Vehicle } from "@/lib/garage/model";
+import { GARAGE_ZONE_IDS, SLOTS, assignCrew, boardKpis, demoCrew, placeStations, stationStats, type CrewMember, type GarageZoneId } from "@/lib/workspace";
 import { useToast } from "@/components/Toaster";
-import { GARAGE_ZONES, GaragePanel } from "../garage/GaragePanel";
+import { GaragePanel } from "../garage/GaragePanel";
 import { garageScene } from "../garage/scene";
 import { useGarage } from "../garage/useGarage";
 import { useVenue, venueSettings } from "../venue/useVenue";
 import { venueScene } from "../venue/scene";
 import { VenuePanel } from "../venue/VenuePanel";
 import { VenueSetup } from "../venue/VenueSetup";
-import { ZONE_META } from "../venue/zones";
 import { KdsModule } from "../venue/online/kds";
 import { has, type Permission } from "@/lib/team";
 import { zoneAllowed } from "@/lib/zone-perms";
 import { LEVEL as VENUE_LEVEL, activeZones, type VenueZone } from "@/lib/venue/model";
 import type { DataMode, Rec } from "../useAppData";
-import { KIND_ICONS, ROLE_COLORS } from "./kinds";
 import { Plan2D } from "./Plan2D";
-import { stationBadge, type SceneProps } from "./types";
+import { PlanConfirmation } from "./PlanConfirmation";
+import { type SceneProps } from "./types";
 
 const Scene3D = dynamic(() => import("./Scene3D"), {
   ssr: false,
@@ -145,7 +143,6 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
     // Zone retirée du plan (réponse modifiée) : on ferme son panneau.
     if (vZone && !vZones.includes(vZone)) setVZone(null);
   }, [vZone, vZones]);
-  const recentJobs = useMemo(() => (garage.state ? ([...garage.state.data.job] as Doc<Job>[]).sort((a, b) => b.updated_at.localeCompare(a.updated_at)).slice(0, 6) : []), [garage.state]);
 
   // Équipe : membres réels du logiciel ; personnages fictifs signalés dans la démo publique.
   useEffect(() => {
@@ -178,7 +175,6 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
   const crew = useMemo(() => assignCrew(placed, members), [placed, members]);
   const stations = useMemo(() => placed.map((s) => ({ ...s, stats: s.target === "__dashboard" ? null : stationStats(spec, s.target, rowsFor(s.target)), crew: crew.get(s.id) ?? [] })), [placed, crew, spec, rowsFor]);
   const kpis = useMemo(() => boardKpis(spec, rowsFor), [spec, rowsFor]);
-  const activity = useMemo(() => recentActivity(spec, { ...ws, hiddenEntities: [...ws.hiddenEntities, ...spec.entities.map((e) => e.key).filter((k) => !readable.includes(k))] }, rowsFor), [spec, ws, readable, rowsFor]);
   const freeSlots = SLOTS.slice(stations.filter((s) => s.kind !== "stats_board").length);
   const demo = mode !== "live";
   const title = ws.title || spec.name;
@@ -186,44 +182,51 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
   const render: "3d" | "2d" = !gl ? "2d" : !gl.ok || crashed ? "2d" : (prefs.render ?? (gl.low ? "2d" : "3d"));
   const sceneProps: SceneProps = { stations, layout: ws.layout, title, kpis, demo, freeSlots, onOpen: (t) => onOpen(t), garage: garageView, venue: venueView };
 
+  // Plan affiché (zones, dimensions) : conservé lors de la confirmation pour savoir s'il a changé depuis.
+  const planSnapshot = useMemo(
+    () =>
+      venueKind
+        ? { layout: ws.layout, zones: activeZones(vSettings), dims: { length: vSettings.dims.length, width: vSettings.dims.width } }
+        : garageMode
+          ? { layout: ws.layout, zones: [...GARAGE_ZONE_IDS] }
+          : { layout: ws.layout, postes: placed.map((x) => ({ kind: x.kind, label: x.label })) },
+    [venueKind, garageMode, ws.layout, vSettings, placed],
+  );
+  const manager = (role === "owner" || role === "admin" || role === "manager") && has(myPerms, "parametres");
+  const planReady = !(venueKind && (needsSetup || setupOpen || !venue.state));
+
   return (
-    <div className="@container space-y-4">
-      <div className="flex flex-col justify-between gap-3 @2xl:flex-row @2xl:items-end">
-        <div>
-          <h2 className="text-xl font-bold">Espace de travail · {title}</h2>
-          <p className="text-sm text-slate-500">
-            {LAYOUT_LABELS[ws.layout]} · {garageMode || venueKind ? "cliquez sur une zone pour ouvrir sa gestion sans quitter le plan." : "cliquez sur un poste pour ouvrir le module correspondant."}
-            {demo && <span className="ml-1 font-medium text-amber-700">{mode === "local" ? "Données et équipe de démonstration." : "Aperçu avec données de démonstration."}</span>}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <div className="inline-flex rounded-xl border border-slate-200 bg-white p-0.5" role="group" aria-label="Type d'affichage">
-            <button
-              type="button"
-              onClick={() => savePrefs({ render: "3d" })}
-              disabled={gl !== null && (!gl.ok || crashed)}
-              aria-pressed={render === "3d"}
-              title={gl && !gl.ok ? "La 3D n'est pas prise en charge par cet appareil" : undefined}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm disabled:opacity-40 ${render === "3d" ? "text-white" : "text-slate-600"}`}
-              style={render === "3d" ? { background: "var(--app-primary)" } : undefined}
-            >
-              <Box className="h-4 w-4" aria-hidden />3D
-            </button>
-            <button type="button" onClick={() => savePrefs({ render: "2d" })} aria-pressed={render === "2d"} className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm ${render === "2d" ? "text-white" : "text-slate-600"}`} style={render === "2d" ? { background: "var(--app-primary)" } : undefined}>
-              <MapIcon className="h-4 w-4" aria-hidden />Plan 2D
-            </button>
-          </div>
-          {venueKind && venue.state && VENUE_LEVEL[venue.state.role] >= 2 && has(myPerms, "parametres") && !needsSetup && (
-            <button type="button" onClick={() => (setSetupOpen(true), setVZone(null))} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
-              <Settings2 className="h-4 w-4" aria-hidden />Configurer le plan
-            </button>
-          )}
-          {onClassic && (
-            <button type="button" onClick={onClassic} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
-              <LayoutDashboard className="h-4 w-4" aria-hidden />Interface classique
-            </button>
-          )}
-        </div>
+    <div className="@container mx-auto max-w-6xl space-y-4">
+      <header>
+        <h2 className="text-xl font-bold">Espace de travail</h2>
+        <p className="text-sm text-slate-500">
+          {title} · {garageMode || venueKind ? "touchez une zone du plan pour ouvrir sa gestion." : "touchez un poste du plan pour ouvrir son module."}
+          {demo && <span className="ml-1 font-medium text-amber-700">{mode === "local" ? "Données de démonstration." : "Aperçu avec données de démonstration."}</span>}
+        </p>
+      </header>
+
+      {/* 1 et 2 : Plan 3D et Plan 2D, côte à côte. */}
+      <div className="grid grid-cols-2 gap-1 rounded-2xl border border-slate-200 bg-white p-1 sm:inline-grid sm:min-w-[22rem]" role="group" aria-label="Affichage du plan">
+        <button
+          type="button"
+          onClick={() => savePrefs({ render: "3d" })}
+          disabled={gl !== null && (!gl.ok || crashed)}
+          aria-pressed={render === "3d"}
+          title={gl && !gl.ok ? "La 3D n'est pas prise en charge par cet appareil" : undefined}
+          className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-40 ${render === "3d" ? "text-white shadow-sm" : "text-slate-600 hover:bg-slate-50"}`}
+          style={render === "3d" ? { background: "var(--app-primary)" } : undefined}
+        >
+          <Box className="h-4 w-4" aria-hidden />Plan 3D
+        </button>
+        <button
+          type="button"
+          onClick={() => savePrefs({ render: "2d" })}
+          aria-pressed={render === "2d"}
+          className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${render === "2d" ? "text-white shadow-sm" : "text-slate-600 hover:bg-slate-50"}`}
+          style={render === "2d" ? { background: "var(--app-primary)" } : undefined}
+        >
+          <MapIcon className="h-4 w-4" aria-hidden />Plan 2D
+        </button>
       </div>
 
       {crashed && <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">La 3D n&apos;a pas pu s&apos;afficher sur cet appareil : le plan 2D est utilisé à la place.</p>}
@@ -233,10 +236,9 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
       ) : venueKind && !venue.state ? (
         <div className="grid h-60 place-items-center rounded-2xl border border-slate-200 bg-white text-sm text-slate-500">{venue.error ? <span>{venue.error} <button type="button" className="underline" onClick={() => venue.reload()}>Réessayer</button></span> : "Chargement du plan…"}</div>
       ) : (
-      <div className="grid gap-4 @5xl:grid-cols-[1fr_300px]">
-        <div className={`overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 ${render === "3d" ? "h-[52vh] min-h-[340px] @2xl:h-[62vh]" : ""}`}>
+        <div className={`overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 ${render === "3d" ? "h-[56vh] min-h-[340px] @2xl:h-[64vh]" : ""}`}>
           {loading ? (
-            <div className="grid h-full place-items-center text-sm text-slate-500">Chargement des données…</div>
+            <div className="grid h-full min-h-60 place-items-center text-sm text-slate-500">Chargement du plan…</div>
           ) : render === "3d" ? (
             <SceneBoundary onError={() => setCrashed(true)}>
               <Scene3D {...sceneProps} />
@@ -245,113 +247,17 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
             <Plan2D {...sceneProps} />
           )}
         </div>
+      )}
 
-        <aside className="grid gap-4 @2xl:grid-cols-3 @5xl:grid-cols-1 @5xl:content-start">
-          {venueKind && venueView ? (
-            <section className="rounded-2xl border border-slate-200 bg-white p-4" aria-labelledby="ws-zones">
-              <h3 id="ws-zones" className="text-sm font-semibold">{venueKind === "hotel" ? "Zones de l'hôtel" : "Zones du restaurant"}</h3>
-              <ul className="mt-2 space-y-1">
-                {vZones.map((z) => {
-                  const Z = ZONE_META[venueKind][z]!;
-                  const badge = venueView.areas.find((a) => a.id === z && a.showLabel)?.badge;
-                  return (
-                    <li key={z}>
-                      <button type="button" onClick={() => openZone(z)} aria-pressed={vZone === z} className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-slate-50 ${vZone === z ? "bg-slate-100 font-semibold" : ""}`}>
-                        <Z.icon className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
-                        <span className="min-w-0 flex-1 truncate">{Z.label}</span>
-                        {badge && <span className={`shrink-0 text-xs ${badge.tone === "alert" ? "text-red-600" : badge.tone === "active" ? "text-blue-700" : "text-slate-500"}`}>{badge.text}</span>}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-              {venue.error && <p className="mt-2 text-xs text-red-600">{venue.error}</p>}
-              {venueView.photoTinted && <p className="mt-2 text-xs text-slate-500">Couleurs de certaines zones reprises de vos photos (référence visuelle, pas une mesure).</p>}
-              {Boolean(vSettings.dims.length || vSettings.dims.width) && <p className="mt-1 text-xs text-slate-500">Dimensions déclarées : {vSettings.dims.length ?? "?"} × {vSettings.dims.width ?? "?"} m (le plan reste schématique).</p>}
-              <p className="mt-2 text-xs text-slate-500">Les tables du logiciel restent accessibles dans l&apos;interface classique.</p>
-            </section>
-          ) : garageMode && garageView ? (
-            <section className="rounded-2xl border border-slate-200 bg-white p-4" aria-labelledby="ws-zones">
-              <h3 id="ws-zones" className="text-sm font-semibold">Zones du garage</h3>
-              <ul className="mt-2 space-y-1">
-                {GARAGE_ZONE_IDS.filter((z) => zoneAllowed(z, myPerms)).map((z) => {
-                  const Z = GARAGE_ZONES[z];
-                  const badge = garageView.areas.find((a) => a.id === z)?.badge;
-                  return (
-                    <li key={z}>
-                      <button type="button" onClick={() => setZone(z)} aria-pressed={zone === z} className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-slate-50 ${zone === z ? "bg-slate-100 font-semibold" : ""}`}>
-                        <Z.icon className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
-                        <span className="min-w-0 flex-1 truncate">{Z.label}</span>
-                        {badge && <span className={`shrink-0 text-xs ${badge.tone === "alert" ? "text-red-600" : badge.tone === "active" ? "text-blue-700" : "text-slate-500"}`}>{badge.text}</span>}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-              {garage.error && <p className="mt-2 text-xs text-red-600">{garage.error}</p>}
-              <p className="mt-2 text-xs text-slate-500">Les tables du logiciel restent accessibles dans l&apos;interface classique.</p>
-            </section>
-          ) : (
-          <section className="rounded-2xl border border-slate-200 bg-white p-4" aria-labelledby="ws-postes">
-            <h3 id="ws-postes" className="text-sm font-semibold">Postes</h3>
-            <ul className="mt-2 space-y-1">
-              {stations.map((s) => {
-                const Icon = KIND_ICONS[s.kind];
-                const badge = stationBadge(s);
-                return (
-                  <li key={s.id}>
-                    <button type="button" onClick={() => onOpen(s.target)} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-slate-50">
-                      <Icon className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
-                      <span className="min-w-0 flex-1 truncate">{s.label}</span>
-                      {badge && <span className={`shrink-0 text-xs ${badge.tone === "alert" ? "text-red-600" : badge.tone === "active" ? "text-blue-700" : "text-slate-500"}`}>{badge.text}</span>}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-          )}
-
-          {garageMode ? (
-            <section className="rounded-2xl border border-slate-200 bg-white p-4" aria-labelledby="ws-dossiers">
-              <h3 id="ws-dossiers" className="text-sm font-semibold">Derniers dossiers</h3>
-              {recentJobs.length === 0 ? (
-                <p className="mt-2 text-sm text-slate-500">Aucune intervention enregistrée.</p>
-              ) : (
-                <ol className="mt-2 space-y-1">
-                  {recentJobs.map((j) => (
-                    <li key={j.id}>
-                      <button type="button" onClick={() => (setJobRequest({ id: j.id, n: Date.now() }), setZone(j.data.status === "diagnostic" || j.data.status === "reparation" || j.data.status === "controle" ? "atelier" : "accueil"))} className="w-full rounded-lg px-2 py-1.5 text-left hover:bg-slate-50">
-                        <span className="block truncate text-sm text-slate-900">{(garage.state?.data.vehicle as Doc<Vehicle>[] | undefined)?.find((v) => v.id === j.data.vehicle_id)?.data.plate ?? j.data.ref} · {j.data.ref}</span>
-                        <span className="block text-xs text-slate-500">{JOB_STATUS_LABELS[j.data.status]} · {new Date(j.updated_at).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </section>
-          ) : (
-          <section className="rounded-2xl border border-slate-200 bg-white p-4" aria-labelledby="ws-activite">
-            <h3 id="ws-activite" className="text-sm font-semibold">Activité récente</h3>
-            {activity.length === 0 ? (
-              <p className="mt-2 text-sm text-slate-500">Aucune fiche pour l&apos;instant.</p>
-            ) : (
-              <ol className="mt-2 space-y-1">
-                {activity.map((a) => (
-                  <li key={a.id}>
-                    <button type="button" onClick={() => onOpen(a.entity, a.id)} className="w-full rounded-lg px-2 py-1.5 text-left hover:bg-slate-50">
-                      <span className="block truncate text-sm text-slate-900">{a.label}</span>
-                      <span className="block text-xs text-slate-500">{a.entityLabel} · {new Date(a.at).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
-                    </button>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </section>
-          )}
-
-        </aside>
-      </div>
+      {/* 3 : Confirmation du plan. */}
+      {planReady && !loading && (
+        <PlanConfirmation
+          projectId={projectId}
+          mode={mode}
+          snapshot={planSnapshot}
+          canConfirm={manager}
+          onEdit={venueKind && venue.state && VENUE_LEVEL[venue.state.role] >= 2 && has(myPerms, "parametres") ? () => (setSetupOpen(true), setVZone(null)) : undefined}
+        />
       )}
       {venueKind && vZone && !setupOpen && !needsSetup && <VenuePanel kind={venueKind} zones={vZones} zone={vZone} onZone={openZone} onClose={() => (setVZone(null), setVRoom(null))} api={venue} projectId={projectId} mode={mode} appName={title} notify={notify} roomId={vRoom} onRoom={setVRoom} request={null} onKds={kdsAllowed ? () => (setKdsOpen(true), setVZone(null)) : undefined} perms={myPerms} />}
       {venueKind && kdsOpen && venue.state && <KdsModule api={venue} kind={venueKind} mode={mode} projectId={projectId} appName={title} notify={notify} onClose={() => setKdsOpen(false)} />}

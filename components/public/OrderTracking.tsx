@@ -93,10 +93,19 @@ export function OrderTracking({ slug, token, demo, fresh, sessionKey, payError }
   useEffect(() => {
     if (!isZp) return;
     void checkZp();
-    const t = setInterval(() => document.visibilityState === "visible" && void checkZp(), 10_000);
+    // Vérification rapide les premières minutes (le client paie en ce moment), puis plus espacée.
+    const started = Date.now();
+    let t: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      t = setTimeout(async () => {
+        if (document.visibilityState === "visible") await checkZp();
+        tick();
+      }, Date.now() - started < 5 * 60_000 ? 3_000 : 10_000);
+    };
+    tick();
     const v = () => document.visibilityState === "visible" && void checkZp();
     document.addEventListener("visibilitychange", v);
-    return () => (clearInterval(t), document.removeEventListener("visibilitychange", v));
+    return () => (clearTimeout(t), document.removeEventListener("visibilitychange", v));
   }, [isZp, checkZp]);
   const payZp = async () => {
     setZpMsg("");
@@ -119,7 +128,7 @@ export function OrderTracking({ slug, token, demo, fresh, sessionKey, payError }
     // Page visible, ou notifications acceptées : on continue de vérifier l'avancement.
     const t = setInterval(() => {
       if (document.visibilityState === "visible" || (typeof Notification !== "undefined" && Notification.permission === "granted")) void load();
-    }, 5000);
+    }, 3000);
     return () => clearInterval(t);
   }, [load]);
 

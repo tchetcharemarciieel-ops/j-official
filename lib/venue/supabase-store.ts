@@ -41,6 +41,16 @@ export class SupabaseStore implements VenueStore {
     await this.db.from("record_history").insert({ project_id: this.projectId, record_id: recordId, entity: entityKey(col), action, before: this.demo ? null : before, after: this.demo ? null : after, actor_id: this.actorId });
   }
 
+  /**
+   * Empreinte légère des données (dernière modification + nombre de fiches) : permet au
+   * navigateur de vérifier toutes les quelques secondes s'il y a du nouveau, sans tout recharger.
+   */
+  async signature(): Promise<string> {
+    const { data, count, error } = await this.db.from("records").select("updated_at", { count: "exact" }).eq("project_id", this.projectId).eq("is_demo", this.demo).like("entity", "hx:%").order("updated_at", { ascending: false }).limit(1);
+    if (error) throw new HttpError(500, "Lecture impossible.");
+    return `${data?.[0]?.updated_at ?? "0"}|${count ?? 0}`;
+  }
+
   /** Toutes les données de l'établissement en une requête (les photos ne sont chargées qu'à la demande). */
   async all(): Promise<VenueData> {
     const out = emptyData();

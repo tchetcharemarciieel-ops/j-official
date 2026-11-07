@@ -2,7 +2,7 @@
 
 import QRCode from "qrcode";
 import { Ban, Copy, Download, Eye, ExternalLink, FlaskConical, ImagePlus, Printer, QrCode, RefreshCw, Send, Smartphone, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { MENU_CATEGORY_LABELS, ORDER_STATUS_LABELS, PAY_STATUS_LABELS, fmtMoney, today, type Doc, type Payment, type Table } from "@/lib/venue/model";
 import { onlineSettings, type DayStat, type FullOrder, type OnlineItem } from "@/lib/venue/online";
 import { MenuForm, MenuView, PaymentForm } from "../m-sales";
@@ -129,15 +129,47 @@ function Toggle({ checked, onChange, label, hint, disabled }: { checked: boolean
 // ---------- Commandes en ligne (caisse) ----------
 
 export function OnlineOrders() {
-  const { v, act, level } = useV();
+  const { v, act, level, api, mode, projectId } = useV();
   const [pay, setPay] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [updated, setUpdated] = useState(() => new Date());
+  // Écran de commandes : vérification rapide des nouveautés (toutes les 3 s).
+  const { setFast, reload } = api;
+  useEffect(() => {
+    setFast(true);
+    return () => setFast(false);
+  }, [setFast]);
+  useEffect(() => setUpdated(new Date()), [v]);
+  const zpPending = (v.data.order as Doc<FullOrder>[]).some((o) => o.data.pay_mode === "zingopay" && o.data.zp && o.data.pay_status !== "paye" && o.data.status !== "annulee" && Date.now() - Date.parse(o.created_at) < 3 * 3_600_000);
+  const checkZp = useCallback(async () => {
+    if (mode === "local") return 0;
+    const r = await fetch(`/api/projects/${projectId}/zingopay/check`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ mode }) }).then((x) => x.json()).catch(() => ({}));
+    if (r.paid) await reload();
+    return Number(r.paid ?? 0);
+  }, [mode, projectId, reload]);
+  // Commandes ZingoPay en attente : on relit leur statut chez ZingoPay toutes les 5 s.
+  useEffect(() => {
+    if (!zpPending) return;
+    void checkZp();
+    const t = setInterval(() => document.visibilityState === "visible" && void checkZp(), 5_000);
+    return () => clearInterval(t);
+  }, [zpPending, checkZp]);
+  const refresh = async () => {
+    setRefreshing(true);
+    await Promise.all([reload(), zpPending ? checkZp() : Promise.resolve(0)]);
+    setUpdated(new Date());
+    setRefreshing(false);
+  };
   const tables = v.data.table as Doc<Table>[];
   const pays = v.data.payment as Doc<Payment>[];
   const orders = (v.data.order as Doc<FullOrder>[]).filter((o) => o.data.channel === "qr" && o.created_at.slice(0, 10) >= today(new Date(Date.now() - 2 * 86_400_000))).sort((a, b) => b.created_at.localeCompare(a.created_at));
   const pendingPay = (o: Doc<FullOrder>) => pays.some((p) => p.data.target === "order" && p.data.target_id === o.id && p.data.status === "en_attente");
   return (
     <div className="space-y-3">
-      <p className="text-xs text-slate-500">Commandes passées par les clients avec le QR code (2 derniers jours). Une commande n&apos;est « payée » qu&apos;après un encaissement confirmé par l&apos;équipe.</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="min-w-0 flex-1 text-xs text-slate-500">Commandes des clients par QR code (2 derniers jours). Mise à jour automatique toutes les 3 secondes · dernière à {updated.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}.</p>
+        <Btn small kind="ghost" busy={refreshing} onClick={refresh}><RefreshCw className="h-3.5 w-3.5" aria-hidden />Actualiser</Btn>
+      </div>
       {orders.length === 0 ? (
         <Empty text="Aucune commande en ligne pour le moment." icon={QrCode} />
       ) : (
@@ -153,6 +185,7 @@ export function OnlineOrders() {
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                 <Pill>{ORDER_STATUS_LABELS[o.data.status]}</Pill>
                 <Pill tone={o.data.pay_status === "paye" ? "green" : pendingPay(o) ? "amber" : "slate"}>{pendingPay(o) ? "Paiement en attente de confirmation" : PAY_STATUS_LABELS[o.data.pay_status]}</Pill>
+                {o.data.pay_mode === "zingopay" && <Pill tone={o.data.pay_status === "paye" ? "green" : "blue"}>{o.data.pay_status === "paye" ? "Payée avec ZingoPay" : "ZingoPay : paiement en cours"}</Pill>}
                 {o.data.held && <Pill tone="amber">Retenue : en attente du paiement</Pill>}
                 {o.data.problem && <Pill tone="red">Problème : {o.data.problem.text}</Pill>}
               </div>

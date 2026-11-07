@@ -72,13 +72,35 @@ export function useVenue(projectId: string, mode: DataMode, role: Role, kind: Ve
     void load();
   }, [load]);
 
-  // Données partagées par l'équipe (commandes, cuisine) : actualisation fréquente tant que la page est visible.
+  // Données partagées par l'équipe (commandes, cuisine, paiements) : une vérification légère
+  // (« quelque chose a changé ? ») toutes les 3 s sur les écrans de commandes, 10 s ailleurs ;
+  // le rechargement complet n'a lieu que s'il y a du nouveau.
   const [fast, setFast] = useState(false);
+  const sig = useRef<string | null>(null);
+  const checking = useRef(false);
+  const check = useCallback(async () => {
+    if (local || !enabled || checking.current) return;
+    checking.current = true;
+    try {
+      const r = await api<{ sig: string }>(`/api/apps/${projectId}/venue?mode=${mode}&check=1`);
+      if (sig.current !== null && r.sig !== sig.current) await load();
+      sig.current = r.sig;
+    } catch {
+      /* réseau momentané : on réessaiera au prochain passage */
+    } finally {
+      checking.current = false;
+    }
+  }, [local, enabled, projectId, mode, load]);
   useEffect(() => {
     if (local || !enabled) return;
-    const t = setInterval(() => document.visibilityState === "visible" && void load(), fast ? 8_000 : 20_000);
-    return () => clearInterval(t);
-  }, [local, enabled, load, fast]);
+    void check();
+    const t = setInterval(() => document.visibilityState === "visible" && void check(), fast ? 3_000 : 10_000);
+    const wake = () => document.visibilityState === "visible" && void check();
+    document.addEventListener("visibilitychange", wake);
+    window.addEventListener("focus", wake);
+    window.addEventListener("online", wake);
+    return () => (clearInterval(t), document.removeEventListener("visibilitychange", wake), window.removeEventListener("focus", wake), window.removeEventListener("online", wake));
+  }, [local, enabled, check, fast]);
 
   const run = useCallback(
     async (op: string, input: unknown): Promise<OpResult> => {

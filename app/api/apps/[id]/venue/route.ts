@@ -44,6 +44,7 @@ export const GET = route(async (req, { params }: Ctx) => {
   const ctx = await venueContext(id, mode);
   const store = new SupabaseStore(id, mode === "demo", ctx.profile.id);
   if (url.searchParams.get("photos")) return NextResponse.json({ photos: await store.photos() });
+  if (url.searchParams.get("check")) return NextResponse.json({ sig: await store.signature() }, { headers: { "cache-control": "no-store" } });
   const [data, team] = await Promise.all([store.all(), members(id)]);
   const level = LEVEL[ctx.role];
   // Données visibles selon le rôle, puis selon le poste de l'employé (permissions).

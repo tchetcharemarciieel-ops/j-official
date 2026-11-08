@@ -105,7 +105,7 @@ export function ZingoPayCard() {
               <code className="min-w-0 flex-1 truncate rounded-lg bg-slate-50 px-2 py-1.5 text-xs">{webhook}</code>
               <Btn small kind="ghost" onClick={async () => { await navigator.clipboard.writeText(webhook).catch(() => undefined); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>{copied ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Copy className="h-3.5 w-3.5" aria-hidden />}{copied ? "Copié" : "Copier"}</Btn>
             </div>
-            <p className="mt-1.5 text-xs text-slate-500">Puis touchez « Envoyer un test » dans ZingoPay pour vérifier l&apos;adresse. <a className="inline-flex items-center gap-0.5 text-blue-700 underline" href="https://www.aletchcard.site/developpeurs" target="_blank" rel="noopener noreferrer">Documentation ZingoPay<ExternalLink className="h-3 w-3" aria-hidden /></a></p>
+            <p className="mt-1.5 text-xs text-slate-500">Puis touchez « Envoyer un test » dans ZingoPay pour vérifier l&apos;adresse. <a className="inline-flex items-center gap-0.5 text-blue-700 underline" href="https://www.zingopay.org/developpeurs" target="_blank" rel="noopener noreferrer">Documentation ZingoPay<ExternalLink className="h-3 w-3" aria-hidden /></a></p>
           </div>
         )}
       </div>

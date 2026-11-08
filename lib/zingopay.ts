@@ -11,7 +11,7 @@ import { adminClient } from "./supabase/admin";
  *   jamais la parole du téléphone du client ni une notification seule.
  */
 
-export const ZP_BASE = (process.env.ZINGOPAY_API_BASE || "https://www.aletchcard.site").replace(/\/$/, "");
+export const ZP_BASE = (process.env.ZINGOPAY_API_BASE || "https://www.zingopay.org").replace(/\/$/, "");
 export const KEY_RE = /^zp_(test|live)_[A-Za-z0-9_-]{16,128}$/;
 
 export type ZpPayment = {
@@ -55,7 +55,14 @@ async function call<T>(key: string, path: string, init?: { method?: string; body
   } catch {
     throw new ZpError(502, "unreachable", "ZingoPay ne répond pas pour le moment : réessayez ou payez à la caisse.");
   }
-  const body = (await res.json().catch(() => null)) as (T & { error?: { code?: string; message?: string } }) | null;
+  const text = await res.text().catch(() => "");
+  let body: (T & { error?: { code?: string; message?: string } }) | null = null;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    // Réponse non JSON (page d'erreur de l'hébergeur) : ZingoPay injoignable à cette adresse.
+    throw new ZpError(502, "unreachable", "ZingoPay est injoignable pour le moment. Réessayez plus tard ou payez à la caisse.");
+  }
   if (!res.ok) {
     const code = body?.error?.code ?? `http_${res.status}`;
     throw new ZpError(res.status, code, MESSAGES[code] ?? body?.error?.message ?? `ZingoPay a refusé la demande (${res.status}).`);

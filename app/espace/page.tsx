@@ -4,7 +4,7 @@ import { requireProfile } from "@/lib/auth";
 import { adminClient } from "@/lib/supabase/admin";
 import { loadActivity, loadProjects } from "@/lib/espace";
 import { fmtDateTime } from "@/lib/status";
-import { LOW_CREDIT_THRESHOLD } from "@/lib/config";
+import { LOW_CREDIT_THRESHOLD, MAX_PROJECTS_PER_ACCOUNT } from "@/lib/config";
 import { StatCard } from "@/components/espace/StatCard";
 import { ProjectCard } from "@/components/espace/ProjectCard";
 import { WordsIn } from "@/components/espace/WordsIn";
@@ -34,6 +34,8 @@ export default async function Overview() {
   const published = projects.filter((p) => p.status === "published").length;
   const inProgress = projects.filter((p) => IN_PROGRESS.includes(p.status)).length;
   const failed = projects.filter((p) => p.status === "failed").length;
+  // Un seul logiciel par compte : le bouton de création disparaît une fois le logiciel créé.
+  const canCreate = profile.is_admin || projects.filter((p) => p.role === "owner").length < MAX_PROJECTS_PER_ACCOUNT;
 
   return (
     <div className="space-y-8">
@@ -43,10 +45,12 @@ export default async function Overview() {
           <h1 className="font-display text-3xl font-bold text-slate-900"><WordsIn text={`Bonjour${profile.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}`} delay={80} /></h1>
           {profile.company_name && <p className="mt-1 text-sm text-slate-600">{profile.company_name}{profile.company_sector ? ` · ${profile.company_sector}` : ""}</p>}
         </div>
-        <div className="flex gap-2">
-          <Link href="/modeles" className="btn btn-ghost">Partir d&apos;un modèle</Link>
-          <Link href="/creer" className="btn btn-primary"><Plus className="h-4 w-4" aria-hidden />Créer un logiciel</Link>
-        </div>
+        {canCreate && (
+          <div className="flex gap-2">
+            <Link href="/modeles" className="btn btn-ghost">Partir d&apos;un modèle</Link>
+            <Link href="/creer" className="btn btn-primary"><Plus className="h-4 w-4" aria-hidden />Créer un logiciel</Link>
+          </div>
+        )}
       </div>
 
       <PendingInvites />

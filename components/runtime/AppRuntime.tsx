@@ -125,7 +125,7 @@ export function AppRuntime({ projectId, spec, mode, role, perms = null, compact 
               <button className="font-medium underline" onClick={() => data.reload()}>Réessayer</button>
             </div>
           )}
-          {!data.online && <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Vous êtes hors ligne. Les nouvelles fiches seront envoyées au retour du réseau ; la modification, la suppression et l&apos;assistant nécessitent Internet.</p>}
+          {!data.online && <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Vous êtes hors ligne. Les nouvelles fiches seront envoyées au retour du réseau ; la modification et la suppression nécessitent Internet.</p>}
           {current ? (
             <EntityView key={`${current.key}:${openRecord ?? ""}`} spec={spec} entity={current} role={role} data={data} notify={notify} openRecordId={openRecord} />
           ) : page === "__workspace" && ws.enabled ? (
@@ -147,7 +147,6 @@ export function AppRuntime({ projectId, spec, mode, role, perms = null, compact 
                     ))}
                 </div>
               )}
-              {spec.features.dataAssistant && <DataAssistant projectId={projectId} mode={mode} spec={spec} localRecords={mode === "local" ? data.records : undefined} />}
             </div>
           )}
         </main>

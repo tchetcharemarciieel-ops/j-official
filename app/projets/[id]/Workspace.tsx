@@ -4,14 +4,13 @@ import Link from "next/link";
 import { SlidingPill, useSlidingIndicator } from "@/components/ui/SlidingIndicator";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeft, Database, Eye, FlaskConical, History, MessageSquare, Send, Settings, Users, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Database, Eye, FlaskConical, History, Send, Settings, Users, type LucideIcon } from "lucide-react";
 import { STATUS } from "@/lib/status";
 import type { AppSpec, Role } from "@/lib/spec";
 import type { CheckResult } from "@/lib/checks";
 import type { Change } from "@/lib/diff";
 import type { Diagnosis } from "@/lib/generator";
 import { PreviewTab } from "./tabs/PreviewTab";
-import { AssistantTab } from "./tabs/AssistantTab";
 import { TestsTab } from "./tabs/TestsTab";
 import { VersionsTab } from "./tabs/VersionsTab";
 import { PublishTab } from "./tabs/PublishTab";
@@ -55,7 +54,6 @@ export type WorkspaceData = {
 
 const TABS = [
   ["apercu", "Aperçu", Eye],
-  ["assistant", "Modifier avec l'IA", MessageSquare],
   ["tests", "Tests", FlaskConical],
   ["versions", "Versions", History],
   ["publication", "Publication", Send],
@@ -98,7 +96,6 @@ export function Workspace({ data, initialTab }: { data: WorkspaceData; initialTa
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button className="btn btn-ghost" onClick={() => setTab("assistant")}><MessageSquare className="h-4 w-4" aria-hidden />Modifier avec l&apos;IA</button>
           <button className="btn btn-ghost" onClick={() => setTab("tests")}><FlaskConical className="h-4 w-4" aria-hidden />Tester le logiciel</button>
           <button className="btn btn-primary" onClick={() => setTab("publication")}><Send className="h-4 w-4" aria-hidden />Publier mon logiciel</button>
         </div>
@@ -125,7 +122,6 @@ export function Workspace({ data, initialTab }: { data: WorkspaceData; initialTa
 
       <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="mt-6">
         {tab === "apercu" && <PreviewTab data={data} spec={data.spec} goTo={setTab} />}
-        {tab === "assistant" && <AssistantTab data={data} spec={data.spec} onApplied={refresh} />}
         {tab === "tests" && <TestsTab data={data} onChanged={refresh} />}
         {tab === "versions" && <VersionsTab data={data} onChanged={refresh} />}
         {tab === "publication" && <PublishTab data={data} onChanged={refresh} goTo={setTab} />}

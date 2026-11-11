@@ -20,3 +20,6 @@ export const LOW_CREDIT_THRESHOLD = 5;
 
 export const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
 export const MAX_IMPORT_ROWS = 2000;
+
+/** Nombre de logiciels qu'un compte peut créer (les administrateurs de la plateforme ne sont pas limités). */
+export const MAX_PROJECTS_PER_ACCOUNT = 1;

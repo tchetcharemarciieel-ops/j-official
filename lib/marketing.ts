@@ -151,7 +151,7 @@ const CONTENT: Record<string, Omit<SectorPage, "slug" | "template">> = {
     audience: "PME, ONG, associations, cabinets, indépendants",
     benefits: [
       { title: "Tâches par statut", text: "À faire, en cours, terminées." },
-      { title: "Retards repérés", text: "L'assistant liste les tâches dont l'échéance est passée." },
+      { title: "Retards repérés", text: "Le logiciel liste les tâches dont l'échéance est passée." },
       { title: "Personnel", text: "Employés, postes et contacts." },
       { title: "Dépenses", text: "Dépenses internes par catégorie." },
     ],

@@ -39,7 +39,7 @@ export function PreviewTab({ data, spec, goTo }: { data: WorkspaceData; spec: Ap
         <AppRuntime key={key} projectId={data.project.id} spec={spec} mode="demo" role={data.role} compact />
       </div>
       <p className="text-sm text-slate-600">
-        Pour changer les couleurs, le logo ou les textes : <button className="text-blue-700 underline" onClick={() => goTo("parametres")}>Paramètres</button>. Pour ajouter ou retirer des fonctions : <button className="text-blue-700 underline" onClick={() => goTo("assistant")}>Modifier avec l&apos;IA</button>.
+        Pour changer les couleurs, le logo ou les textes : <button className="text-blue-700 underline" onClick={() => goTo("parametres")}>Paramètres</button>.
       </p>
     </div>
   );

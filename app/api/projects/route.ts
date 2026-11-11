@@ -8,6 +8,7 @@ import { composeSpec, diagnosisSchema } from "@/lib/generator";
 import { getTemplate } from "@/lib/templates";
 import { getSetting } from "@/lib/settings";
 import { saveVersion, uniqueSlug } from "@/lib/projects";
+import { MAX_PROJECTS_PER_ACCOUNT } from "@/lib/config";
 import { audit } from "@/lib/audit";
 
 const body = z.union([
@@ -27,8 +28,10 @@ export const POST = route(async (req) => {
     db.from("plans").select("max_projects,name").eq("id", profile.plan).single(),
     db.from("projects").select("id", { count: "exact", head: true }).eq("owner_id", profile.id),
   ]);
-  if (!profile.is_admin && plan && (count ?? 0) >= plan.max_projects)
-    throw new HttpError(402, `Votre formule ${plan.name} permet ${plan.max_projects} logiciel(s). Passez à une formule supérieure pour en créer d'autres.`);
+  // Un seul logiciel par compte (quelle que soit la formule) ; les administrateurs de la plateforme ne sont pas limités.
+  const limit = Math.min(plan?.max_projects ?? MAX_PROJECTS_PER_ACCOUNT, MAX_PROJECTS_PER_ACCOUNT);
+  if (!profile.is_admin && (count ?? 0) >= limit)
+    throw new HttpError(402, "Chaque compte peut créer un seul logiciel. Ouvrez votre logiciel depuis « Mon espace ».");
 
   let spec, problem, diagnosis, templateId: string | null = null, sector;
   if ("diagnosis" in input) {

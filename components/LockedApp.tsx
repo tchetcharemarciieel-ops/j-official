@@ -19,7 +19,7 @@ export function LockedApp({ spec, projectId, owner, projectName }: { spec: AppSp
   }, []);
   const steps = ["Activité comprise", "Fonctions choisies", "Logiciel généré", "Résultat prêt"];
   return (
-    <div className="relative min-h-[80dvh] overflow-hidden rounded-3xl bg-slate-900">
+    <div className="relative min-h-[80dvh] overflow-hidden rounded-3xl bg-[#0B1B3F]">
       {spec && (
         <div aria-hidden className="pointer-events-none absolute inset-0 scale-105 select-none blur-[10px] brightness-75" inert>
           <AppRuntime projectId={`apercu-${projectId}`} spec={spec} mode="local" role="owner" compact />
@@ -32,16 +32,16 @@ export function LockedApp({ spec, projectId, owner, projectName }: { spec: AppSp
         </div>
         <span className="grid h-20 w-20 place-items-center rounded-full bg-white/15 ring-1 ring-white/30 backdrop-blur"><Lock className="h-9 w-9" aria-hidden /></span>
         {owner && (
-          <Link href={`/espace/abonnement?logiciel=${projectId}`} className="inline-flex min-h-12 items-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-fuchsia-600 px-8 py-3 text-base font-bold shadow-lg shadow-fuchsia-900/30">
+          <Link href={`/espace/abonnement?logiciel=${projectId}`} className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#2563EB] px-8 py-3 text-base font-bold shadow-lg shadow-blue-950/40 ring-2 ring-[#FACC15]/70 hover:bg-[#1D4ED8]">
             <Sparkles className="h-5 w-5" aria-hidden />Débloquer mon logiciel
           </Link>
         )}
         <div className="w-full max-w-sm rounded-2xl bg-slate-950/70 p-5 text-left ring-1 ring-white/10 backdrop-blur">
           <p className="mb-3 text-center text-sm font-semibold">Génération prête</p>
           <ul className="space-y-2 text-sm">
-            {steps.map((s) => <li key={s} className="flex items-center gap-2"><span className="grid h-5 w-5 place-items-center rounded-full bg-green-500"><Check className="h-3.5 w-3.5" aria-hidden /></span>{s}</li>)}
+            {steps.map((s) => <li key={s} className="flex items-center gap-2"><span className="grid h-5 w-5 place-items-center rounded-full bg-[#FACC15] text-[#0B1B3F]"><Check className="h-3.5 w-3.5" aria-hidden /></span>{s}</li>)}
           </ul>
-          <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-fuchsia-500 transition-[width] duration-100" style={{ width: `${p}%` }} /></div>
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#38BDF8] transition-[width] duration-100" style={{ width: `${p}%` }} /></div>
           <p className="mt-1 text-right text-[11px] text-white/60">{p} %</p>
         </div>
         {owner && <p className="max-w-sm text-xs text-white/60">Vos réponses et votre plan sont conservés : dès que votre formule est active, le logiciel s&apos;ouvre tel quel.</p>}

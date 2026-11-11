@@ -1,4 +1,5 @@
 import "server-only";
+import { LOCKED_MESSAGE, projectLocked } from "./unlock";
 import { has } from "./team";
 import { adminClient } from "./supabase/admin";
 import { draftSpec, getAccess, HttpError, publishedSpec, type Access } from "./access";
@@ -18,6 +19,8 @@ export type AppContext = Access & { spec: AppSpec; mode: Mode };
  */
 export async function appContext(projectId: string, mode: Mode): Promise<AppContext> {
   const access = await getAccess(projectId);
+  // Formule gratuite : le logiciel généré reste verrouillé tant qu'aucune formule ne le débloque.
+  if (await projectLocked(access.project)) throw new HttpError(402, LOCKED_MESSAGE);
   if (mode === "demo") {
     if (access.role !== "owner" && access.role !== "admin") throw new HttpError(403, "L'aperçu est réservé au propriétaire et aux administrateurs.");
     const spec = draftSpec(access.project);

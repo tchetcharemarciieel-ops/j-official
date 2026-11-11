@@ -8,6 +8,7 @@ import { itemAvailable, onlineSettings, publicOrder, type FullOrder, type Online
 import { SupabaseStore } from "./supabase-store";
 import { menuStyle } from "./menu-style";
 import { zpConfig, type ZpConfig } from "../zingopay";
+import { projectLocked } from "../unlock";
 
 /**
  * Accès public au restaurant (menu par QR code, commande, suivi). Aucune session client :
@@ -45,6 +46,7 @@ export async function publicRestaurant(slug: string, wantDemo: boolean): Promise
     demo = true;
   }
   if (!demo && project.status === "suspended") throw new HttpError(423, "Ce restaurant n'accepte pas de commandes en ligne pour le moment.");
+  if (await projectLocked(project)) throw new HttpError(423, "Ce restaurant n'accepte pas de commandes en ligne pour le moment.");
   const spec = demo ? (draftSpec(project) ?? publishedSpec(project)) : publishedSpec(project);
   const layout = spec ? effectiveWorkspace(spec).layout : null;
   if (!spec || (layout !== "restaurant" && layout !== "hotel")) throw new HttpError(404, "Ce logiciel n'a pas de menu en ligne.");

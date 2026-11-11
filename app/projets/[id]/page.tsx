@@ -7,6 +7,8 @@ import { CREDIT_COSTS, SITE_URL } from "@/lib/config";
 import type { Role } from "@/lib/spec";
 import { AppShell } from "@/components/AppShell";
 import { Workspace, type WorkspaceData } from "./Workspace";
+import { LockedApp } from "@/components/LockedApp";
+import { projectLocked } from "@/lib/unlock";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Mon logiciel" };
@@ -29,6 +31,14 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
     notFound();
   }
   const p = project as ProjectRow;
+  // Formule gratuite : le logiciel généré est montré flouté, à débloquer par une formule.
+  if (await projectLocked(p)) {
+    return (
+      <AppShell wide>
+        <LockedApp spec={draftSpec(p)} projectId={p.id} owner={role === "owner"} projectName={p.name} />
+      </AppShell>
+    );
+  }
   const [versions, members, invitations, integrations, backups, history, logs, plan] = await Promise.all([
     db.from("project_versions").select("version,spec,summary,changes,test_report,author_id,source,published,created_at").eq("project_id", id).order("version", { ascending: false }).limit(30),
     db.from("project_members").select("user_id,role,created_at").eq("project_id", id),

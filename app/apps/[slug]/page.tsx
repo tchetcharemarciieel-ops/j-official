@@ -7,6 +7,8 @@ import { parseSpec, type Role } from "@/lib/spec";
 import { serverConfigured } from "@/lib/config";
 import { AppRuntime } from "@/components/runtime/AppRuntime";
 import { effectivePerms, isSuspended, type MemberRow } from "@/lib/team";
+import { LockedApp } from "@/components/LockedApp";
+import { projectLocked } from "@/lib/unlock";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +16,7 @@ type Props = { params: Promise<{ slug: string }> };
 
 async function load(slug: string) {
   if (!serverConfigured() || !/^[a-z0-9-]{3,61}$/.test(slug)) return null;
-  const { data } = await adminClient().from("projects").select("id,name,slug,status,published_spec,published_version,draft_spec").eq("slug", slug).maybeSingle();
+  const { data } = await adminClient().from("projects").select("id,name,slug,status,published_spec,published_version,draft_spec,owner_id,created_at").eq("slug", slug).maybeSingle();
   return data;
 }
 
@@ -72,6 +74,13 @@ export default async function PublishedApp({ params }: Props) {
   if (isSuspended(member as MemberRow)) return <Notice title="Accès suspendu" text={`Votre accès à « ${project.name} » a été suspendu par votre responsable. Vos actions passées sont conservées ; contactez-le pour le réactiver.`} />;
   const role = member.role as Role;
   const perms = effectivePerms(member as MemberRow);
+  if (await projectLocked(project as never)) {
+    return (
+      <main className="min-h-dvh bg-slate-50 p-3 sm:p-6">
+        <LockedApp spec={(() => { const r = parseSpec(project.draft_spec ?? project.published_spec); return r.ok ? r.spec : null; })()} projectId={project.id} owner={role === "owner"} projectName={project.name} />
+      </main>
+    );
+  }
   // Pas encore publié : le propriétaire et les administrateurs ouvrent l'aperçu (données de démonstration).
   if (!project.published_spec) {
     if (role !== "owner" && role !== "admin") return <Notice title="Logiciel pas encore publié" text={`« ${project.name} » n'est pas encore en ligne. Son propriétaire doit le publier pour que l'équipe puisse l'utiliser.`} />;

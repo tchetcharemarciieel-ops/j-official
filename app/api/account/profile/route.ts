@@ -5,13 +5,13 @@ import { HttpError } from "@/lib/access";
 import { getProfile } from "@/lib/auth";
 import { adminClient } from "@/lib/supabase/admin";
 import { audit } from "@/lib/audit";
+import { logoValue } from "@/lib/logo-value";
 
-const optionalUrl = z.union([z.literal(""), z.string().url("Adresse du logo invalide.").startsWith("https://", "Le logo doit être une adresse https://").max(500)]);
 
 const body = z.object({
   full_name: z.string().trim().max(80),
   company_name: z.string().trim().max(100),
-  company_logo_url: optionalUrl,
+  company_logo_url: logoValue,
   company_sector: z.string().trim().max(60),
   company_phone: z.string().trim().max(30).regex(/^[+0-9 ().-]*$/, "Numéro de téléphone invalide."),
   company_email: z.union([z.literal(""), z.string().trim().toLowerCase().email("E-mail de l'entreprise invalide.").max(200)]),

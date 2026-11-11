@@ -20,7 +20,7 @@ export default async function SettingsPage() {
             fields={[
               { name: "name", label: "Nom de la plateforme", max: 40 },
               { name: "slogan", label: "Slogan", max: 120 },
-              { name: "logoUrl", label: "Logo (adresse https d'une image, vide = initiales)", type: "url", max: 500 },
+              { name: "logoUrl", label: "Logo de la plateforme (vide = logo MiniSoft RCA)", type: "image" },
               { name: "primaryColor", label: "Couleur principale (boutons)", type: "color" },
             ]}
           />

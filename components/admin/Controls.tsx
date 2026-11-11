@@ -1,5 +1,6 @@
 "use client";
 
+import { LogoPicker } from "@/components/LogoPicker";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "@/lib/fetcher";
@@ -69,7 +70,7 @@ export function MemberRole({ projectId, userId, role }: { projectId: string; use
 }
 
 /** Formulaire générique : champs simples envoyés tels quels à une route admin. */
-export function JsonForm({ url, method = "PUT", initial, fields, submitLabel = "Enregistrer", done, settingKey }: { url: string; method?: "PUT" | "PATCH" | "POST"; settingKey?: string; initial: Record<string, string | number | boolean>; fields: { name: string; label: string; type?: "text" | "number" | "textarea" | "checkbox" | "color" | "url" | "select"; options?: { value: string; label: string }[]; hint?: string; max?: number }[]; submitLabel?: string; done?: string }) {
+export function JsonForm({ url, method = "PUT", initial, fields, submitLabel = "Enregistrer", done, settingKey }: { url: string; method?: "PUT" | "PATCH" | "POST"; settingKey?: string; initial: Record<string, string | number | boolean>; fields: { name: string; label: string; type?: "text" | "number" | "textarea" | "checkbox" | "color" | "url" | "select" | "image"; options?: { value: string; label: string }[]; hint?: string; max?: number }[]; submitLabel?: string; done?: string }) {
   const { busy, submit } = useSubmit();
   const [v, setV] = useState(initial);
   return (
@@ -86,6 +87,8 @@ export function JsonForm({ url, method = "PUT", initial, fields, submitLabel = "
             <input type="checkbox" className="h-4 w-4 accent-blue-600" checked={Boolean(v[f.name])} onChange={(e) => setV({ ...v, [f.name]: e.target.checked })} />
             {f.label}
           </label>
+        ) : f.type === "image" ? (
+          <LogoPicker key={f.name} label={f.label} value={String(v[f.name] ?? "")} onChange={(x) => setV({ ...v, [f.name]: x })} />
         ) : (
           <label key={f.name} className="block text-sm">
             <span className="label">{f.label}</span>

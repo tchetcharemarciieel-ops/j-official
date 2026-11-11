@@ -1,5 +1,6 @@
 "use client";
 
+import { LogoPicker } from "@/components/LogoPicker";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useToast } from "@/components/Toaster";
@@ -56,10 +57,8 @@ export function SettingsTab({ data, spec, onChanged }: { data: WorkspaceData; sp
             <label><span className="label">Couleur principale</span><input type="color" className="h-11 w-full cursor-pointer rounded-xl border border-slate-300 bg-transparent" value={primary} onChange={(e) => setPrimary(e.target.value)} /></label>
             <label><span className="label">Couleur secondaire</span><input type="color" className="h-11 w-full cursor-pointer rounded-xl border border-slate-300 bg-transparent" value={accent} onChange={(e) => setAccent(e.target.value)} /></label>
           </div>
-          <div className="grid grid-cols-[1fr_2fr] gap-3">
-            <label><span className="label">Initiales du logo</span><input className="input" value={logoText} onChange={(e) => setLogoText(e.target.value.toUpperCase())} maxLength={4} /></label>
-            <label><span className="label">Logo (adresse https d&apos;une image)</span><input className="input" type="url" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://…/logo.png" /></label>
-          </div>
+          <label className="block"><span className="label">Initiales du logo (si aucune image)</span><input className="input" value={logoText} onChange={(e) => setLogoText(e.target.value.toUpperCase())} maxLength={4} /></label>
+          <LogoPicker label="Logo du logiciel" value={logoUrl} onChange={setLogoUrl} />
           <div className="flex items-center gap-3 rounded-xl bg-white p-3 text-slate-900">
             <span className="grid h-10 w-10 place-items-center rounded-xl text-sm font-bold text-white" style={{ background: `linear-gradient(135deg, ${primary}, ${accent})` }}>{logoText}</span>
             <span className="font-semibold">{name}</span>

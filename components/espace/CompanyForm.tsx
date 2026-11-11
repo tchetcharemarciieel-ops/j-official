@@ -1,5 +1,6 @@
 "use client";
 
+import { LogoPicker } from "@/components/LogoPicker";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useToast } from "@/components/Toaster";
@@ -47,7 +48,7 @@ export function CompanyForm({ initial }: { initial: Values }) {
         <div className="text-sm">
           <p className="font-semibold text-slate-900">{v.company_name || "Votre entreprise"}</p>
           <p className="text-slate-600">{v.company_sector || "Secteur non renseigné"}</p>
-          {v.company_logo_url && !logoOk && <p className="text-xs text-amber-800">Image introuvable à cette adresse.</p>}
+          {v.company_logo_url && !logoOk && <p className="text-xs text-amber-800">Image illisible : importez-en une autre.</p>}
         </div>
       </div>
       <label className="block"><span className="label">Nom de l&apos;entreprise</span><input className="input" value={v.company_name} onChange={set("company_name")} maxLength={100} autoComplete="organization" /></label>
@@ -57,7 +58,7 @@ export function CompanyForm({ initial }: { initial: Values }) {
           {SECTORS.map((s) => <option key={s}>{s}</option>)}
         </select>
       </label>
-      <label className="block sm:col-span-2"><span className="label">Logo (adresse https d&apos;une image)</span><input className="input" type="url" value={v.company_logo_url} onChange={(e) => { setLogoOk(true); set("company_logo_url")(e); }} placeholder="https://…/logo.png" /></label>
+      <div className="sm:col-span-2"><LogoPicker label="Logo de l'entreprise" value={v.company_logo_url} onChange={(x) => { setLogoOk(true); setV((o) => ({ ...o, company_logo_url: x })); }} /></div>
       <label className="block"><span className="label">Téléphone / WhatsApp</span><input className="input" type="tel" value={v.company_phone} onChange={set("company_phone")} maxLength={30} placeholder="+236 7…" autoComplete="tel" /></label>
       <label className="block"><span className="label">E-mail de contact</span><input className="input" type="email" value={v.company_email} onChange={set("company_email")} maxLength={200} autoComplete="email" /></label>
       <label className="block sm:col-span-2"><span className="label">Adresse</span><input className="input" value={v.company_address} onChange={set("company_address")} maxLength={200} placeholder="Quartier, ville" autoComplete="street-address" /></label>

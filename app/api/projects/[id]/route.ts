@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { logoValue } from "@/lib/logo-value";
 import { assertSameOrigin, readJson, route } from "@/lib/api";
 import { draftSpec, getAccess, HttpError } from "@/lib/access";
 import { adminClient } from "@/lib/supabase/admin";
@@ -18,7 +19,7 @@ const settings = z.object({
       primary: z.string().regex(/^#[0-9a-fA-F]{6}$/),
       accent: z.string().regex(/^#[0-9a-fA-F]{6}$/),
       logoText: z.string().trim().max(4),
-      logoUrl: z.string().url().startsWith("https://").max(500).optional().or(z.literal("")),
+      logoUrl: logoValue.optional(),
     })
     .optional(),
   /** Espace de travail 3D ; « reset » le recalcule selon le métier et les modules. */

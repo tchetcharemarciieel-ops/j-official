@@ -1,11 +1,12 @@
 import { z } from "zod";
+import { logoValue } from "./logo-value";
 
 /** Paramètres de la plateforme modifiables depuis l'administration (table platform_settings). */
 export const SETTINGS = {
   branding: z.object({
     name: z.string().trim().min(1).max(40).default("MiniSoft RCA"),
     slogan: z.string().trim().max(120).default("Des logiciels simples pour développer votre entreprise"),
-    logoUrl: z.union([z.literal(""), z.string().url().startsWith("https://").max(500)]).default(""),
+    logoUrl: logoValue.default(""),
     primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#2563eb"),
   }),
   home: z.object({

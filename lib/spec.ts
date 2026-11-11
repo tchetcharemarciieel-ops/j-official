@@ -146,7 +146,7 @@ export const appSpecSchema = z.object({
       primary: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#6d5dfc"),
       accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#22d3ee"),
       logoText: z.string().max(4).default("MS"),
-      logoUrl: z.string().url().optional(),
+      logoUrl: z.union([z.string().url(), z.string().max(300_000).regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/)]).optional(),
     })
     .default({ primary: "#6d5dfc", accent: "#22d3ee", logoText: "MS" }),
   welcome: z.string().max(300).default(""),

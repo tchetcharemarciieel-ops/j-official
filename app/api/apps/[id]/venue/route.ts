@@ -9,6 +9,7 @@ import { effectiveWorkspace } from "@/lib/workspace";
 import { LEVEL, type VenueKind } from "@/lib/venue/model";
 import { effectivePerms, has, type MemberRow } from "@/lib/team";
 import { OpError, runOp } from "@/lib/venue/engine";
+import { pushOrderUpdates } from "@/lib/venue/order-push";
 import { SupabaseStore } from "@/lib/venue/supabase-store";
 import type { Role } from "@/lib/spec";
 
@@ -70,7 +71,8 @@ export const POST = route(async (req, { params }: Ctx) => {
   const ctx = await venueContext(id, input.mode);
   const team = await members(id);
   try {
-    const result = await runOp({ store: new SupabaseStore(id, input.mode === "demo", ctx.profile.id), actor: { id: ctx.profile.id, role: ctx.role }, members: team.map((m) => m.id), kind: ctx.kind, demo: input.mode === "demo", perms: ctx.perms }, input.op, input.input);
+    const store = new SupabaseStore(id, input.mode === "demo", ctx.profile.id);
+    const result = await runOp({ store, actor: { id: ctx.profile.id, role: ctx.role }, members: team.map((m) => m.id), kind: ctx.kind, demo: input.mode === "demo", perms: ctx.perms }, input.op, input.input);
     if (input.mode === "live") {
       if (SENSITIVE.has(input.op) && !result.duplicate) {
         const details = { ...(input.input as Record<string, unknown>) };
@@ -87,6 +89,8 @@ export const POST = route(async (req, { params }: Ctx) => {
       // Une notification manquée ne doit jamais faire échouer l'opération elle-même.
       if (rows.length) await adminClient().from("notifications").insert(rows.map((r) => ({ ...r, title: r.title.slice(0, 160) }))).then(() => undefined, () => undefined);
     }
+    // Suivi de commande : notifications push au client pour les nouvelles étapes (sans bloquer).
+    void pushOrderUpdates(id, input.mode === "demo", () => store.list("order"));
     return NextResponse.json(result);
   } catch (e) {
     if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });

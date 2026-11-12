@@ -8,6 +8,12 @@ const money = (n: number) => `${n.toLocaleString("fr-FR")} FCFA`;
 const hhmm = (iso: string | null) => (iso ? new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "");
 const ICONS: Record<TrackStep, typeof Check> = { recue: Receipt, payee: CreditCard, acceptee: Check, preparation: ChefHat, prete: PartyPopper, servie: Utensils };
 /** Messages affichés (et notifiés) à chaque nouvelle étape. */
+function b64ToBytes(b64: string) {
+  const s = atob((b64 + "=".repeat((4 - (b64.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(s, (c) => c.charCodeAt(0));
+}
+/** iPhone/iPad : le push web n'existe que pour le site ajouté à l'écran d'accueil (iOS 16.4+). */
+const iosBrowser = () => typeof navigator !== "undefined" && /iPhone|iPad|iPod/.test(navigator.userAgent) && !(window.matchMedia?.("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone);
 const NOTIFY: Partial<Record<TrackStep, string>> = { payee: "Paiement confirmé.", acceptee: "Votre commande a été acceptée par la cuisine.", preparation: "Votre commande est en préparation.", prete: "Votre commande est prête !" };
 
 /**
@@ -24,6 +30,9 @@ export function OrderTracking({ slug, token, demo, fresh, sessionKey, payError }
   const [menuClosed, setMenuClosed] = useState(false);
   const [busy, setBusy] = useState(false);
   const seen = useRef<Set<string> | null>(null);
+  const [pushKey, setPushKey] = useState<string | null>(null);
+  const [push, setPush] = useState<"off" | "on" | "ios" | "busy">("off");
+  const pushOn = useRef(false);
   const url = `/api/public/track/${token}?r=${encodeURIComponent(slug)}${demo ? "&demo=1" : ""}`;
 
   useEffect(() => {
@@ -41,7 +50,7 @@ export function OrderTracking({ slug, token, demo, fresh, sessionKey, payError }
     setToast(text);
     setTimeout(() => setToast(""), 6000);
     navigator.vibrate?.([120, 60, 120]);
-    if (typeof Notification !== "undefined" && Notification.permission === "granted" && document.visibilityState !== "visible") {
+    if (!pushOn.current && typeof Notification !== "undefined" && Notification.permission === "granted" && document.visibilityState !== "visible") {
       try {
         new Notification(rest?.name ?? "Votre commande", { body: text, tag: token });
       } catch {
@@ -58,6 +67,7 @@ export function OrderTracking({ slug, token, demo, fresh, sessionKey, payError }
       const o = b.order as PublicOrder;
       setOrder(o);
       setRest(b.restaurant);
+      if (b.push_key) setPushKey(b.push_key as string);
       setError("");
       // Nouvelles étapes depuis le dernier passage : notification (sauf au premier chargement).
       const done = new Set(TRACK_STEPS.filter((s) => o.steps[s]).map(String));
@@ -71,6 +81,39 @@ export function OrderTracking({ slug, token, demo, fresh, sessionKey, payError }
       setError(e instanceof Error ? e.message : "Suivi indisponible.");
     }
   }, [url, announce]);
+
+  // Push : notification sur l'écran verrouillé à chaque étape, même page ou navigateur fermés.
+  const enablePush = useCallback(async (silent: boolean) => {
+    if (!pushKey) return;
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      if (iosBrowser()) setPush("ios");
+      return;
+    }
+    if (!silent) setPush("busy");
+    try {
+      const reg = await navigator.serviceWorker.register("/sw.js");
+      await navigator.serviceWorker.ready;
+      const opts = { userVisibleOnly: true, applicationServerKey: b64ToBytes(pushKey) };
+      let sub = await reg.pushManager.getSubscription();
+      try {
+        sub ??= await reg.pushManager.subscribe(opts);
+      } catch {
+        // Ancien abonnement avec une autre clé : on le remplace.
+        await sub?.unsubscribe();
+        sub = await reg.pushManager.subscribe(opts);
+      }
+      const r = await fetch(`/api/public/track/${token}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "push_subscribe", r: slug, demo, subscription: sub.toJSON() }) });
+      if (!r.ok) throw new Error();
+      pushOn.current = true;
+      setPush("on");
+    } catch {
+      setPush("off");
+    }
+  }, [pushKey, token, slug, demo]);
+  useEffect(() => {
+    if (pushKey && typeof Notification !== "undefined" && Notification.permission === "granted") void enablePush(true);
+    else if (pushKey && typeof Notification === "undefined" && iosBrowser()) setPush("ios");
+  }, [pushKey, enablePush]);
 
   // ZingoPay : relit le statut chez ZingoPay (par le serveur, avec la clé du restaurant).
   const isZp = order?.pay_mode === "zingopay" && !order.paid && !order.cancelled;
@@ -224,12 +267,22 @@ export function OrderTracking({ slug, token, demo, fresh, sessionKey, payError }
         </section>
 
         <section className="rounded-2xl bg-white p-4 text-sm">
-          {notif === "granted" ? (
-            <p className="flex items-center gap-2 text-green-700"><Bell className="h-4 w-4" aria-hidden />Vous serez prévenu sur ce téléphone tant que cette page reste ouverte.</p>
+          {push === "on" ? (
+            <p className="flex items-center gap-2 text-green-700"><Bell className="h-4 w-4" aria-hidden />Notifications activées : vous serez prévenu sur ce téléphone, même écran verrouillé.</p>
+          ) : push === "ios" ? (
+            <p className="flex items-start gap-2 text-slate-700"><Bell className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /><span>Sur iPhone, pour être prévenu écran verrouillé : touchez <b>Partager</b> puis <b>Sur l&apos;écran d&apos;accueil</b>, ouvrez le suivi depuis la nouvelle icône et touchez « Me prévenir ». Sinon, cette page se met à jour toute seule.</span></p>
+          ) : notif === "granted" ? (
+            <button type="button" disabled={push === "busy"} onClick={() => void enablePush(false)} className="flex w-full items-center justify-center gap-2 rounded-full border border-slate-300 py-2.5 font-semibold disabled:opacity-60">
+              {push === "busy" ? <span className="spinner" aria-hidden /> : <Bell className="h-4 w-4" aria-hidden />}Recevoir les notifications écran verrouillé
+            </button>
           ) : notif === "denied" || notif === "indisponible" ? (
             <p className="flex items-center gap-2 text-slate-600"><BellOff className="h-4 w-4" aria-hidden />Notifications désactivées : cette page se met à jour toute seule.</p>
           ) : (
-            <button type="button" onClick={async () => setNotif(await Notification.requestPermission())} className="flex w-full items-center justify-center gap-2 rounded-full border border-slate-300 py-2.5 font-semibold">
+            <button type="button" onClick={async () => {
+              const r = await Notification.requestPermission();
+              setNotif(r);
+              if (r === "granted") await enablePush(false);
+            }} className="flex w-full items-center justify-center gap-2 rounded-full border border-slate-300 py-2.5 font-semibold">
               <Bell className="h-4 w-4" aria-hidden />Me prévenir quand ma commande avance
             </button>
           )}

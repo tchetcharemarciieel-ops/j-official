@@ -3,7 +3,12 @@ import { OrderTracking } from "@/components/public/OrderTracking";
 
 type Props = { params: Promise<{ slug: string; token: string }>; searchParams: Promise<{ demo?: string; nouveau?: string; s?: string; zperr?: string }> };
 
-export const metadata: Metadata = { title: "Suivi de commande", robots: { index: false, follow: false } };
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+  const { slug, token } = await params;
+  const sp = await searchParams;
+  // Ajouté à l'écran d'accueil, le suivi se rouvre directement (notifications sur iPhone).
+  return { title: "Suivi de commande", robots: { index: false, follow: false }, manifest: `/api/public/track/${encodeURIComponent(token)}/manifest?r=${encodeURIComponent(slug)}${sp.demo === "1" ? "&demo=1" : ""}`, appleWebApp: { capable: true, title: "Ma commande", statusBarStyle: "default" } };
+}
 
 /** Suivi de commande par lien secret (accessible même après la fermeture du menu). */
 export default async function Page({ params, searchParams }: Props) {

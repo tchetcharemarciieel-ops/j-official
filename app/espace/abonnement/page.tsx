@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
 import { adminClient } from "@/lib/supabase/admin";
-import { getPlans, paymentsConfigured, xaf } from "@/lib/plans";
-import { CREDIT_COSTS } from "@/lib/config";
+import { getPlans, paymentsConfigured, PLAN_PAYMENT_LINKS, xaf } from "@/lib/plans";
+import { CREDIT_COSTS, MAX_PROJECTS_PER_ACCOUNT } from "@/lib/config";
 
 export const metadata = { title: "Abonnement" };
 export const dynamic = "force-dynamic";
@@ -21,12 +21,15 @@ export default async function Abonnement({ searchParams }: { searchParams: Promi
         <div className="mt-6 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 to-amber-50 px-5 py-4">
           <p className="font-semibold text-slate-900">Débloquez « {locked.name} »</p>
           <p className="mt-1 text-sm text-slate-700">Votre logiciel est généré et conservé. Choisissez une formule avec publication (à partir de la formule Pro) : il s&apos;ouvrira aussitôt, avec vos réponses et votre plan.</p>
-          {!payments && <Link href="/espace/assistance" className="btn btn-primary mt-3">Demander l&apos;activation de ma formule</Link>}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {PLAN_PAYMENT_LINKS.pro && <a href={PLAN_PAYMENT_LINKS.pro} target="_blank" rel="noopener noreferrer" className="btn btn-primary">Payer la formule Pro · 15 000 FCFA</a>}
+            <Link href="/espace/assistance" className="btn btn-ghost">J&apos;ai payé : envoyer mon reçu</Link>
+          </div>
         </div>
       )}
       {!payments && (
         <p className="mt-6 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-800">
-          Le paiement en ligne (Mobile Money, carte) n&apos;est pas encore activé sur la plateforme. Aucun montant ne peut être prélevé. Pour changer de formule, contactez l&apos;équipe MiniSoft RCA : l&apos;administrateur activera votre formule après accord.
+          Payez votre formule avec le bouton « Payer » (page de paiement sécurisée). Après le paiement, envoyez votre reçu depuis « Assistance » : l&apos;équipe MiniSoft RCA vérifie et active votre formule.
         </p>
       )}
       <div className="stagger mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -39,12 +42,18 @@ export default async function Abonnement({ searchParams }: { searchParams: Promi
               <p className="mt-4 text-2xl font-bold text-slate-900">{p.price_xaf ? `${xaf(p.price_xaf)} / mois` : "Gratuit"}</p>
               <ul className="mt-4 flex-1 space-y-1 text-sm text-slate-700">
                 <li>{p.monthly_credits} crédits / mois</li>
-                <li>{p.max_projects} logiciel(s), {p.max_members} utilisateur(s)</li>
+                <li>{Math.min(p.max_projects, MAX_PROJECTS_PER_ACCOUNT)} logiciel, {p.max_members} utilisateur(s)</li>
                 <li>{p.can_publish ? "Publication incluse" : "Sans publication"}</li>
               </ul>
-              <button className={`btn mt-6 ${current ? "btn-ghost" : "btn-primary"}`} disabled title={current ? "" : "Paiement non configuré"}>
-                {current ? "Formule actuelle" : payments ? "Choisir" : "Paiement non disponible"}
-              </button>
+              {current ? (
+                <button className="btn btn-ghost mt-6" disabled>Formule actuelle</button>
+              ) : PLAN_PAYMENT_LINKS[p.id] ? (
+                <a href={PLAN_PAYMENT_LINKS[p.id]} target="_blank" rel="noopener noreferrer" className="btn btn-primary mt-6">Payer {xaf(p.price_xaf)}</a>
+              ) : p.price_xaf ? (
+                <Link href="/espace/assistance" className="btn btn-ghost mt-6">Demander cette formule</Link>
+              ) : (
+                <button className="btn btn-ghost mt-6" disabled>Gratuit</button>
+              )}
             </div>
           );
         })}

@@ -39,3 +39,11 @@ export function paymentsConfigured(): boolean {
 }
 
 export const xaf = (n: number) => `${n.toLocaleString("fr-FR")} FCFA`;
+
+/**
+ * Liens de paiement des formules (page de paiement du prestataire). Le paiement par lien ne
+ * prévient pas MiniSoft : l'équipe vérifie le reçu puis active la formule dans l'administration.
+ */
+export const PLAN_PAYMENT_LINKS: Record<string, string> = {
+  pro: "https://link.saspay.me/ssdelkmtxs8",
+};

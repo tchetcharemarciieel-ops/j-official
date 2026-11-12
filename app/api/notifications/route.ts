@@ -10,6 +10,8 @@ export const GET = route(async () => {
   const profile = await getProfile();
   if (!profile) throw new HttpError(401, "Connexion requise.");
   const db = adminClient();
+  // Nettoyage : les notifications lues de plus de 30 jours disparaissent.
+  await db.from("notifications").delete().eq("user_id", profile.id).not("read_at", "is", null).lt("created_at", new Date(Date.now() - 30 * 86_400_000).toISOString()).then(() => undefined, () => undefined);
   const [{ data }, { count }] = await Promise.all([
     db.from("notifications").select("id,type,title,body,link,read_at,created_at").eq("user_id", profile.id).order("created_at", { ascending: false }).limit(30),
     db.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", profile.id).is("read_at", null),
@@ -25,5 +27,14 @@ export const POST = route(async (req) => {
   let q = adminClient().from("notifications").update({ read_at: new Date().toISOString() }).eq("user_id", profile.id).is("read_at", null);
   if (ids?.length) q = q.in("id", ids);
   await q;
+  return NextResponse.json({ ok: true });
+});
+
+/** Efface les notifications déjà lues de l'utilisateur. */
+export const DELETE = route(async (req) => {
+  assertSameOrigin(req);
+  const profile = await getProfile();
+  if (!profile) throw new HttpError(401, "Connexion requise.");
+  await adminClient().from("notifications").delete().eq("user_id", profile.id).not("read_at", "is", null);
   return NextResponse.json({ ok: true });
 });

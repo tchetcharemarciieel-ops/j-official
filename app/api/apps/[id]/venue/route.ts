@@ -7,7 +7,7 @@ import { adminClient } from "@/lib/supabase/admin";
 import { audit } from "@/lib/audit";
 import { effectiveWorkspace } from "@/lib/workspace";
 import { LEVEL, type VenueKind } from "@/lib/venue/model";
-import { has } from "@/lib/team";
+import { effectivePerms, has, type MemberRow } from "@/lib/team";
 import { OpError, runOp } from "@/lib/venue/engine";
 import { SupabaseStore } from "@/lib/venue/supabase-store";
 import type { Role } from "@/lib/spec";
@@ -32,7 +32,8 @@ async function members(projectId: string) {
   const { data: profiles } = ids.length ? await db.from("profiles").select("id,full_name,email").in("id", ids) : { data: [] as { id: string; full_name: string | null; email: string }[] };
   return (rows ?? []).map((m) => {
     const p = (profiles ?? []).find((x) => x.id === m.user_id);
-    return { id: m.user_id as string, name: (p?.full_name?.trim() || p?.email?.split("@")[0] || "Membre").slice(0, 40), role: m.role as Role };
+    // « Commande prête » : seulement pour ceux qui servent ou encaissent (pas le stock ni la cuisine).
+    return { id: m.user_id as string, name: (p?.full_name?.trim() || p?.email?.split("@")[0] || "Membre").slice(0, 40), role: m.role as Role, serves: has(effectivePerms(m as MemberRow), ["caisse", "salle", "reception", "restaurant"]) };
   });
 }
 
@@ -79,7 +80,7 @@ export const POST = route(async (req, { params }: Ctx) => {
       const rows: { user_id: string; project_id: string; type: string; title: string; body: string; link: string }[] = [];
       const others = team.filter((m) => m.id !== ctx.profile.id);
       for (const e of result.effects) {
-        if (e.type === "order_ready") for (const m of others) rows.push({ user_id: m.id, project_id: id, type: "info", title: `Commande prête : ${e.number}`, body: `La cuisine a terminé la commande ${e.number} (${e.where}).`, link: `/apps/${ctx.project.slug}` });
+        if (e.type === "order_ready") for (const m of others.filter((x) => x.serves)) rows.push({ user_id: m.id, project_id: id, type: "info", title: `Commande prête : ${e.number}`, body: `La cuisine a terminé la commande ${e.number} (${e.where}).`, link: `/apps/${ctx.project.slug}` });
         if (e.type === "vision_alert") for (const m of team) rows.push({ user_id: m.id, project_id: id, type: "error", title: `Table ${e.table} : délai dépassé`, body: `${e.kind} : ${e.minutes} min d'attente.`, link: `/apps/${ctx.project.slug}` });
         if (e.type === "temp_alert") for (const m of team.filter((x) => LEVEL[x.role] >= 2 && x.id !== ctx.profile.id)) rows.push({ user_id: m.id, project_id: id, type: "error", title: "Température hors seuil", body: `Relevé saisi : ${e.value} °C, ${e.reason}.`, link: `/apps/${ctx.project.slug}` });
       }

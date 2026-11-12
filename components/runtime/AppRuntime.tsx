@@ -13,6 +13,7 @@ import { WidgetCard } from "./Widgets";
 import { EntityView } from "./EntityView";
 import { usePrefs } from "./usePrefs";
 import { WorkspaceView } from "./workspace/WorkspaceView";
+import { NotificationBell } from "@/components/espace/NotificationBell";
 import { effectiveWorkspace } from "@/lib/workspace";
 import { SlidingNotch, SlidingPill, useSlidingIndicator } from "@/components/ui/SlidingIndicator";
 
@@ -108,6 +109,7 @@ export function AppRuntime({ projectId, spec, mode, role, perms = null, compact 
           <h1 className="hidden truncate text-sm font-medium text-slate-500 lg:block">{current ? current.labelPlural : page === "__workspace" ? "Espace de travail" : "Tableau de bord"}</h1>
           <div className="flex items-center gap-2 text-xs">
             {mode !== "live" && <span className="rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-800">Démo</span>}
+            {mode === "live" && !compact && <NotificationBell />}
             {data.pending > 0 && <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-800">{data.pending} en attente d&apos;envoi</span>}
             <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 ${data.online ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`} role="status">
               <span className={`h-2 w-2 rounded-full ${data.online ? "bg-green-600" : "bg-red-500"}`} />

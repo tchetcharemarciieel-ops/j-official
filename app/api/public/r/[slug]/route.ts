@@ -6,6 +6,7 @@ import { OpError } from "@/lib/venue/engine";
 import { clientIp, limited, publicCtx, publicMenu, publicRestaurant, runOp } from "@/lib/venue/public";
 import { startZpPayment } from "@/lib/venue/zp-flow";
 import { ZpError } from "@/lib/zingopay";
+import { notifyStaff } from "@/lib/notify";
 
 type Ctx = { params: Promise<{ slug: string }> };
 const tok = z.string().regex(/^[A-Za-z0-9_-]{8,64}$/).nullish();
@@ -49,6 +50,12 @@ export const POST = route(async (req, { params }: Ctx) => {
       } catch (e) {
         pay_error = e instanceof ZpError || e instanceof OpError ? e.message : "Le paiement ZingoPay n'a pas pu être créé.";
       }
+    }
+    // Équipe prévenue d'une nouvelle commande en ligne (données réelles uniquement).
+    if (!p.demo && !r.duplicate) {
+      const o = r.id ? ((await p.store.get("order", r.id)) as { data: { number: string; total: number; table_id: string | null } } | null) : null;
+      const table = o?.data.table_id ? ((await p.store.get("table", o.data.table_id)) as { data: { number: string } } | null) : null;
+      if (o) await notifyStaff(p.project.id, ["caisse", "cuisine", "salle"], { type: "info", title: `Nouvelle commande en ligne : ${o.data.number}`, body: `${table ? `Table ${table.data.number} · ` : ""}${o.data.total.toLocaleString("fr-FR")} FCFA${pay_url ? " · paiement ZingoPay en cours" : ""}`, link: `/apps/${p.project.slug}` });
     }
     return NextResponse.json({ ok: true, message: r.message, tracking: r.secret, duplicate: Boolean(r.duplicate), pay_url, pay_error });
   } catch (e) {

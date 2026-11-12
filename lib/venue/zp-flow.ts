@@ -1,5 +1,6 @@
 import "server-only";
 import { audit } from "../audit";
+import { notifyStaff } from "../notify";
 import { orderReference, zp, ZpError, type ZpPayment } from "../zingopay";
 import type { Doc } from "./model";
 import type { FullOrder } from "./online";
@@ -60,6 +61,8 @@ async function confirmIfPaid(p: PublicCtx, orderId: string, pay: ZpPayment) {
     await audit("zingopay.mismatch", { projectId: p.project.id, level: "warning", details: { order: o.data.number, status: pay.status, reference: pay.reference, expected: reference, amount: pay.amount_xaf, total: o.data.total } });
     return false;
   }
+  const already = o.data.pay_status === "paye";
   await runOp(zpInternalCtx(p), "online.zp_paid", { order_id: o.id, payment_id: pay.id, amount: pay.amount_xaf, receipt: pay.payment_reference, paid_at: pay.paid_at });
+  if (!already && !p.demo) await notifyStaff(p.project.id, ["caisse", "finances"], { type: "info", title: `Paiement ZingoPay reçu : ${o.data.number}`, body: `${pay.amount_xaf.toLocaleString("fr-FR")} FCFA, vérifié auprès de ZingoPay.`, link: `/apps/${p.project.slug}` });
   return true;
 }

@@ -41,11 +41,51 @@ export function NotificationBell() {
     }
   }, []);
 
+  // Vérification toutes les 15 s quand la page est visible, et au retour sur la page.
   useEffect(() => {
     void load();
-    const id = setInterval(load, 60_000);
-    return () => clearInterval(id);
+    const id = setInterval(() => document.visibilityState === "visible" && void load(), 15_000);
+    const wake = () => document.visibilityState === "visible" && void load();
+    document.addEventListener("visibilitychange", wake);
+    window.addEventListener("focus", wake);
+    return () => (clearInterval(id), document.removeEventListener("visibilitychange", wake), window.removeEventListener("focus", wake));
   }, [load]);
+
+  // Nouvelle notification : petite vibration et alerte du téléphone (si autorisée).
+  const seen = useRef<Set<string> | null>(null);
+  const [perm, setPerm] = useState<NotificationPermission | "indisponible">("default");
+  useEffect(() => setPerm(typeof Notification === "undefined" ? "indisponible" : Notification.permission), []);
+  useEffect(() => {
+    if (!items) return;
+    const ids = new Set(items.map((n) => n.id));
+    if (seen.current) {
+      const fresh = items.filter((n) => !n.read_at && !seen.current!.has(n.id));
+      if (fresh.length) {
+        navigator.vibrate?.([120, 60, 120]);
+        if (typeof Notification !== "undefined" && Notification.permission === "granted" && document.visibilityState !== "visible") {
+          for (const n of fresh.slice(0, 3)) {
+            try {
+              new Notification(n.title, { body: n.body, tag: n.id, icon: "/brand/icon-192.png" });
+            } catch {
+              /* certains téléphones n'acceptent les notifications que par un service de push */
+            }
+          }
+        }
+      }
+    }
+    seen.current = ids;
+  }, [items]);
+
+  async function markOne(n: Notif) {
+    if (n.read_at) return;
+    setUnread((u) => Math.max(0, u - 1));
+    setItems((l) => l?.map((x) => (x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x)) ?? null);
+    await api("/api/notifications", { body: { ids: [n.id] } }).catch(() => {});
+  }
+  async function clearRead() {
+    await api("/api/notifications", { method: "DELETE" }).catch(() => {});
+    setItems((l) => l?.filter((x) => !x.read_at) ?? null);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -75,16 +115,24 @@ export function NotificationBell() {
         <div className="absolute right-0 top-12 z-[60] w-[min(92vw,380px)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg" style={{ animation: "pop-in 0.18s ease-out" }}>
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
             <p className="font-semibold text-slate-900">Notifications</p>
-            {unread > 0 && <button onClick={markAll} className="text-xs text-blue-700 hover:underline">Tout marquer comme lu</button>}
+            <span className="flex gap-3">
+              {unread > 0 && <button onClick={markAll} className="text-xs text-blue-700 hover:underline">Tout marquer comme lu</button>}
+              {items?.some((n) => n.read_at) && <button onClick={clearRead} className="text-xs text-slate-500 hover:underline">Effacer les lues</button>}
+            </span>
           </div>
+          {perm === "default" && (
+            <button onClick={async () => setPerm(await Notification.requestPermission())} className="flex w-full items-center gap-2 border-b border-slate-100 bg-blue-50 px-4 py-2.5 text-left text-xs font-medium text-blue-800">
+              <Bell className="h-4 w-4" aria-hidden />Activer les alertes sur ce téléphone (nouvelles commandes, paiements…)
+            </button>
+          )}
           <div className="max-h-[60vh] overflow-y-auto">
             {error && <p className="p-4 text-sm text-red-700">{error}</p>}
             {!error && items === null && <div className="space-y-2 p-4">{[0, 1, 2].map((i) => <div key={i} className="skeleton h-12" />)}</div>}
-            {items?.length === 0 && <p className="p-6 text-center text-sm text-slate-600">Aucune notification pour l&apos;instant. Vous serez prévenu ici des nouvelles versions, publications et erreurs.</p>}
+            {items?.length === 0 && <p className="p-6 text-center text-sm text-slate-600">Aucune notification pour l&apos;instant. Vous serez prévenu ici des nouvelles commandes en ligne, des paiements, des commandes prêtes et de votre équipe.</p>}
             <ul>
               {items?.map((n) => (
                 <li key={n.id}>
-                  <Link href={n.link || "/espace"} onClick={() => setOpen(false)} className={`flex gap-3 border-b border-slate-100 px-4 py-3 transition hover:bg-slate-50 ${n.read_at ? "opacity-70" : ""}`}>
+                  <Link href={n.link || "/espace"} onClick={() => (void markOne(n), setOpen(false))} className={`flex gap-3 border-b border-slate-100 px-4 py-3 transition hover:bg-slate-50 ${n.read_at ? "opacity-70" : ""}`}>
                     <NotifIcon type={n.type} />
                     <span className="min-w-0 flex-1">
                       <span className={`block text-sm ${n.type === "error" ? "text-red-700" : "text-slate-900"} ${n.read_at ? "" : "font-semibold"}`}>{n.title}</span>

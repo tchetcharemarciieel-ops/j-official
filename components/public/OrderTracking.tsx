@@ -46,8 +46,39 @@ export function OrderTracking({ slug, token, demo, fresh, sessionKey, payError }
     }
   }, [sessionKey]);
 
+  // Son court à chaque étape (le navigateur l'autorise après un premier appui sur la page).
+  const audio = useRef<AudioContext | null>(null);
+  useEffect(() => {
+    const unlock = () => {
+      try {
+        audio.current ??= new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+        void audio.current.resume();
+      } catch {
+        /* pas de son disponible */
+      }
+    };
+    window.addEventListener("pointerdown", unlock, { once: true });
+    return () => window.removeEventListener("pointerdown", unlock);
+  }, []);
+  const ding = useCallback(() => {
+    const ctx = audio.current;
+    if (!ctx) return;
+    for (const [f, at] of [[880, 0], [1320, 0.16]] as const) {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, ctx.currentTime + at);
+      g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + at + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + at + 0.35);
+      o.connect(g).connect(ctx.destination);
+      o.start(ctx.currentTime + at);
+      o.stop(ctx.currentTime + at + 0.4);
+    }
+  }, []);
+
   const announce = useCallback((text: string) => {
     setToast(text);
+    ding();
     setTimeout(() => setToast(""), 6000);
     navigator.vibrate?.([120, 60, 120]);
     if (!pushOn.current && typeof Notification !== "undefined" && Notification.permission === "granted" && document.visibilityState !== "visible") {
@@ -57,7 +88,7 @@ export function OrderTracking({ slug, token, demo, fresh, sessionKey, payError }
         /* certains navigateurs mobiles n'affichent les notifications que par un service de push */
       }
     }
-  }, [rest, token]);
+  }, [rest, token, ding]);
 
   const load = useCallback(async () => {
     try {
@@ -114,6 +145,30 @@ export function OrderTracking({ slug, token, demo, fresh, sessionKey, payError }
     if (pushKey && typeof Notification !== "undefined" && Notification.permission === "granted") void enablePush(true);
     else if (pushKey && typeof Notification === "undefined" && iosBrowser()) setPush("ios");
   }, [pushKey, enablePush]);
+
+  // Demande bien visible dès l'arrivée sur le suivi (une seule fois par commande).
+  const askKey = `msr:push-ask:${token}`;
+  const [asked, setAsked] = useState(true);
+  useEffect(() => {
+    try {
+      setAsked(Boolean(localStorage.getItem(askKey)));
+    } catch {
+      setAsked(false);
+    }
+  }, [askKey]);
+  const closeAsk = () => {
+    setAsked(true);
+    try {
+      localStorage.setItem(askKey, "1");
+    } catch {
+      /* rien */
+    }
+  };
+  const askPermission = async () => {
+    const r = await Notification.requestPermission();
+    setNotif(r);
+    if (r === "granted") await enablePush(false);
+  };
 
   // ZingoPay : relit le statut chez ZingoPay (par le serveur, avec la clé du restaurant).
   const isZp = order?.pay_mode === "zingopay" && !order.paid && !order.cancelled;
@@ -201,6 +256,17 @@ export function OrderTracking({ slug, token, demo, fresh, sessionKey, payError }
         <p className="text-sm text-slate-600">{order.table ? `Table ${order.table} · ` : ""}{hhmm(order.created_at)} · {money(order.total)}</p>
       </header>
       {toast && <p role="status" className="sticky top-2 z-20 mx-3 mt-3 rounded-2xl px-4 py-3 text-center font-semibold text-white shadow-lg" style={{ background: primary, animation: "fade-up .25s ease both" }}>{toast}</p>}
+      {!asked && notif === "default" && push === "off" && Boolean(pushKey) && !order.cancelled && !order.steps.servie && (
+        <div className="fixed inset-0 z-40 flex items-end bg-black/40 p-3 sm:items-center sm:justify-center" role="dialog" aria-modal="true" aria-labelledby="ask-push">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-5 text-center shadow-2xl" style={{ animation: "fade-up .25s ease both" }}>
+            <span className="mx-auto grid h-14 w-14 place-items-center rounded-full text-white" style={{ background: primary }}><Bell className="h-7 w-7" aria-hidden /></span>
+            <h2 id="ask-push" className="mt-3 text-lg font-bold">Être prévenu quand c&apos;est prêt ?</h2>
+            <p className="mt-1 text-sm text-slate-600">Vous recevez une notification à chaque étape, même téléphone verrouillé.</p>
+            <button type="button" onClick={async () => { closeAsk(); await askPermission(); }} className="mt-4 w-full rounded-full py-3.5 text-base font-bold text-white" style={{ background: primary }}>Oui, me prévenir</button>
+            <button type="button" onClick={closeAsk} className="mt-2 w-full rounded-full py-2.5 text-sm font-medium text-slate-600">Non merci</button>
+          </div>
+        </div>
+      )}
       <main className="mx-auto max-w-lg space-y-3 px-3 pt-4">
         {fresh && !menuClosed && (
           <section className="rounded-2xl border-2 border-green-500 bg-white p-4 text-center">
@@ -270,19 +336,15 @@ export function OrderTracking({ slug, token, demo, fresh, sessionKey, payError }
           {push === "on" ? (
             <p className="flex items-center gap-2 text-green-700"><Bell className="h-4 w-4" aria-hidden />Notifications activées : vous serez prévenu sur ce téléphone, même écran verrouillé.</p>
           ) : push === "ios" ? (
-            <p className="flex items-start gap-2 text-slate-700"><Bell className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /><span>Sur iPhone, pour être prévenu écran verrouillé : touchez <b>Partager</b> puis <b>Sur l&apos;écran d&apos;accueil</b>, ouvrez le suivi depuis la nouvelle icône et touchez « Me prévenir ». Sinon, cette page se met à jour toute seule.</span></p>
+            <p className="flex items-center gap-2 text-slate-700"><Bell className="h-4 w-4 shrink-0" aria-hidden />Gardez cette page ouverte : on vous prévient ici, avec un son et un message.</p>
           ) : notif === "granted" ? (
             <button type="button" disabled={push === "busy"} onClick={() => void enablePush(false)} className="flex w-full items-center justify-center gap-2 rounded-full border border-slate-300 py-2.5 font-semibold disabled:opacity-60">
               {push === "busy" ? <span className="spinner" aria-hidden /> : <Bell className="h-4 w-4" aria-hidden />}Recevoir les notifications écran verrouillé
             </button>
           ) : notif === "denied" || notif === "indisponible" ? (
-            <p className="flex items-center gap-2 text-slate-600"><BellOff className="h-4 w-4" aria-hidden />Notifications désactivées : cette page se met à jour toute seule.</p>
+            <p className="flex items-center gap-2 text-slate-600"><BellOff className="h-4 w-4" aria-hidden />Gardez cette page ouverte : on vous prévient ici, avec un son et un message.</p>
           ) : (
-            <button type="button" onClick={async () => {
-              const r = await Notification.requestPermission();
-              setNotif(r);
-              if (r === "granted") await enablePush(false);
-            }} className="flex w-full items-center justify-center gap-2 rounded-full border border-slate-300 py-2.5 font-semibold">
+            <button type="button" onClick={askPermission} className="flex w-full items-center justify-center gap-2 rounded-full border border-slate-300 py-2.5 font-semibold">
               <Bell className="h-4 w-4" aria-hidden />Me prévenir quand ma commande avance
             </button>
           )}

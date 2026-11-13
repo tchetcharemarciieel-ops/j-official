@@ -10,7 +10,11 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
-    return [{ source: "/(.*)", headers: securityHeaders }];
+    return [
+      { source: "/(.*)", headers: securityHeaders },
+      // Code de suivi des sites connectés : chargé par les sites des clients.
+      { source: "/ms.js", headers: [{ key: "Cache-Control", value: "public, max-age=3600" }, { key: "Cross-Origin-Resource-Policy", value: "cross-origin" }] },
+    ];
   },
 };
 

@@ -64,7 +64,7 @@ export function deviceOf(ua: string): Device {
   return "ordinateur";
 }
 
-/** Pays estimé d'après le fuseau horaire du navigateur (aucune adresse IP n'est conservée). */
+/** Pays : en-tête pays du réseau (Cloudflare) si présent, sinon fuseau horaire du navigateur (aucune adresse IP conservée). */
 const TZ_COUNTRY: Record<string, string> = {
   "Africa/Bangui": "CF", "Africa/Douala": "CM", "Africa/Kinshasa": "CD", "Africa/Lubumbashi": "CD", "Africa/Brazzaville": "CG", "Africa/Libreville": "GA", "Africa/Ndjamena": "TD", "Africa/Malabo": "GQ",
   "Africa/Lagos": "NG", "Africa/Niamey": "NE", "Africa/Abidjan": "CI", "Africa/Dakar": "SN", "Africa/Bamako": "ML", "Africa/Ouagadougou": "BF", "Africa/Lome": "TG", "Africa/Porto-Novo": "BJ", "Africa/Conakry": "GN",

@@ -272,7 +272,7 @@ function Dashboard({ base, profile }: { base: string; profile: SectorProfile }) 
           <h3 className="font-semibold text-slate-900">Appareils utilisés</h3>
           <Devices rows={stats?.devices ?? []} />
         </div>
-        <Bars title="Pays des visiteurs" note={stats && stats.countryUnknown > 0 ? `${nf(stats.countryUnknown)} visiteur(s) sans pays connu. Pays estimé d'après le fuseau horaire de l'appareil.` : "Pays estimé d'après le fuseau horaire de l'appareil."} empty="Pays non disponible pour ces visites." rows={(stats?.countries ?? []).map((x) => ({ key: x.code, label: x.name, value: x.visitors }))} unit="visiteurs" />
+        <Bars title="Pays des visiteurs" note={stats && stats.countryUnknown > 0 ? `${nf(stats.countryUnknown)} visiteur(s) sans pays connu. Pays d'après la connexion du visiteur, sinon le fuseau horaire de son appareil.` : "Pays d'après la connexion du visiteur, sinon le fuseau horaire de son appareil."} empty="Pays non disponible pour ces visites." rows={(stats?.countries ?? []).map((x) => ({ key: x.code, label: x.name, value: x.visitors }))} unit="visiteurs" />
         {(stats?.referrers.length ?? 0) > 0 && <Bars title="Provenance des visites" empty="" rows={(stats?.referrers ?? []).map((x) => ({ key: x.host, label: x.host, value: x.visits }))} unit="visites" />}
       </div>
     </section>

@@ -523,7 +523,7 @@ export async function aiDiagnose(input: DiagnoseInput, image?: ImageInput): Prom
     users: z.string(),
     automations: z.array(z.string()),
     limits: z.array(z.string()),
-    questions: z.array(z.string()).describe("0 à 3 questions courtes si la demande est imprécise, sinon liste vide"),
+    questions: z.array(z.string()).describe("0 à 2 questions très courtes, seulement si une information indispensable manque ; sinon liste vide"),
     features: z.array(z.object({ id: z.string(), title: z.string(), description: z.string(), selected: z.boolean(), entity: aiEntity, widgets: z.array(aiWidget) })),
   });
   const user = [
@@ -550,7 +550,7 @@ export async function aiDiagnose(input: DiagnoseInput, image?: ImageInput): Prom
     users: data.users.slice(0, 200),
     automations: data.automations.slice(0, 10).map((s) => s.slice(0, 200)),
     limits: data.limits.slice(0, 10).map((s) => s.slice(0, 300)),
-    questions: data.questions.slice(0, 3).map((s) => s.slice(0, 200)),
+    questions: data.questions.slice(0, 2).map((s) => s.slice(0, 200)),
     features: data.features.slice(0, 15).map((f) => {
       const entity = fromAiEntity(f.entity);
       return {

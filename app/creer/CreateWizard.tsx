@@ -2,7 +2,7 @@
 
 import { ArrowLeft, Bot, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { VoiceButton } from "@/components/VoiceButton";
 import { useToast } from "@/components/Toaster";
 import { api, ApiError } from "@/lib/fetcher";
@@ -10,6 +10,35 @@ import { detectColumns, type ColumnInfo } from "@/lib/csv";
 import { readImage, readTabular } from "@/lib/file-read";
 import { MODULES } from "@/lib/modules";
 import type { DiagnoseResponse, Diagnosis, Feature } from "@/lib/generator";
+
+/** Exemples en un appui : le client choisit son activité au lieu de tout écrire. */
+const QUICK: [string, string][] = [
+  ["🍽️ Restaurant", "Je veux gérer les commandes, la cuisine, la caisse et les dépenses de mon restaurant."],
+  ["🛒 Boutique", "Je veux suivre mes ventes, mon stock et les crédits de mes clients dans ma boutique."],
+  ["💊 Pharmacie", "Je veux gérer le stock des médicaments, les dates de péremption et les ventes de ma pharmacie."],
+  ["🔧 Garage", "Je veux suivre les réparations, les pièces, les clients et les paiements de mon garage."],
+  ["🏨 Hôtel", "Je veux gérer les réservations, les chambres, les clients et les paiements de mon hôtel."],
+  ["💇 Salon", "Je veux gérer les rendez-vous, les clients, les prestations et la caisse de mon salon."],
+];
+
+/** Attente de l'analyse : étapes qui avancent et secondes écoulées, pour que le client sache où on en est. */
+function Waiting() {
+  const [s, setS] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setS((x) => x + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const steps = ["Lecture de votre besoin", "Choix des fonctionnalités", "Préparation de votre plan"];
+  const cur = Math.min(steps.length - 1, Math.floor(s / 6));
+  return (
+    <span className="flex flex-col gap-1 text-sm text-slate-700" role="status">
+      {steps.map((x, i) => (
+        <span key={x} className={i < cur ? "text-green-700" : i === cur ? "font-semibold text-blue-700" : "text-slate-400"}>{i < cur ? "✓" : i === cur ? "•" : "○"} {x}{i === cur ? "…" : ""}</span>
+      ))}
+      <span className="text-xs text-slate-500">{s} s</span>
+    </span>
+  );
+}
 
 type Step = "describe" | "questions" | "plan" | "generating";
 type Attachment = { kind: "table"; name: string; columns: ColumnInfo[]; rows: number } | { kind: "image"; name: string; mediaType: "image/jpeg" | "image/png" | "image/webp" | "image/gif"; data: string; preview: string };
@@ -26,8 +55,7 @@ export function CreateWizard({ initialProblem, ai, credits, costs }: { initialPr
   const [retry, setRetry] = useState<(() => void) | null>(null);
   const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
   const [answers, setAnswers] = useState<{ question: string; answer: string }[]>([]);
-  const [qIndex, setQIndex] = useState(0);
-  const [currentAnswer, setCurrentAnswer] = useState("");
+  const [quick, setQuick] = useState<Record<number, string>>({});
   const [result, setResult] = useState<Omit<DiagnoseResponse, "diagnosis"> | null>(null);
   const [balance, setBalance] = useState(credits);
   const [answeredBase, setAnsweredBase] = useState(0);
@@ -67,9 +95,9 @@ export function CreateWizard({ initialProblem, ai, credits, costs }: { initialPr
       setDiagnosis(res.diagnosis);
       if (res.diagnosis.businessName && !businessName) setBusinessName(res.diagnosis.businessName);
       const pending = res.diagnosis.questions.filter((q) => !withAnswers.some((a) => a.question === q));
-      if (pending.length && withAnswers.length < 6) {
+      if (pending.length && withAnswers.length === 0) {
         setDiagnosis({ ...res.diagnosis, questions: pending });
-        setQIndex(0);
+        setQuick({});
         setAnsweredBase(withAnswers.length);
         setStep("questions");
       } else setStep("plan");
@@ -80,17 +108,6 @@ export function CreateWizard({ initialProblem, ai, credits, costs }: { initialPr
     } finally {
       setLoading(false);
     }
-  }
-
-  function answer(skip = false) {
-    if (!diagnosis) return;
-    const q = diagnosis.questions[qIndex]!;
-    const next = skip || !currentAnswer.trim() ? answers : [...answers, { question: q, answer: currentAnswer.trim() }];
-    setAnswers(next);
-    setCurrentAnswer("");
-    if (qIndex + 1 < diagnosis.questions.length) setQIndex(qIndex + 1);
-    else if (next.length > answeredBase) void diagnose(next);
-    else setStep("plan");
   }
 
   function toggleFeature(id: string) {
@@ -161,18 +178,25 @@ export function CreateWizard({ initialProblem, ai, credits, costs }: { initialPr
       {step === "describe" && (
         <section className="glass rounded-2xl p-5 sm:p-8">
           <h1 className="font-display text-2xl font-bold text-slate-900 sm:text-3xl">Décrivez votre problème</h1>
-          <p className="mt-2 text-sm text-slate-600">Expliquez simplement, comme à un collègue. L&apos;IA posera des questions si nécessaire.</p>
-          <label htmlFor="pb" className="label mt-6">Votre problème</label>
-          <textarea id="pb" rows={6} className="input" value={problem} onChange={(e) => setProblem(e.target.value)} maxLength={4000} placeholder="Ex. : Je veux gérer les commandes, les stocks et les dépenses de mon restaurant." />
+          <p className="mt-2 text-sm text-slate-600">Choisissez votre activité ou écrivez votre besoin en une phrase. Votre plan est prêt en moins d&apos;une minute.</p>
+          <p className="label mt-6">Votre activité (un appui pour commencer)</p>
+          <div className="flex flex-wrap gap-2">
+            {QUICK.map(([label, text]) => (
+              <button key={label} type="button" onClick={() => setProblem(text)} className={`rounded-full border px-3.5 py-2 text-sm font-medium transition ${problem === text ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <label htmlFor="pb" className="label mt-5">Votre problème, en une ou deux phrases</label>
+          <textarea id="pb" rows={3} className="input" value={problem} onChange={(e) => setProblem(e.target.value)} maxLength={4000} placeholder="Ex. : Je veux gérer les commandes, les stocks et les dépenses de mon restaurant." />
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <VoiceButton onText={(t) => setProblem((p) => (p ? `${p} ${t}` : t))} />
             <span className="text-xs text-slate-500">La transcription s&apos;ajoute au texte : relisez-la avant de continuer.</span>
           </div>
-          <label htmlFor="bn" className="label mt-6">Nom de votre entreprise (facultatif)</label>
-          <input id="bn" className="input" value={businessName} onChange={(e) => setBusinessName(e.target.value)} maxLength={80} />
 
-          <div className="mt-6 rounded-xl border border-dashed border-slate-300 p-4">
-            <label htmlFor="file" className="label">Joindre un fichier (facultatif)</label>
+          <details className="mt-6 rounded-xl border border-dashed border-slate-300 p-4" open={Boolean(attachment)}>
+            <summary className="cursor-pointer text-sm font-medium text-slate-700">Joindre un fichier ou une photo de cahier (facultatif)</summary>
+            <label htmlFor="file" className="label mt-3">Fichier</label>
             <p className="mb-3 text-xs text-slate-500">Fichier Excel (.xlsx) ou CSV de suivi, ou photo d&apos;un cahier, d&apos;un formulaire, d&apos;une facture ou d&apos;un ancien logiciel. 2 Mo max (3,5 Mo pour une image). Le fichier n&apos;est pas exécuté ; ses données ne sont pas importées à cette étape.</p>
             <input id="file" type="file" accept=".csv,.xlsx,image/jpeg,image/png,image/webp" onChange={(e) => onFile(e.target.files?.[0])} className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-slate-900" />
             {attachment?.kind === "table" && (
@@ -209,20 +233,19 @@ export function CreateWizard({ initialProblem, ai, credits, costs }: { initialPr
                 Retirer le fichier
               </button>
             )}
-          </div>
+          </details>
 
           <div className="mt-8 flex flex-col-reverse items-stretch justify-between gap-3 sm:flex-row sm:items-center">
-            <p className="text-xs text-slate-600" aria-live="polite">
+            <div className="text-xs text-slate-600" aria-live="polite">
+              {loading && <Waiting />}
               {loading
-                ? ai
-                  ? "Analyse en cours par l'IA… cela peut prendre jusqu'à une minute."
-                  : "Analyse en cours…"
+                ? null
                 : ai
                   ? balance >= costs.diagnose
                     ? `Analyse par l'IA : ${costs.diagnose} crédits, remboursés en cas d'échec. Solde : ${balance} crédits.`
                     : `Solde insuffisant pour l'IA (${balance} crédits) : l'analyse sera faite par le système de secours, gratuitement.`
                   : "Analyse par le système de secours : gratuite."}
-            </p>
+            </div>
             <button className="btn btn-primary" disabled={loading || problem.trim().length < 5} onClick={() => diagnose([])}>
               {loading && <span className="spinner" />} {loading ? "Analyse en cours…" : "Analyser mon problème"}
             </button>
@@ -232,33 +255,33 @@ export function CreateWizard({ initialProblem, ai, credits, costs }: { initialPr
 
       {step === "questions" && diagnosis && (
         <section className="glass rounded-2xl p-5 sm:p-8">
-          <h1 className="font-display text-2xl font-bold text-slate-900">Quelques précisions</h1>
-          <p className="mt-2 text-sm text-slate-600">Répondez librement, ou passez la question.</p>
-          <div className="mt-6 space-y-3">
-            <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-slate-50 px-4 py-3 text-sm text-slate-800">{problem}</div>
-            {answers.map((a) => (
-              <div key={a.question} className="space-y-2">
-                <div className="ml-auto max-w-[85%] rounded-2xl rounded-tr-sm bg-blue-50 px-4 py-3 text-sm text-blue-700"><Bot className="mr-1.5 inline h-4 w-4 align-[-3px]" aria-hidden />{a.question}</div>
-                <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-slate-50 px-4 py-3 text-sm text-slate-800">{a.answer}</div>
-              </div>
-            ))}
-            <div className="ml-auto max-w-[85%] rounded-2xl rounded-tr-sm bg-blue-50 px-4 py-3 text-sm text-blue-700"><Bot className="mr-1.5 inline h-4 w-4 align-[-3px]" aria-hidden />{diagnosis.questions[qIndex]}</div>
-          </div>
+          <h1 className="font-display text-2xl font-bold text-slate-900">{diagnosis.questions.length > 1 ? `${diagnosis.questions.length} petites questions` : "Une petite question"}</h1>
+          <p className="mt-2 text-sm text-slate-600">Répondez en quelques mots, ou passez : votre plan est déjà prêt.</p>
           <form
-            className="mt-4 flex flex-col gap-3 sm:flex-row"
+            className="mt-6 space-y-4"
             onSubmit={(e) => {
               e.preventDefault();
-              answer();
+              const next = [...answers, ...diagnosis.questions.map((q, i) => ({ question: q, answer: (quick[i] ?? "").trim() })).filter((x) => x.answer)];
+              setAnswers(next);
+              if (next.length > answeredBase) void diagnose(next);
+              else setStep("plan");
             }}
           >
-            <label htmlFor="ans" className="sr-only">Votre réponse</label>
-            <input id="ans" className="input" value={currentAnswer} onChange={(e) => setCurrentAnswer(e.target.value)} maxLength={1000} autoFocus placeholder="Votre réponse…" />
-            <div className="flex gap-2">
-              <button className="btn btn-primary" disabled={loading}>{loading && <span className="spinner" />}Répondre</button>
-              <button type="button" className="btn btn-ghost" disabled={loading} onClick={() => answer(true)}>Passer</button>
+            {diagnosis.questions.map((q, i) => (
+              <div key={q}>
+                <label htmlFor={`q${i}`} className="mb-1.5 flex gap-2 text-sm font-medium text-slate-800"><Bot className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" aria-hidden />{q}</label>
+                <div className="flex gap-2">
+                  <input id={`q${i}`} className="input" value={quick[i] ?? ""} onChange={(e) => setQuick((x) => ({ ...x, [i]: e.target.value }))} maxLength={1000} autoFocus={i === 0} placeholder="Votre réponse (facultatif)" />
+                  <VoiceButton onText={(t) => setQuick((x) => ({ ...x, [i]: x[i] ? `${x[i]} ${t}` : t }))} />
+                </div>
+              </div>
+            ))}
+            <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+              <button type="button" className="btn btn-ghost" disabled={loading} onClick={() => setStep("plan")}>Passer et voir mon plan</button>
+              <button className="btn btn-primary" disabled={loading}>{loading && <span className="spinner" />}{loading ? "Mise à jour du plan…" : "Continuer"}</button>
             </div>
+            {loading && <Waiting />}
           </form>
-          <VoiceButton onText={(t) => setCurrentAnswer((a) => (a ? `${a} ${t}` : t))} />
         </section>
       )}
 

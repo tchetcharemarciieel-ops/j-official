@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { SlidingPill, useSlidingIndicator } from "@/components/ui/SlidingIndicator";
-import { Bot, Building2, Sparkles, CreditCard, LayoutDashboard, LayoutTemplate, LifeBuoy, Menu, Settings, ShieldCheck, SquareStack, Users, X, type LucideIcon } from "lucide-react";
+import { Bot, Building2, Globe, Sparkles, CreditCard, LayoutDashboard, LayoutTemplate, LifeBuoy, Menu, Settings, ShieldCheck, SquareStack, Users, X, type LucideIcon } from "lucide-react";
 
 export const ADMIN_NAV: { href: string; label: string; icon: LucideIcon; badge?: "support" }[] = [
   { href: "/admin", label: "Vue d'ensemble", icon: LayoutDashboard },
@@ -15,6 +15,7 @@ export const ADMIN_NAV: { href: string; label: string; icon: LucideIcon; badge?:
   { href: "/admin/assistant", label: "Assistant", icon: Sparkles },
   { href: "/admin/ia", label: "Intelligence artificielle", icon: Bot },
   { href: "/admin/abonnements", label: "Abonnements et paiements", icon: CreditCard },
+  { href: "/admin/sites", label: "Sites Internet", icon: Globe },
   { href: "/admin/modeles", label: "Modèles", icon: LayoutTemplate },
   { href: "/admin/support", label: "Support", icon: LifeBuoy, badge: "support" },
   { href: "/admin/activite", label: "Activité et sécurité", icon: ShieldCheck },

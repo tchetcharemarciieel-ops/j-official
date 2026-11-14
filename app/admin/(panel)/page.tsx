@@ -12,7 +12,7 @@ export const metadata = { title: "Vue d'ensemble" };
 export default async function Overview() {
   const db = adminClient();
   const since12w = sinceDays(84);
-  const [profiles, projects, activeSubs, payments, aiUsage, tickets, recent] = await Promise.all([
+  const [profiles, projects, activeSubs, payments, aiUsage, tickets, recent, sites, zp, push] = await Promise.all([
     db.from("profiles").select("id,created_at,company_name,suspended").limit(10000),
     db.from("projects").select("id,status,created_at,published_version").limit(10000),
     db.from("subscriptions").select("id", { count: "exact", head: true }).eq("status", "active"),
@@ -20,8 +20,16 @@ export default async function Overview() {
     db.from("ai_usage").select("engine,status,cost_xaf").gte("created_at", sinceDays(30)).limit(10000),
     db.from("support_tickets").select("id", { count: "exact", head: true }).neq("status", "resolu"),
     db.from("audit_logs").select("action,level,details,created_at").order("created_at", { ascending: false }).limit(8),
+    db.from("websites").select("status").limit(5000),
+    db.from("payment_providers").select("enabled,mode").eq("provider", "zingopay").limit(5000),
+    db.from("records").select("id", { count: "exact", head: true }).eq("entity", "push:order"),
   ]);
   const users = profiles.data ?? [];
+  const planOf = (await db.from("profiles").select("plan").limit(10000)).data ?? [];
+  const plans = ["decouverte", "pro", "business", "agence"].map((id) => ({ id, n: planOf.filter((x) => x.plan === id).length }));
+  const siteList = sites.data ?? [];
+  const zpList = zp.data ?? [];
+  const sas = { key: /^sk_(test|live)_/.test((process.env.SASPAY_SECRET_KEY || "").trim()), hook: Boolean((process.env.SASPAY_WEBHOOK_SECRET || "").trim()), live: (process.env.SASPAY_SECRET_KEY || "").trim().startsWith("sk_live_") };
   const projs = projects.data ?? [];
   const pays = payments.data ?? [];
   const ai = aiUsage.data ?? [];
@@ -44,6 +52,31 @@ export default async function Overview() {
         <Tile label="Abonnements actifs" value={activeSubs.count ?? 0} />
         <Tile label="Revenus confirmés" value={provider ? fmtXaf(revenue) : "—"} hint={provider ? `${succeeded.length} paiement(s) réussi(s)` : "aucun fournisseur de paiement configuré"} tone={provider ? "default" : "muted"} />
         <Tile label="Paiements en attente" value={provider ? pays.filter((p) => p.status === "pending").length : "—"} tone={provider ? "default" : "muted"} />
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-4">
+        <Card title="Paiement des formules (SasPay)" actions={<Link href="/admin/abonnements" className="text-sm text-blue-700 hover:underline">Voir</Link>}>
+          <ul className="space-y-1.5 text-sm">
+            <li>{sas.key ? "✓" : "✗"} Clé API {sas.key ? (sas.live ? "(réelle)" : "(test)") : "absente de Render"}</li>
+            <li>{sas.hook ? "✓" : "✗"} Secret du webhook {sas.hook ? "" : "absent"}</li>
+            <li className={sas.key ? "text-green-700" : "text-amber-800"}>{sas.key ? "Activation Pro automatique en service." : "Activation Pro à faire à la main (Utilisateurs)."}</li>
+          </ul>
+        </Card>
+        <Card title="Formules des clients" actions={<Link href="/admin/utilisateurs" className="text-sm text-blue-700 hover:underline">Gérer</Link>}>
+          <dl className="grid grid-cols-2 gap-2 text-center text-sm">
+            {plans.map((p) => <div key={p.id} className="rounded-lg bg-slate-50 p-2"><dt className="text-xs capitalize text-slate-500">{p.id === "decouverte" ? "Découverte" : p.id}</dt><dd className="font-semibold">{p.n}</dd></div>)}
+          </dl>
+        </Card>
+        <Card title="Sites Internet connectés" actions={<Link href="/admin/sites" className="text-sm text-blue-700 hover:underline">Voir</Link>}>
+          <p className="text-3xl font-bold">{siteList.filter((s) => s.status === "connected").length}</p>
+          <p className="text-sm text-slate-500">connecté(s) · {siteList.filter((s) => s.status === "pending").length} en attente du code</p>
+        </Card>
+        <Card title="Restaurants : paiement et suivi">
+          <ul className="space-y-1.5 text-sm">
+            <li>ZingoPay activé : <b>{zpList.filter((x) => x.enabled).length}</b> restaurant(s){zpList.some((x) => x.mode === "test") ? ` (${zpList.filter((x) => x.mode === "test").length} en test)` : ""}</li>
+            <li>Clients abonnés aux notifications de commande : <b>{push.count ?? 0}</b></li>
+          </ul>
+        </Card>
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-3">

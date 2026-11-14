@@ -33,6 +33,12 @@ export async function getPlans(opts: { includeInactive?: boolean } = {}): Promis
   return opts.includeInactive ? plans : plans.filter((p) => p.active !== false);
 }
 
+/** Nombre de logiciels qu'un compte peut créer avec sa formule (Découverte 1, Pro 5, Business 20… réglable dans l'administration). */
+export async function projectLimit(planId: string): Promise<{ limit: number; planName: string }> {
+  const plan = (await getPlans({ includeInactive: true })).find((p) => p.id === planId);
+  return { limit: Math.max(1, plan?.max_projects ?? 1), planName: plan?.name ?? "Découverte" };
+}
+
 export function paymentsConfigured(): boolean {
   // Vrai seulement si un prestataire de paiement est réellement branché (voir lib/payments.ts).
   return activePaymentProvider() !== null;

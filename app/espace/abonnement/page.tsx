@@ -4,7 +4,7 @@ import { adminClient } from "@/lib/supabase/admin";
 import { getPlans, PLAN_PAYMENT_LINKS, xaf } from "@/lib/plans";
 import { billingEnabled, reconcilePending } from "@/lib/billing";
 import { PaymentWatcher } from "@/components/espace/PaymentWatcher";
-import { CREDIT_COSTS, MAX_PROJECTS_PER_ACCOUNT } from "@/lib/config";
+import { CREDIT_COSTS } from "@/lib/config";
 
 export const metadata = { title: "Abonnement" };
 export const dynamic = "force-dynamic";
@@ -72,7 +72,7 @@ export default async function Abonnement({ searchParams }: { searchParams: Promi
               <p className="mt-4 text-2xl font-bold text-slate-900">{p.price_xaf ? `${xaf(p.price_xaf)} / mois` : "Gratuit"}</p>
               <ul className="mt-4 flex-1 space-y-1 text-sm text-slate-700">
                 <li>{p.monthly_credits} crédits / mois</li>
-                <li>{Math.min(p.max_projects, MAX_PROJECTS_PER_ACCOUNT)} logiciel, {p.max_members} utilisateur(s)</li>
+                <li>{p.max_projects} logiciel{p.max_projects > 1 ? "s" : ""}, {p.max_members} utilisateur(s)</li>
                 <li>{p.can_publish ? "Publication incluse" : "Sans publication"}</li>
               </ul>
               {current ? (

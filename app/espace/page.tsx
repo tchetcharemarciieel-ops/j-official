@@ -4,7 +4,8 @@ import { requireProfile } from "@/lib/auth";
 import { adminClient } from "@/lib/supabase/admin";
 import { loadActivity, loadProjects } from "@/lib/espace";
 import { fmtDateTime } from "@/lib/status";
-import { LOW_CREDIT_THRESHOLD, MAX_PROJECTS_PER_ACCOUNT } from "@/lib/config";
+import { LOW_CREDIT_THRESHOLD } from "@/lib/config";
+import { projectLimit } from "@/lib/plans";
 import { StatCard } from "@/components/espace/StatCard";
 import { ProjectCard } from "@/components/espace/ProjectCard";
 import { WordsIn } from "@/components/espace/WordsIn";
@@ -34,8 +35,9 @@ export default async function Overview() {
   const published = projects.filter((p) => p.status === "published").length;
   const inProgress = projects.filter((p) => IN_PROGRESS.includes(p.status)).length;
   const failed = projects.filter((p) => p.status === "failed").length;
-  // Un seul logiciel par compte : le bouton de création disparaît une fois le logiciel créé.
-  const canCreate = profile.is_admin || projects.filter((p) => p.role === "owner").length < MAX_PROJECTS_PER_ACCOUNT;
+  // Nombre de logiciels selon la formule : le bouton de création disparaît une fois la limite atteinte.
+  const { limit: maxProjects } = await projectLimit(profile.plan);
+  const canCreate = profile.is_admin || projects.filter((p) => p.role === "owner").length < maxProjects;
 
   return (
     <div className="space-y-8">

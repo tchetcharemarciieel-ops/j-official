@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { projectLimit } from "@/lib/plans";
 import { z } from "zod";
 import { assertSameOrigin, readJson, route } from "@/lib/api";
 import { HttpError } from "@/lib/access";
@@ -8,7 +9,6 @@ import { composeSpec, diagnosisSchema } from "@/lib/generator";
 import { getTemplate } from "@/lib/templates";
 import { getSetting } from "@/lib/settings";
 import { saveVersion, uniqueSlug } from "@/lib/projects";
-import { MAX_PROJECTS_PER_ACCOUNT } from "@/lib/config";
 import { audit } from "@/lib/audit";
 
 const body = z.union([
@@ -24,14 +24,13 @@ export const POST = route(async (req) => {
   const db = adminClient();
 
   // Quota de projets selon la formule
-  const [{ data: plan }, { count }] = await Promise.all([
-    db.from("plans").select("max_projects,name").eq("id", profile.plan).single(),
+  const [{ limit, planName }, { count }] = await Promise.all([
+    projectLimit(profile.plan),
     db.from("projects").select("id", { count: "exact", head: true }).eq("owner_id", profile.id),
   ]);
-  // Un seul logiciel par compte (quelle que soit la formule) ; les administrateurs de la plateforme ne sont pas limités.
-  const limit = Math.min(plan?.max_projects ?? MAX_PROJECTS_PER_ACCOUNT, MAX_PROJECTS_PER_ACCOUNT);
+  // Nombre de logiciels selon la formule ; les administrateurs de la plateforme ne sont pas limités.
   if (!profile.is_admin && (count ?? 0) >= limit)
-    throw new HttpError(402, "Chaque compte peut créer un seul logiciel. Ouvrez votre logiciel depuis « Mon espace ».");
+    throw new HttpError(402, `Votre formule ${planName} permet ${limit} logiciel${limit > 1 ? "s" : ""}. Passez à une formule supérieure (page Abonnement) pour en créer d'autres.`);
 
   let spec, problem, diagnosis, templateId: string | null = null, sector;
   if ("diagnosis" in input) {

@@ -13,3 +13,8 @@ Description :
 
 ## Pour le jour 2
 Envoyer à Claude : le nombre d'abonnés + une capture des commentaires (vote et pseudos).
+
+## Jour 2 (à publier)
+Description :
+Jour 2 🏪 73 abonnés = 73 boutiques ! Le vote d'hier : A, la boulangerie 🍞 (commentaire le plus liké). Merci Childerick, ta boulangerie porte ton nom ! Nouveau vote : 🅰️ Pharmacie 🅱️ Garage ©️ Restaurant. Écris A, B ou C, le plus liké gagne. Résultat demain 👀
+#Bangui #Centrafrique #jeu #abonnetoi #MiniSoftRCA

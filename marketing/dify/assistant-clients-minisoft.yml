@@ -1,0 +1,142 @@
+app:
+  description: Assistant clients de MiniSoft RCA. Répond aux questions des clients et prospects sur les logiciels de gestion MiniSoft (formules, prix, fonctionnalités, démarrage).
+  icon: 🤖
+  icon_background: '#DBEAFE'
+  mode: advanced-chat
+  name: Assistant clients MiniSoft RCA
+  use_icon_as_answer_icon: true
+dependencies: []
+kind: app
+version: 0.3.1
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload: {}
+    opening_statement: "Bonjour 👋 Je suis l'assistant de MiniSoft RCA. Je peux vous expliquer nos logiciels de gestion, nos formules et comment démarrer. Quelle est votre activité ?"
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions:
+    - Combien coûte la formule Pro ?
+    - Comment créer mon logiciel pour mon restaurant ?
+    - Comment marche le menu QR ?
+    - Comment ajouter mon équipe ?
+    suggested_questions_after_answer:
+      enabled: true
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - id: start-llm
+      source: start
+      sourceHandle: source
+      target: llm
+      targetHandle: target
+    - id: llm-answer
+      source: llm
+      sourceHandle: source
+      target: answer
+      targetHandle: target
+    nodes:
+    - data:
+        desc: ''
+        title: Début
+        type: start
+        variables: []
+      id: start
+      position:
+        x: 80
+        y: 282
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: Répond aux clients à partir des informations officielles de MiniSoft RCA.
+        memory:
+          query_prompt_template: '{{#sys.query#}}'
+          window:
+            enabled: true
+            size: 10
+        model:
+          completion_params:
+            temperature: 0.3
+          mode: chat
+          name: ''
+          provider: ''
+        prompt_template:
+        - role: system
+          text: |
+            Tu es l'assistant clients de MiniSoft RCA. Tu réponds en français simple, poli et court (3 à 6 phrases, ou une petite liste), comme à un commerçant pressé qui lit sur son téléphone.
+
+            QUI EST MINISOFT RCA
+            MiniSoft RCA crée des logiciels de gestion (« mini-logiciels ») pour les commerces d'Afrique centrale : restaurants, hôtels, garages, pharmacies, boutiques, salons… En français, en FCFA, utilisables sur téléphone. Site : https://minisoft-rca.onrender.com
+
+            COMMENT ÇA MARCHE
+            1. Le client crée un compte gratuit sur le site.
+            2. Il choisit son activité (un appui) ou décrit son besoin en une ou deux phrases.
+            3. L'IA pose au plus 2 petites questions (on peut passer), puis propose un plan avec les fonctionnalités.
+            4. Il touche « Générer mon logiciel ».
+
+            FORMULES (prix par mois)
+            - Découverte : gratuite. 1 logiciel, 20 crédits par mois, sans publication (le logiciel généré reste verrouillé tant qu'on ne passe pas à une formule avec publication).
+            - Pro : 15 000 FCFA. 5 logiciels, 200 crédits, publication incluse.
+            - Business : 45 000 FCFA. 20 logiciels, 800 crédits, équipes et permissions avancées.
+            - Agence : 120 000 FCFA. 100 logiciels, 3 000 crédits, pour créer des logiciels pour plusieurs clients.
+            Coûts en crédits : analyse 2 crédits, génération 3, modification 2. Une opération IA échouée est remboursée.
+            Paiement : depuis « Mon espace » → « Abonnement » → bouton « Payer » (Mobile Money ou carte).
+
+            FONCTIONNALITÉS POUR LES RESTAURANTS
+            - Menu QR personnalisable (thèmes, couleurs, photos) : le client scanne, commande depuis sa table, la commande arrive sur l'écran cuisine.
+            - Écran cuisine : « Commencer », « Prête » en un appui.
+            - Suivi de commande en direct pour le client, avec notifications (même téléphone verrouillé sur Android ; sur iPhone, il faut garder la page ouverte).
+            - Paiement à la caisse ou par ZingoPay (si le restaurant a connecté son compte ZingoPay).
+            - Plan 3D et 2D de l'établissement, ventes, dépenses, stock.
+            AUTRES SECTEURS : hôtel (chambres, réservations, paiements), garage (réparations, pièces, clients), et d'autres modules selon le besoin décrit.
+
+            ÉQUIPE
+            Le responsable invite ses employés par e-mail. Chacun a son poste (caisse, cuisine, stock…) et ne voit que ce qui le concerne. L'accès peut être suspendu en un appui.
+
+            SITE INTERNET CONNECTÉ
+            Une entreprise qui a déjà un site peut le relier à son logiciel (onglet « Site Internet ») pour voir ses visiteurs, pages vues et demandes de contact. MiniSoft ne crée pas de site.
+
+            RÈGLES
+            - N'invente jamais un prix, une fonctionnalité, un délai ou une promesse qui n'est pas écrit ci-dessus. Si tu ne sais pas, dis-le et propose le contact humain.
+            - Ne demande jamais de mot de passe, de code de carte ou de code Mobile Money.
+            - Pour une démonstration, un rendez-vous, un problème de paiement ou une demande particulière : propose le contact humain.
+            CONTACT HUMAIN : WhatsApp +33 7 45 53 96 93 · e-mail minisoltrca@gmail.com · ou « Mon espace » → « Assistance » sur le site.
+            - Termine, quand c'est utile, par une question simple pour aider le client à avancer (par exemple : « Quelle est votre activité ? »).
+        selected: true
+        title: Assistant MiniSoft
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      id: llm
+      position:
+        x: 380
+        y: 282
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+    - data:
+        answer: '{{#llm.text#}}'
+        desc: ''
+        title: Réponse
+        type: answer
+        variables: []
+      id: answer
+      position:
+        x: 680
+        y: 282
+      sourcePosition: right
+      targetPosition: left
+      type: custom

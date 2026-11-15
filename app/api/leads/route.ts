@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clientIp } from "@/lib/client-ip";
 import { z } from "zod";
 import { assertSameOrigin, readJson, route } from "@/lib/api";
 import { HttpError } from "@/lib/access";
@@ -24,7 +25,7 @@ const recent = new Map<string, number[]>();
 /** Demande de démonstration : enregistrée pour l'équipe MiniSoft RCA, visible dans /admin. */
 export const POST = route(async (req) => {
   assertSameOrigin(req);
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "inconnue";
+  const ip = clientIp(req);
   const now = Date.now();
   const hits = (recent.get(ip) ?? []).filter((t) => now - t < 3600_000);
   hits.push(now);

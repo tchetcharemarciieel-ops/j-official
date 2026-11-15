@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { clientIp } from "@/lib/client-ip";
+import { limited } from "@/lib/venue/public";
 import { z } from "zod";
 import { assertSameOrigin, readJson, route } from "@/lib/api";
 import { HttpError } from "@/lib/access";
@@ -11,6 +13,7 @@ const body = z.object({ email: z.string().trim().toLowerCase().email("Adresse e-
 export const POST = route(async (req) => {
   assertSameOrigin(req);
   const input = body.parse(await readJson(req));
+  if (limited(`resend:${clientIp(req)}`, 5) || limited(`resend:${input.email}`, 3)) throw new HttpError(429, "Trop de demandes. Réessayez dans quelques minutes.");
   const { error } = await (await createClient()).auth.resend({ type: "signup", email: input.email, options: { emailRedirectTo: `${SITE_URL}/auth/callback?next=${encodeURIComponent(input.next)}` } });
   if (error) {
     if (/rate limit|too many|seconds/i.test(error.message)) throw new HttpError(429, "Trop d'e-mails envoyés pour le moment. Réessayez dans quelques minutes.");

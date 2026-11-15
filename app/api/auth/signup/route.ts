@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clientIp } from "@/lib/client-ip";
 import { z } from "zod";
 import { assertSameOrigin, readJson, route } from "@/lib/api";
 import { HttpError } from "@/lib/access";
@@ -35,7 +36,7 @@ function limited(ip: string) {
  */
 export const POST = route(async (req) => {
   assertSameOrigin(req);
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "inconnue";
+  const ip = clientIp(req);
   if (limited(ip)) throw new HttpError(429, "Trop d'inscriptions depuis cet appareil. Réessayez dans une heure.");
   const input = body.parse(await readJson(req));
   // Questionnaire validé avant de créer le compte : une réponse invalide n'empêche que l'enregistrement des réponses.

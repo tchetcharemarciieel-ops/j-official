@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clientIp } from "@/lib/client-ip";
 import { z } from "zod";
 import { assertSameOrigin, readJson, route } from "@/lib/api";
 import { HttpError } from "@/lib/access";
@@ -34,7 +35,7 @@ export const POST = route(async (req) => {
   assertSameOrigin(req);
   const profile = await getProfile();
   if (!profile) throw new HttpError(401, "Connectez-vous pour lancer l'analyse.");
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "inconnue";
+  const ip = clientIp(req);
   if (burstLimited(`diagnose:${ip}`) || burstLimited(`diagnose:${profile.id}`)) throw new HttpError(429, "Trop d'analyses en peu de temps. Patientez quelques minutes avant de réessayer.");
   const input = body.parse(await readJson(req, 6_000_000));
 

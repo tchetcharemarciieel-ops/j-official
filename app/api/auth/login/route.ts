@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { audit } from "@/lib/audit";
+import { clientIp } from "@/lib/client-ip";
 import { z } from "zod";
 import { assertSameOrigin, readJson, route } from "@/lib/api";
 import { HttpError } from "@/lib/access";
@@ -26,14 +28,19 @@ function limited(key: string) {
  */
 export const POST = route(async (req) => {
   assertSameOrigin(req);
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "inconnue";
+  const ip = clientIp(req);
   if (limited(ip)) throw new HttpError(429, "Trop de tentatives. Patientez quelques minutes.");
   const input = body.parse(await readJson(req));
+  // Limite aussi par compte : un même e-mail ne peut pas être attaqué depuis de nombreuses adresses.
+  if (limited(`email:${String(input.email).toLowerCase()}`)) throw new HttpError(429, "Trop de tentatives sur ce compte. Patientez quelques minutes.");
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email: input.email, password: input.password });
   if (error) {
     const m = error.message;
-    if (/invalid login|invalid credentials/i.test(m)) throw new HttpError(401, "E-mail ou mot de passe incorrect.");
+    if (/invalid login|invalid credentials/i.test(m)) {
+      await audit("auth.login_failed", { level: "warning", details: { email: String(input.email).toLowerCase().slice(0, 200), ip: clientIp(req) } });
+      throw new HttpError(401, "E-mail ou mot de passe incorrect.");
+    }
     if (/email not confirmed/i.test(m)) throw new HttpError(403, "Votre adresse e-mail n'est pas encore vérifiée. Demandez un code ci-dessous puis saisissez-le.");
     if (/rate limit|too many/i.test(m)) throw new HttpError(429, "Trop de tentatives. Patientez quelques minutes.");
     console.error("[auth/login] échec Supabase :", error.status, m);

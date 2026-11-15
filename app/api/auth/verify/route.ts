@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clientIp } from "@/lib/client-ip";
 import { z } from "zod";
 import { assertSameOrigin, readJson, route } from "@/lib/api";
 import { HttpError } from "@/lib/access";
@@ -24,7 +25,7 @@ function limited(key: string) {
 export const POST = route(async (req) => {
   assertSameOrigin(req);
   const input = body.parse(await readJson(req));
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "inconnue";
+  const ip = clientIp(req);
   if (limited(`${ip}:${input.email}`)) throw new HttpError(429, "Trop d'essais. Patientez quelques minutes ou demandez un nouveau code.");
   const supabase = await createClient();
   const { error } = await supabase.auth.verifyOtp({ email: input.email, token: input.code, type: "signup" });

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clientIp } from "@/lib/client-ip";
 import { assertSameOrigin, readJson, route } from "@/lib/api";
 import { HttpError } from "@/lib/access";
 import { getProfile } from "@/lib/auth";
@@ -17,7 +18,7 @@ export const POST = route(async (req) => {
   const profile = await getProfile();
   if (!profile) throw new HttpError(401, "Connectez-vous pour utiliser l'assistant.");
   if (profile.suspended) throw new HttpError(403, "Compte suspendu.");
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "inconnue";
+  const ip = clientIp(req);
   if (burstLimited(`assistant:${profile.id}`) || burstLimited(`assistant:${ip}`)) throw new HttpError(429, "Trop de messages en peu de temps. Patientez quelques minutes.");
   const input = chatBody.parse(await readJson(req, 400_000));
   await refreshAiSettings();

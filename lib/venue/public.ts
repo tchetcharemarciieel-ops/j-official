@@ -26,7 +26,7 @@ export function limited(key: string, max: number) {
   if (hits.size > 5000) for (const [k, v] of hits) if (now - (v.at(-1) ?? 0) > 60_000) hits.delete(k);
   return recent.length > max;
 }
-export const clientIp = (req: Request) => req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "inconnue";
+export { clientIp } from "../client-ip";
 
 export type PublicCtx = { project: ProjectRow; kind: VenueKind; demo: boolean; store: SupabaseStore; name: string; primary: string; zp: ZpConfig | null };
 

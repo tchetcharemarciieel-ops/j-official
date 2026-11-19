@@ -5,7 +5,7 @@ import { logoValue } from "./logo-value";
 export const SETTINGS = {
   branding: z.object({
     name: z.string().trim().min(1).max(40).default("MiniSoft RCA"),
-    slogan: z.string().trim().max(120).default("Des logiciels simples pour développer votre entreprise"),
+    slogan: z.string().trim().max(120).default("Une phrase. Votre logiciel."),
     logoUrl: logoValue.default(""),
     primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#2563eb"),
   }),

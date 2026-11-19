@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   keywords: ["logiciel de gestion", "Centrafrique", "Bangui", "RCA", "Afrique centrale", "FCFA", "gestion de stock", "gestion de restaurant", "logiciel sur mesure", "PME"],
   openGraph: { type: "website", locale: "fr_FR", siteName: "MiniSoft RCA" },
-  title: { default: "MiniSoft RCA — Des logiciels simples pour développer votre entreprise", template: "%s · MiniSoft RCA" },
+  title: { default: "MiniSoft RCA — Une phrase. Votre logiciel.", template: "%s · MiniSoft RCA" },
   description: "Décrivez vos besoins et obtenez un mini-logiciel de gestion adapté à votre activité : commandes, stocks, clients, factures. En français et en FCFA.",
   manifest: "/manifest.webmanifest",
   icons: { icon: "/icon.svg", apple: "/brand/icon-180.png" },

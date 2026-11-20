@@ -63,3 +63,11 @@ minisoft-rca.onrender.com
 Tu as déjà payé quelqu'un pour un logiciel ou un site ? Raconte 👇
 
 #MiniSoftRCA #Bangui #Centrafrique #Developpeur #Entrepreneur #Commerce #Restaurant #AfriqueTech #Logiciel
+
+# 25 · Démo en 7 étapes (format « voici un logiciel à… »)
+Voici un logiciel de restaurant à 15 000 FCFA par mois, créé en une seule phrase ✍🏾
+1. Tu décris ton restaurant 2. Ton plan en 3D 3. Tu touches une zone, sa gestion s'ouvre 4. Menu par QR code 5. Le client commande et paie 6. Suivi en temps réel 7. Un clic, une couleur
+Une phrase. Ton logiciel. 👉 minisoft-rca.onrender.com
+Quelle étape tu préfères ? 👇
+
+#MiniSoftRCA #Bangui #Centrafrique #Restaurant #MenuQR #Logiciel #Entrepreneur #AfriqueTech #Tech #FCFA

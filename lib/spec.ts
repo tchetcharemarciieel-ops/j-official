@@ -160,6 +160,8 @@ export const appSpecSchema = z.object({
       dataAssistant: z.boolean().default(true),
     })
     .default({ csvExport: true, pdfExport: false, dataAssistant: true }),
+  /** Module métier complet qui remplace l'interface générée (ex. « shop » : MiniSoft Shop). */
+  module: z.enum(["shop"]).optional(),
   /** Absent sur les logiciels créés avant l'espace 3D : un espace par défaut est alors calculé. */
   workspace: workspaceSchema.optional(),
 });

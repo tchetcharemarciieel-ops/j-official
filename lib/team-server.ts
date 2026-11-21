@@ -19,7 +19,7 @@ export async function teamActor(projectId: string, userId: string): Promise<Memb
 
 export function projectSector(project: ProjectRow): Sector {
   const spec = publishedSpec(project) ?? draftSpec(project);
-  return sectorOf(spec ? effectiveWorkspace(spec).layout : null);
+  return sectorOf(spec ? effectiveWorkspace(spec).layout : null, spec?.module);
 }
 
 export async function projectPositions(projectId: string, sector: Sector): Promise<Position[]> {

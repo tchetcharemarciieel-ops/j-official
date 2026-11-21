@@ -124,6 +124,37 @@ export const GARAGE_OP_PERMS: Record<string, Permission[]> = {
   "settings.save": P("parametres"),
 };
 
+export const SHOP_OP_PERMS: Record<string, Permission[]> = {
+  "settings.save": P("parametres"),
+  "category.save": P("stock", "parametres"),
+  "category.delete": P("stock", "parametres"),
+  "product.save": P("stock"),
+  "product.archive": P("stock"),
+  "product.delete": P("stock"),
+  "product.import": P("stock"),
+  "photo.add": P("stock", "parametres", "finances"),
+  "photo.delete": P("stock", "parametres"),
+  "stock.move": P("stock"),
+  "stock.inventory": P("stock"),
+  "register.open": P("caisse"),
+  "register.move": P("caisse"),
+  "register.close": P("caisse"),
+  "sale.create": P("caisse"),
+  "sale.pay": P("caisse", "clients"),
+  "sale.return": P("remises"),
+  "sale.cancel": P("remises"),
+  "sale.invoice": P("caisse", "clients", "rapports"),
+  "customer.save": P("clients", "caisse", "commandes"),
+  "supplier.save": P("achats"),
+  "po.save": P("achats"),
+  "po.status": P("achats"),
+  "po.receive": P("achats", "stock"),
+  "po.pay": P("achats", "finances"),
+  "order.status": P("commandes"),
+  "expense.save": P("finances"),
+  "expense.delete": P("finances"),
+};
+
 /** Message clair (et refus) si l'opération n'est pas autorisée pour ces permissions. */
 export function opDenied(table: Record<string, Permission[]>, op: string, perms: Permission[] | null | undefined): string | null {
   if (perms === null || perms === undefined) return null;

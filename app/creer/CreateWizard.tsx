@@ -4,6 +4,7 @@ import { ArrowLeft, Bot, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { VoiceButton } from "@/components/VoiceButton";
+import { ShopPitch } from "./ShopPitch";
 import { useToast } from "@/components/Toaster";
 import { api, ApiError } from "@/lib/fetcher";
 import { detectColumns, type ColumnInfo } from "@/lib/csv";
@@ -174,6 +175,8 @@ export function CreateWizard({ initialProblem, ai, credits, costs }: { initialPr
           )}
         </div>
       )}
+
+      {step === "describe" && <ShopPitch />}
 
       {step === "describe" && (
         <section className="glass rounded-2xl p-5 sm:p-8">

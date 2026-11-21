@@ -255,3 +255,48 @@ describe("MiniSoft Shop : permissions", () => {
     await expect(runOp(b.o, "sale.create", { id: uid(), items: [{ product_id: a.robe, qty: 1 }], payments: [], register_id: b.reg })).rejects.toThrow(/introuvable/);
   });
 });
+
+describe("MiniSoft Shop : facture PDF", () => {
+  it("génère un vrai fichier PDF avec le numéro, les articles et le total", async () => {
+    const { store, o, robe, reg } = await shop();
+    const id = uid();
+    await runOp(o, "sale.create", { id, items: [{ product_id: robe, qty: 2 }], payments: [{ method: "especes", amount: 30000 }], register_id: reg, customer: { name: "Mme Yakité", phone: "+236 72 00 00 00" } });
+    const inv = await runOp(o, "sale.invoice", { sale_id: id });
+    expect(inv.number).toMatch(/^F-\d{4}-0001$/);
+    expect((await runOp(o, "sale.invoice", { sale_id: id })).number).toBe(inv.number);
+    const { invoicePdf } = await import("@/lib/shop/pdf");
+    const { settingsOf } = await import("@/lib/shop/model");
+    const sale = (await store.get("sale", id))!.data as unknown as Sale;
+    const pdf = invoicePdf(sale, settingsOf(store.data.settings[0]), { name: "Mme Yakité", phone: "+236 72 00 00 00", address: "" });
+    const text = pdf.toString("latin1");
+    expect(text.startsWith("%PDF-1.4")).toBe(true);
+    expect(text).toContain("%%EOF");
+    expect(text).toContain("FACTURE");
+    expect(text).toContain(inv.number!);
+    expect(text).toContain("Robe pagne");
+    expect(text).toMatch(/30\s000 FCFA/);
+    // Table de références croisées cohérente : chaque décalage pointe sur « n 0 obj ».
+    const xref = text.slice(text.lastIndexOf("xref\n"));
+    const offs = [...xref.matchAll(/(\d{10}) 00000 n/g)].map((m) => Number(m[1]));
+    offs.forEach((off, i) => expect(text.slice(off, off + 12)).toContain(`${i + 1} 0 obj`));
+  });
+});
+
+describe("MiniSoft Shop : intégration à MiniSoft RCA", () => {
+  it("la spécification d'une boutique passe tous les tests de publication et se valide", async () => {
+    const { shopSpec } = await import("@/lib/shop/spec");
+    const { runChecks, summarize } = await import("@/lib/checks");
+    const { parseSpec } = await import("@/lib/spec");
+    const spec = shopSpec("Chez Awa Mode", "vetements");
+    expect(parseSpec(spec).ok).toBe(true);
+    expect(summarize(runChecks(spec)).failed).toBe(0);
+    expect(spec.module).toBe("shop");
+  });
+  it("le secteur « shop » a ses postes (caissier, magasinier, vendeur) et ses permissions", async () => {
+    const { sectorOf, positionsFor, SECTOR_PERMISSIONS } = await import("@/lib/team");
+    expect(sectorOf("boutique", "shop")).toBe("shop");
+    expect(sectorOf("boutique")).toBe("autre");
+    expect(positionsFor("shop").map((p) => p.key)).toEqual(expect.arrayContaining(["caissier", "magasinier", "vendeur", "responsable", "administrateur"]));
+    expect(SECTOR_PERMISSIONS.shop).toContain("caisse");
+  });
+});

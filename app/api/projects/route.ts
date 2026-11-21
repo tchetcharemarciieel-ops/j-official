@@ -10,8 +10,11 @@ import { getTemplate } from "@/lib/templates";
 import { getSetting } from "@/lib/settings";
 import { saveVersion, uniqueSlug } from "@/lib/projects";
 import { audit } from "@/lib/audit";
+import { shopSpec } from "@/lib/shop/spec";
+import { SHOP_TYPE_IDS, SHOP_TYPES, defaultSettings, entityKey, type ShopType } from "@/lib/shop/model";
 
 const body = z.union([
+  z.object({ shop: z.object({ name: z.string().trim().min(2).max(80), type: z.enum(SHOP_TYPE_IDS as [string, ...string[]]) }) }),
   z.object({ diagnosis: diagnosisSchema, problem: z.string().max(4000) }),
   z.object({ templateId: z.string().max(40), name: z.string().trim().min(2).max(80) }),
 ]);
@@ -33,7 +36,13 @@ export const POST = route(async (req) => {
     throw new HttpError(402, `Votre formule ${planName} permet ${limit} logiciel${limit > 1 ? "s" : ""}. Passez à une formule supérieure (page Abonnement) pour en créer d'autres.`);
 
   let spec, problem, diagnosis, templateId: string | null = null, sector;
-  if ("diagnosis" in input) {
+  const shopType = "shop" in input ? (input.shop.type as ShopType) : null;
+  if ("shop" in input) {
+    spec = shopSpec(input.shop.name, shopType!);
+    problem = "MiniSoft Shop : gestion complète de boutique (caisse, stock, boutique en ligne).";
+    diagnosis = null;
+    sector = SHOP_TYPES[shopType!].label;
+  } else if ("diagnosis" in input) {
     if (!input.diagnosis.features.some((f) => f.selected)) throw new HttpError(400, "Sélectionnez au moins une fonctionnalité.");
     spec = composeSpec(input.diagnosis);
     problem = input.problem;
@@ -57,7 +66,12 @@ export const POST = route(async (req) => {
     .single();
   if (error || !project) throw new HttpError(500, "Création du projet impossible.");
   await db.from("project_members").insert({ project_id: project.id, user_id: profile.id, role: "owner" });
-  await audit("project.created", { projectId: project.id, actorId: profile.id, details: { templateId, slug } });
+  await audit("project.created", { projectId: project.id, actorId: profile.id, details: { templateId, slug, ...(shopType ? { module: "shop", type: shopType } : {}) } });
+  if (shopType) {
+    // Réglages de départ de la boutique, pour les données réelles et pour les données de test.
+    const base = defaultSettings(spec.name, shopType);
+    await db.from("records").insert([false, true].map((demo) => ({ project_id: project.id, entity: entityKey("settings"), data: base, is_demo: demo, created_by: profile.id, updated_by: profile.id })));
+  }
   const saved = await saveVersion(project, spec, { summary: templateId ? "Création à partir d'un modèle" : "Première génération", source: templateId ? "template" : "generation", authorId: profile.id });
   return NextResponse.json({ id: project.id, version: saved.version, checks: saved.checks });
 });

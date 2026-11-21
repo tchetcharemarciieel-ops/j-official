@@ -16,6 +16,7 @@ import { WorkspaceView } from "./workspace/WorkspaceView";
 import { NotificationBell } from "@/components/espace/NotificationBell";
 import { effectiveWorkspace } from "@/lib/workspace";
 import { SlidingNotch, SlidingPill, useSlidingIndicator } from "@/components/ui/SlidingIndicator";
+import { ShopApp } from "@/components/shop/ShopApp";
 
 type Answer = { answer: string; facts: string[]; period: string; basis: string; missing: string[]; mode: string; engine: string };
 
@@ -23,7 +24,16 @@ type Answer = { answer: string; facts: string[]; period: string; basis: string; 
  * Moteur d'exécution : interprète une AppSpec avec des composants validés.
  * Toutes les actions passent par l'API, qui revérifie le rôle à chaque requête.
  */
-export function AppRuntime({ projectId, spec, mode, role, perms = null, compact = false }: { projectId: string; spec: AppSpec; mode: DataMode; role: Role; perms?: string[] | null; compact?: boolean }) {
+export function AppRuntime(props: { projectId: string; spec: AppSpec; mode: DataMode; role: Role; perms?: string[] | null; compact?: boolean }) {
+  // MiniSoft Shop : module complet (caisse, stock, boutique en ligne…) à la place de l'interface générée.
+  if (props.spec.module === "shop") {
+    if (props.mode === "local") return <p className="p-6 text-sm text-slate-600">MiniSoft Shop demande un compte : créez votre boutique pour l&apos;essayer avec vos propres produits.</p>;
+    return <ShopApp projectId={props.projectId} mode={props.mode} />;
+  }
+  return <GeneratedRuntime {...props} />;
+}
+
+function GeneratedRuntime({ projectId, spec, mode, role, perms = null, compact = false }: { projectId: string; spec: AppSpec; mode: DataMode; role: Role; perms?: string[] | null; compact?: boolean }) {
   const data = useAppData(projectId, mode, spec);
   const notify = useToast();
   // Poste sans « Interface classique » : seules les fonctions de son poste (espace de travail) sont proposées.

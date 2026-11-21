@@ -5,6 +5,7 @@ import { audit } from "@/lib/audit";
 import { clientIp, limited, serverRestaurant } from "@/lib/venue/public";
 import { verifyZpOrder } from "@/lib/venue/zp-flow";
 import { parseReference, validSignature, ZpError } from "@/lib/zingopay";
+import { handleShopWebhook } from "@/lib/shop/webhook";
 import type { Doc } from "@/lib/venue/model";
 import type { FullOrder } from "@/lib/venue/online";
 
@@ -24,6 +25,9 @@ export const POST = route(async (req, { params }: Ctx) => {
   if (limited(`zingopay:${clientIp(req)}`, 60)) throw new HttpError(429, "Trop de requêtes.");
   const raw = await req.text();
   if (raw.length > 32_000) throw new HttpError(413, "Notification trop volumineuse.");
+  // Boutique MiniSoft Shop : même vérification, traitée par le module boutique.
+  const shop = await handleShopWebhook(slug, raw, req.headers.get("zingopay-signature"));
+  if (shop) return shop;
   const base = await serverRestaurant(slug, false);
   const log = (result: string, extra: Record<string, unknown> = {}, level: "info" | "warning" = "info") =>
     audit("zingopay.notification", { projectId: base.project.id, level, details: { result, ...extra } });

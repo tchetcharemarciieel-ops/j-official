@@ -127,7 +127,15 @@ export function Pos() {
         )}
       </div>
 
-      <aside className="lg:sticky lg:top-20 lg:self-start">
+      {cart.length > 0 && (
+        <div className="fixed inset-x-0 bottom-[3.75rem] z-20 px-3 lg:hidden">
+          <button className="btn btn-primary flex w-full justify-between !py-3 shadow-lg" onClick={() => document.getElementById("panier")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+            <span className="flex items-center gap-2"><ShoppingCart className="h-4 w-4" /> Panier ({cart.reduce((a, l) => a + l.qty, 0)})</span>
+            <span>{fcfa(totals.total)}</span>
+          </button>
+        </div>
+      )}
+      <aside id="panier" className="scroll-mt-20 lg:sticky lg:top-20 lg:self-start">
         <Card title={<span className="flex items-center gap-2"><ShoppingCart className="h-4 w-4" /> Panier</span>} action={cart.length > 0 && <button className="text-xs text-slate-500 hover:text-red-600" onClick={() => (setCart([]), setDiscount(""))}>Vider</button>}>
           {cart.length === 0 ? (
             <p className="py-6 text-center text-sm text-slate-500">Touchez un produit ou scannez son code-barres.</p>

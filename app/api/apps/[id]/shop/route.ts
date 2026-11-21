@@ -81,6 +81,7 @@ export const GET = route(async (req, { params }: Ctx) => {
     perms: p,
     slug: ctx.project.slug,
     projectName: ctx.project.name,
+    truncated: store.truncated,
     zingopay: Boolean(zp?.enabled),
     can: {
       cost: seeCost,

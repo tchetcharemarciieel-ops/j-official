@@ -16,6 +16,8 @@ export type ShopState = {
   slug: string;
   projectName: string;
   zingopay: boolean;
+  /** Collections dont l'historique le plus ancien n'est pas chargé (très gros volume). */
+  truncated?: string[];
   can: { cost: boolean; finances: boolean; remises: boolean; settings: boolean; team: boolean };
 };
 export type QueuedSale = { input: Record<string, unknown> & { id: string; offline_at: string }; label: string; total: number; error?: string };

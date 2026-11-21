@@ -2,10 +2,11 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { adminClient } from "../supabase/admin";
 import { HttpError } from "../access";
-import { COLLECTIONS, emptyData, entityKey, colFromEntity, type Col, type Doc, type ShopData } from "./model";
+import { COLLECTIONS, emptyData, entityKey, type Col, type Doc, type ShopData } from "./model";
 import type { ShopStore } from "./engine";
 
 const COLS = "id,data,created_at,updated_at";
+const LIMIT = 10000;
 
 /** Identifiant stable d'un compteur : deux créations simultanées se heurtent à la clé primaire. */
 function counterId(projectId: string, demo: boolean, key: string) {
@@ -34,16 +35,24 @@ export class SupabaseStore implements ShopStore {
     await this.db.from("record_history").insert({ project_id: this.projectId, record_id: recordId, entity: entityKey(col), action, before: this.demo ? null : before, after: this.demo ? null : after, actor_id: this.actorId });
   }
 
-  /** Toutes les données de la boutique en une requête (les images ne sont chargées qu'à la demande). */
+  /** Collections qui ont atteint la limite de lecture : l'historique le plus ancien n'est alors pas chargé. */
+  truncated: Col[] = [];
+
+  /**
+   * Toutes les données de la boutique (les images ne sont chargées qu'à la demande). Une requête
+   * par collection : une collection très volumineuse (mouvements de stock) ne prive jamais les
+   * autres (produits, ventes) de leurs fiches. Les plus récentes sont lues en premier.
+   */
   async all(): Promise<ShopData> {
     const out = emptyData();
-    const entities = COLLECTIONS.filter((c) => c !== "photo" && c !== "counter").map(entityKey);
-    const { data, error } = await this.db.from("records").select(`entity,${COLS}`).eq("project_id", this.projectId).eq("is_demo", this.demo).in("entity", entities).order("created_at", { ascending: false }).limit(20000);
-    if (error) throw new HttpError(500, "Lecture des données de la boutique impossible.");
-    for (const r of data ?? []) {
-      const col = colFromEntity(r.entity);
-      if (col) out[col].push({ id: r.id, data: r.data, created_at: r.created_at, updated_at: r.updated_at });
-    }
+    this.truncated = [];
+    const cols = COLLECTIONS.filter((c) => c !== "photo" && c !== "counter");
+    const results = await Promise.all(cols.map((c) => this.db.from("records").select(COLS).eq("project_id", this.projectId).eq("is_demo", this.demo).eq("entity", entityKey(c)).order("created_at", { ascending: false }).limit(LIMIT)));
+    results.forEach((r, i) => {
+      if (r.error) throw new HttpError(500, "Lecture des données de la boutique impossible.");
+      out[cols[i]!] = (r.data ?? []) as Doc[];
+      if ((r.data?.length ?? 0) >= LIMIT) this.truncated.push(cols[i]!);
+    });
     return out;
   }
 

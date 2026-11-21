@@ -152,6 +152,7 @@ export function ShopApp({ projectId, mode }: { projectId: string; mode: "demo" |
               {mode === "live" && <NotificationBell />}
             </header>
             <main className="px-3 py-4 sm:px-4 lg:px-6 lg:py-6">
+              {!!s.truncated?.length && <p className="mb-4 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">Volume de données très important : l&apos;historique le plus ancien ({s.truncated.join(", ")}) n&apos;est pas affiché, donc les totaux et rapports sur de longues périodes peuvent être incomplets. Contactez MiniSoft RCA pour archiver les anciennes données.</p>}
               {current === "dashboard" && <Dashboard />}
               {current === "pos" && <Pos />}
               {current === "sales" && <Sales />}

@@ -35,6 +35,12 @@ h1, h2, h3 {
   letter-spacing: -0.015em;
 }
 
+.font-landing {
+  font-family: "Calistoga", var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
 .font-display {
   font-family: var(--font-display);
 }

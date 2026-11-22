@@ -66,7 +66,7 @@ function SectionTitle({ eyebrow, title, text, center = true }: { eyebrow?: strin
   return (
     <Reveal className={center ? "mx-auto max-w-2xl text-center" : "max-w-2xl"}>
       {eyebrow && <p className="text-sm font-semibold text-blue-600">{eyebrow}</p>}
-      <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">{title}</h2>
+      <h2 className="font-landing mt-2 text-3xl text-slate-900 sm:text-4xl">{title}</h2>
       {text && <p className="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg">{text}</p>}
     </Reveal>
   );
@@ -113,10 +113,10 @@ export default async function Home() {
               <p className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-white px-3 py-1 text-sm font-medium text-indigo-800">
                 Boutiques, agences, restaurants, garages, écoles
               </p>
-              <h1 className="mt-6 text-4xl font-bold leading-tight tracking-tight text-slate-900 sm:text-5xl lg:text-[3.4rem]">{site.home.heroTitle || "Une phrase. Votre logiciel."}</h1>
+              <h1 className="font-landing mt-6 text-4xl leading-tight text-slate-900 sm:text-5xl lg:text-[3.4rem]">{site.home.heroTitle || "Une phrase. Votre logiciel."}</h1>
               <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-600">{site.home.heroSubtitle || "Décrivez votre commerce en une phrase : MiniSoft RCA crée votre logiciel de gestion. En français, avec vos montants en FCFA."}</p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Link href={siteHref("/creer")} className="btn btn-primary px-6 text-base shadow-lg shadow-blue-600/20">
+                <Link href={siteHref("/creer")} className="btn btn-primary px-6 text-base shadow-lg shadow-emerald-700/25 !bg-emerald-700 hover:!bg-emerald-800">
                   Créer mon logiciel
                 </Link>
                 <Link href="/#solutions" className="btn btn-ghost px-6 text-base">

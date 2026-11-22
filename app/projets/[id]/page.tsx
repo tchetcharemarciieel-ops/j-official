@@ -34,7 +34,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
   // Formule gratuite : le logiciel généré est montré flouté, à débloquer par une formule.
   if (await projectLocked(p)) {
     return (
-      <AppShell wide>
+      <AppShell wide noMenu>
         <LockedApp spec={draftSpec(p)} projectId={p.id} owner={role === "owner"} projectName={p.name} />
       </AppShell>
     );
@@ -75,7 +75,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
     logs: (logs.data ?? []).map((l) => ({ action: l.action, level: l.level, created_at: l.created_at, actor: who[l.actor_id] ?? "Système" })),
   };
   return (
-    <AppShell wide>
+    <AppShell wide noMenu>
       <Workspace data={data} initialTab={onglet} />
     </AppShell>
   );

@@ -6,7 +6,8 @@ import { getProfile } from "@/lib/auth";
 import { SITE_NAV } from "@/lib/nav";
 import { SignOutButton } from "./SignOutButton";
 
-export async function SiteHeader() {
+/** `noMenu` : pas de bouton de menu sur téléphone (pages de travail comme la boutique, qui ont leur propre menu). */
+export async function SiteHeader({ noMenu = false }: { noMenu?: boolean } = {}) {
   const profile = await getProfile().catch(() => null);
   return (
     <header className="no-print sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur">
@@ -41,7 +42,7 @@ export async function SiteHeader() {
             )
           )}
         </div>
-        <MobileNav isAdmin={Boolean(profile?.is_admin)} signedIn={Boolean(profile)} />
+        {!noMenu && <MobileNav isAdmin={Boolean(profile?.is_admin)} signedIn={Boolean(profile)} />}
       </div>
     </header>
   );

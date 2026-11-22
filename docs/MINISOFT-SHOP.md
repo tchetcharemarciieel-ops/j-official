@@ -13,6 +13,11 @@
 - Hors connexion : catalogue consultable, ventes mises en file avec identifiant unique et envoyées au retour d'Internet (conflits signalés).
 - Admin : page « Boutiques Shop » (totaux, suspension/réactivation tracées).
 
+## Commande et paiement en ligne : exactement deux moyens
+1. **Paiement à la livraison** (ou au retrait en boutique) : le client ne paie rien à la commande. La commande arrive « En attente de confirmation ». Le commerçant la confirme, prépare, livre ; le paiement n'est noté « encaissé » que lorsqu'il clique « J'ai reçu l'argent » (espèces : caisse ouverte obligatoire).
+2. **ZingoPay** : transaction créée au montant exact avec la référence de la commande ; la commande n'est payée qu'après relecture du statut chez ZingoPay (référence et montant identiques) ou notification signée vérifiée. Une capture d'écran ne prouve rien. En cas d'échec/expiration, la commande est conservée avec le paiement « non confirmé » et le client peut réessayer. Payée puis refusée : « à rembourser ».
+Espace commerçant : toutes les commandes, mode choisi, montant, confirmer/refuser (motif obligatoire), statuts de préparation et livraison, onglet Paiements, historique par commande.
+
 ## Nécessite une intervention extérieure
 - ZingoPay (ALETCHCARD) : chaque commerçant colle sa propre clé (carte « Paiement en ligne ZingoPay » de la page Boutique en ligne). Non testé avec une vraie clé.
 - Répartition 51 % ALETCHCARD / 49 % MiniSoft RCA : NON implémentée (aucun contrat ni API de reversement fournis). Les paiements en espèces n'entrent jamais dans cette répartition.

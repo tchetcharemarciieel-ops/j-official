@@ -80,9 +80,8 @@ export function Online() {
               <Field label="Informations de livraison" hint="Zones, délais…"><input className="input" value={f.delivery.info} onChange={(e) => set("delivery", { ...f.delivery, info: e.target.value })} maxLength={300} /></Field>
             </div>
           )}
-          <p className="pt-1 font-medium">Moyens de paiement proposés aux clients</p>
-          <label className="flex items-center gap-2"><input type="checkbox" checked={f.online.pay_delivery} onChange={(e) => setOn("pay_delivery", e.target.checked)} /> Paiement à la livraison</label>
-          <label className="flex items-center gap-2"><input type="checkbox" checked={f.online.pay_pickup} onChange={(e) => setOn("pay_pickup", e.target.checked)} /> Paiement au retrait</label>
+          <p className="pt-1 font-medium">Moyens de paiement proposés aux clients (deux seulement)</p>
+          <label className="flex items-start gap-2"><input type="checkbox" className="mt-1" checked={f.online.pay_delivery} onChange={(e) => setOn("pay_delivery", e.target.checked)} /><span>Paiement à la livraison<br /><span className="text-slate-500">Le client ne paie rien à la commande. Le paiement est noté « encaissé » seulement quand vous confirmez avoir reçu l&apos;argent.</span></span></label>
           <label className={`flex items-start gap-2 ${c.s.zingopay ? "" : "opacity-60"}`}><input type="checkbox" className="mt-1" disabled={!c.s.zingopay} checked={f.online.zingopay && c.s.zingopay} onChange={(e) => setOn("zingopay", e.target.checked)} /><span>Paiement en ligne ZingoPay (ALETCHCARD){!c.s.zingopay && <><br /><span className="text-slate-500">Non activé : ajoutez votre clé ZingoPay dans la carte « Paiement en ligne ZingoPay » en bas de cette page. La commande n'est confirmée qu'après la confirmation de ZingoPay.</span></>}</span></label>
         </div>
       </Card>

@@ -12,7 +12,7 @@ type Catalog = {
   ordering: boolean;
   delivery: { fee: number; info: string } | null;
   pickup: { info: string } | null;
-  payments: { delivery: boolean; pickup: boolean; zingopay: boolean; zingopayTest: boolean };
+  payments: { delivery: boolean; zingopay: boolean; zingopayTest: boolean };
   demo: boolean;
   categories: { id: string; name: string }[];
   items: Item[];
@@ -267,15 +267,15 @@ function CartView({ cart, setCart, total, onCheckout, onBack }: { cart: Line[]; 
 function Checkout({ slug, cat, cart, total, test, onDone, onStale }: { slug: string; cat: Catalog; cart: Line[]; total: number; test: boolean; onDone: (d: { number: string; tracking: string; pay_url: string | null; pay_error: string | null }) => void; onStale: () => void }) {
   const [f, setF] = useState({ name: "", phone: "", address: "", note: "" });
   const [mode, setMode] = useState<"livraison" | "retrait">(cat.pickup ? "retrait" : "livraison");
-  const [pay, setPay] = useState<"livraison" | "retrait" | "zingopay" | "">("");
+  const [pay, setPay] = useState<"livraison" | "zingopay" | "">("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [orderId] = useState(() => crypto.randomUUID());
   const fee = mode === "livraison" ? (cat.delivery?.fee ?? 0) : 0;
+  // Exactement deux moyens de paiement : à la livraison (ou à la remise en boutique) et ZingoPay.
   const options = [
-    ...(mode === "livraison" && cat.payments.delivery ? [["livraison", "Payer à la livraison"] as const] : []),
-    ...(mode === "retrait" && cat.payments.pickup ? [["retrait", "Payer au retrait en boutique"] as const] : []),
-    ...(cat.payments.zingopay ? [["zingopay", `Payer maintenant avec ZingoPay${cat.payments.zingopayTest ? " (test)" : ""}`] as const] : []),
+    ...(cat.payments.delivery ? [["livraison", mode === "livraison" ? "Payer à la livraison" : "Payer au retrait en boutique", "Vous ne payez rien maintenant : vous réglez à la réception de votre commande."] as const] : []),
+    ...(cat.payments.zingopay ? [["zingopay", `Payer maintenant avec ZingoPay${cat.payments.zingopayTest ? " (test)" : ""}`, "Paiement en ligne sécurisé, confirmé automatiquement par ZingoPay."] as const] : []),
   ];
   useEffect(() => {
     if (!options.some(([k]) => k === pay)) setPay((options[0]?.[0] as typeof pay) ?? "");
@@ -323,8 +323,8 @@ function Checkout({ slug, cat, cart, total, test, onDone, onStale }: { slug: str
       </section>
       <section className="rounded-2xl bg-white p-4 shadow-sm">
         <h2 className="mb-3 font-semibold">Paiement</h2>
-        {options.length === 0 ? <p className="text-sm text-red-600">Aucun moyen de paiement n&apos;est proposé pour ce mode de réception.</p> : (
-          <div className="space-y-2">{options.map(([k, l]) => <label key={k} className={`flex items-center gap-3 rounded-xl border p-3 text-sm ${pay === k ? "border-[var(--brand)] bg-[var(--brand)]/5" : "border-slate-300"}`}><input type="radio" name="pay" checked={pay === k} onChange={() => setPay(k)} /> {l}</label>)}</div>
+        {options.length === 0 ? <p className="text-sm text-red-600">Cette boutique n&apos;a pas encore activé de moyen de paiement. Contactez-la par WhatsApp.</p> : (
+          <div className="space-y-2">{options.map(([k, l, d]) => <label key={k} className={`flex items-start gap-3 rounded-xl border p-3 text-sm ${pay === k ? "border-[var(--brand)] bg-[var(--brand)]/5" : "border-slate-300"}`}><input type="radio" name="pay" className="mt-1" checked={pay === k} onChange={() => setPay(k)} /><span><span className="font-medium">{l}</span><span className="block text-xs text-slate-500">{d}</span></span></label>)}</div>
         )}
         <label className="mt-3 block"><span className="label">Message pour le commerçant (facultatif)</span><input className="input" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} maxLength={300} /></label>
       </section>
@@ -334,7 +334,7 @@ function Checkout({ slug, cat, cart, total, test, onDone, onStale }: { slug: str
         <div className="flex justify-between text-lg font-bold"><span>Total</span><span>{fcfa(total + fee)}</span></div>
       </section>
       {err && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{err}</p>}
-      <button className="btn btn-primary w-full !py-3 text-base" disabled={!ready || busy} onClick={submit}>{busy ? "Envoi…" : pay === "zingopay" ? "Commander et payer" : "Confirmer ma commande"}</button>
+      <button className="btn btn-primary w-full !py-3 text-base" disabled={!ready || busy} onClick={submit}>{busy ? "Envoi…" : pay === "zingopay" ? "Commander et payer" : "Envoyer ma commande"}</button>
     </div>
   );
 }
@@ -345,9 +345,9 @@ function Done({ d, slug, q1, name, whatsapp, onBack }: { d: { number: string; tr
     <div className="mx-auto max-w-md space-y-4 py-6 text-center">
       <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-emerald-100 text-emerald-700"><Check className="h-8 w-8" /></span>
       <h2 className="text-xl font-bold">Commande envoyée !</h2>
-      <p className="text-slate-600">Numéro <b>{d.number}</b>. {name} a été prévenu et va la confirmer.</p>
+      <p className="text-slate-600">Numéro <b>{d.number}</b>. Statut : <b>en attente de confirmation</b> : {name} a été prévenu et va la confirmer.</p>
       {d.pay_url && <a className="btn btn-primary w-full !py-3" href={d.pay_url}>Payer maintenant avec ZingoPay</a>}
-      {d.pay_error && <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">{d.pay_error} Vous pourrez réessayer depuis la page de suivi.</p>}
+      {d.pay_error && <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">Paiement non confirmé : {d.pay_error} Votre commande est conservée : réessayez le paiement depuis la page de suivi.</p>}
       <Link className="btn btn-ghost w-full" href={track}>Suivre ma commande</Link>
       <p className="text-xs text-slate-500">Gardez ce lien : il vous permet de suivre votre commande sans compte. Il est aussi retrouvable avec le numéro et votre téléphone.</p>
       {whatsapp && <a className="btn btn-ghost w-full" href={waLink(whatsapp, `Bonjour, j'ai passé la commande ${d.number}.`)} target="_blank" rel="noopener noreferrer"><MessageCircle className="h-4 w-4" /> Écrire au commerçant</a>}

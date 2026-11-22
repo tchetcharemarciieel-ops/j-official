@@ -108,7 +108,7 @@ export async function catalog(p: PublicShop) {
     ordering: s.online.published && s.online.ordering,
     delivery: s.delivery.enabled ? { fee: s.delivery.fee, info: s.delivery.info } : null,
     pickup: s.pickup.enabled ? { info: s.pickup.info } : null,
-    payments: { delivery: s.online.pay_delivery, pickup: s.online.pay_pickup, zingopay: s.online.zingopay && Boolean(p.zp), zingopayTest: p.zp?.mode === "test" },
+    payments: { delivery: s.online.pay_delivery, zingopay: s.online.zingopay && Boolean(p.zp), zingopayTest: p.zp?.mode === "test" },
     demo: p.demo,
     categories: categories.filter((c) => catsUsed.has(c.id)).sort((a, b) => a.data.sort - b.data.sort).map((c) => ({ id: c.id, name: c.data.name })),
     items: s.online.published || p.demo ? items : [],
@@ -147,12 +147,15 @@ export function publicOrder(o: Doc<Order>, shopName: string) {
     mode: d.mode,
     pay_mode: d.pay_mode,
     pay_status: d.pay_status,
+    pay_error: d.pay_status === "non_confirme" ? (d.zp_error ?? "Paiement non confirmé.") : null,
+    refusal: d.status === "annulee" ? ([...d.history].reverse().find((h) => h.to === "annulee")?.note || null) : null,
     total: d.total,
     delivery_fee: d.delivery_fee,
     items: d.items.map((l) => ({ name: l.name, qty: l.qty, unit_price: l.unit_price })),
     history: d.history.map((h) => ({ status: h.to, label: ORDER_STATUS[h.to], at: h.at })),
     at: d.at,
-    pay_url: d.zp && d.pay_status !== "paye" && d.status !== "annulee" ? d.zp.pay_url : null,
+    pay_url: d.zp && d.pay_status === "en_attente" && d.status !== "annulee" ? d.zp.pay_url : null,
+    can_retry: d.pay_mode === "zingopay" && d.pay_status === "non_confirme" && d.status !== "annulee",
     customer_name: d.customer.name,
   };
 }
@@ -161,11 +164,22 @@ export function publicOrder(o: Doc<Order>, shopName: string) {
 
 /** Crée (ou retrouve) le paiement ZingoPay de la commande, au montant exact. */
 export async function startZpPayment(p: PublicShop, orderId: string): Promise<string> {
+  try {
+    return await startZpPaymentRaw(p, orderId);
+  } catch (e) {
+    // Le paiement n'a pas pu être créé : la commande est conservée, paiement « non confirmé » (nouvel essai possible).
+    if (e instanceof ZpError && !["paid", "not_found", "disabled"].includes(e.code)) await runOp(internalCtx(p), "order.zp_failed", { order_id: orderId, reason: e.message.slice(0, 280) }).catch(() => undefined);
+    throw e;
+  }
+}
+
+async function startZpPaymentRaw(p: PublicShop, orderId: string): Promise<string> {
   if (!p.zp) throw new ZpError(409, "disabled", "Le paiement ZingoPay n'est pas activé par cette boutique.");
   const o = (await p.store.get("order", orderId)) as Doc<Order> | null;
   if (!o || o.data.pay_mode !== "zingopay") throw new ZpError(404, "not_found", "Commande introuvable.");
+  if (o.data.status === "annulee") throw new ZpError(409, "not_found", "Cette commande a été refusée ou annulée.");
   if (o.data.pay_status === "paye") throw new ZpError(409, "paid", "Cette commande est déjà payée.");
-  if (o.data.zp && o.data.zp.status === "pending" && (!o.data.zp.expires_at || Date.parse(o.data.zp.expires_at) > Date.now() + 60_000)) return o.data.zp.pay_url;
+  if (o.data.pay_status !== "non_confirme" && o.data.zp && o.data.zp.status === "pending" && (!o.data.zp.expires_at || Date.parse(o.data.zp.expires_at) > Date.now() + 60_000)) return o.data.zp.pay_url;
   const reference = orderReference(o.id, p.demo);
   let pay: ZpPayment;
   try {
@@ -191,6 +205,7 @@ export async function verifyZpOrder(p: PublicShop, orderId: string): Promise<"pa
   if (o.data.pay_status === "paye") return "paid";
   const pay = await zp.get(p.zp.apiKey, o.data.zp.id);
   if (pay.status === "paid") return (await confirmIfPaid(p, o.id, pay)) ? "paid" : "pending";
+  if (pay.status === "expired" || pay.status === "cancelled") await runOp(internalCtx(p), "order.zp_failed", { order_id: o.id, status: pay.status, reason: pay.status === "expired" ? "le lien de paiement a expiré sans paiement" : "le paiement a été annulé" }).catch(() => undefined);
   return pay.status;
 }
 
@@ -208,3 +223,13 @@ async function confirmIfPaid(p: PublicShop, orderId: string, pay: ZpPayment) {
   return true;
 }
 
+
+/** Relit chez ZingoPay les paiements en attente (3 dernières heures) ; rien n'est forcé : seule la confirmation de ZingoPay marque payé. */
+export async function checkPendingZp(p: PublicShop): Promise<{ checked: number; paid: number }> {
+  if (!p.zp) return { checked: 0, paid: 0 };
+  const since = Date.now() - 3 * 3_600_000;
+  const pending = ((await p.store.list("order")) as Doc<Order>[]).filter((o) => o.data.pay_mode === "zingopay" && o.data.zp && o.data.pay_status === "en_attente" && o.data.status !== "annulee" && Date.parse(o.created_at) >= since).slice(0, 10);
+  let paid = 0;
+  for (const o of pending) if ((await verifyZpOrder(p, o.id).catch(() => "none")) === "paid") paid++;
+  return { checked: pending.length, paid };
+}

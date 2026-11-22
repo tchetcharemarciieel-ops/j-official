@@ -151,6 +151,8 @@ export const SHOP_OP_PERMS: Record<string, Permission[]> = {
   "po.receive": P("achats", "stock"),
   "po.pay": P("achats", "finances"),
   "order.status": P("commandes"),
+  "order.collect": P("commandes", "caisse"),
+  "order.refund_done": P("commandes", "caisse", "finances"),
   "expense.save": P("finances"),
   "expense.delete": P("finances"),
 };

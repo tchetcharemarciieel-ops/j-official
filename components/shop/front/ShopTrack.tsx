@@ -4,11 +4,11 @@ import { Check, Loader2, Search } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
-type Tracked = { number: string; shop: string; status: string; status_label: string; mode: string; pay_mode: string; pay_status: string; total: number; items: { name: string; qty: number; unit_price: number }[]; history: { status: string; label: string; at: string }[]; at: string; pay_url: string | null };
+type Tracked = { number: string; shop: string; status: string; status_label: string; mode: string; pay_mode: string; pay_status: string; pay_error: string | null; refusal: string | null; can_retry: boolean; total: number; items: { name: string; qty: number; unit_price: number }[]; history: { status: string; label: string; at: string }[]; at: string; pay_url: string | null };
 const fcfa = (n: number) => `${Math.round(n).toLocaleString("fr-FR")} FCFA`;
-const STEPS_DELIVERY = ["nouvelle", "confirmee", "preparation", "prete", "livraison", "livree"];
-const STEPS_PICKUP = ["nouvelle", "confirmee", "preparation", "prete", "retiree"];
-const LABEL: Record<string, string> = { nouvelle: "Reçue", attente: "En attente", confirmee: "Confirmée", preparation: "En préparation", prete: "Prête", livraison: "En livraison", livree: "Livrée", retiree: "Retirée" };
+const STEPS_DELIVERY = ["attente", "confirmee", "preparation", "prete", "livraison", "livree"];
+const STEPS_PICKUP = ["attente", "confirmee", "preparation", "prete", "retiree"];
+const LABEL: Record<string, string> = { nouvelle: "Reçue", attente: "En attente de confirmation", confirmee: "Confirmée", preparation: "En préparation", prete: "Prête", livraison: "En livraison", livree: "Livrée", retiree: "Retirée" };
 
 /** Suivi public d'une commande : lien secret, ou numéro + téléphone. Se met à jour tout seul. */
 export function ShopTrack({ slug, token, test }: { slug: string; token: string | null; test: boolean }) {
@@ -61,13 +61,23 @@ export function ShopTrack({ slug, token, test }: { slug: string; token: string |
             <p className="text-sm text-slate-500">{o.shop}</p>
             <p className="text-lg font-bold">{o.number}</p>
             <p className={`mt-1 inline-block rounded-full px-3 py-1 text-sm font-medium ${cancelled ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-800"}`}>{o.status_label}</p>
+            {o.status === "attente" || o.status === "nouvelle" ? <p className="mt-2 text-sm text-slate-600">La boutique doit confirmer votre commande.</p> : null}
+            {o.refusal && <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">Motif : {o.refusal}</p>}
             {o.pay_status === "paye" && <p className="mt-2 text-sm text-emerald-700">✓ Paiement confirmé</p>}
+            {o.pay_status === "a_rembourser" && <p className="mt-2 text-sm text-amber-800">Votre paiement va vous être remboursé par la boutique.</p>}
+            {o.pay_status === "non_confirme" && <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">Paiement non confirmé{o.pay_error ? ` : ${o.pay_error}` : ""}. Votre commande est conservée.</p>}
             {o.pay_url && <a className="btn btn-primary mt-3 w-full" href={o.pay_url}>Payer avec ZingoPay</a>}
+            {o.can_retry && token && <button className="btn btn-primary mt-3 w-full" onClick={async () => {
+              const r = await fetch(`/api/public/shop/${slug}/track`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ t: token, test }) });
+              const b = await r.json().catch(() => ({}));
+              if (r.ok && b.pay_url) location.href = b.pay_url;
+              else setErr(b.error ?? "Nouvel essai impossible pour le moment.");
+            }}>Réessayer le paiement ZingoPay</button>}
           </section>
           {!cancelled && (
             <ol className="space-y-3 rounded-2xl bg-white p-4 shadow-sm">
               {steps.map((s) => {
-                const on = reached.has(s as never) || (s === "nouvelle" && reached.has("attente" as never));
+                const on = reached.has(s as never) || (s === "attente" && reached.has("nouvelle" as never));
                 return <li key={s} className={`flex items-center gap-3 text-sm ${on ? "font-medium text-slate-900" : "text-slate-400"}`}><span className={`grid h-6 w-6 place-items-center rounded-full ${on ? "bg-emerald-600 text-white" : "bg-slate-200"}`}>{on && <Check className="h-3.5 w-3.5" />}</span>{LABEL[s]}</li>;
               })}
             </ol>
@@ -75,7 +85,7 @@ export function ShopTrack({ slug, token, test }: { slug: string; token: string |
           <section className="rounded-2xl bg-white p-4 text-sm shadow-sm">
             <ul className="space-y-1">{o.items.map((l, i) => <li key={i} className="flex justify-between gap-2"><span>{l.name} × {l.qty}</span><span>{fcfa(l.qty * l.unit_price)}</span></li>)}</ul>
             <p className="mt-2 flex justify-between border-t border-slate-100 pt-2 text-base font-bold"><span>Total</span><span>{fcfa(o.total)}</span></p>
-            <p className="mt-1 text-xs text-slate-500">{o.mode === "livraison" ? "Livraison" : "Retrait en boutique"} · {o.pay_mode === "zingopay" ? "ZingoPay" : o.pay_mode === "livraison" ? "Paiement à la livraison" : "Paiement au retrait"}</p>
+            <p className="mt-1 text-xs text-slate-500">{o.mode === "livraison" ? "Livraison" : "Retrait en boutique"} · {o.pay_mode === "zingopay" ? "ZingoPay" : o.mode === "livraison" ? "Paiement à la livraison" : "Paiement au retrait"}</p>
           </section>
         </div>
       )}

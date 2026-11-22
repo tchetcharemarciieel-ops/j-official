@@ -17,7 +17,7 @@ async function shop() {
     units: ["pièce", "carton"],
     delivery: { enabled: true, fee: 1000, info: "Bangui" },
     pickup: { enabled: true, info: "" },
-    online: { published: true, ordering: true, pay_delivery: true, pay_pickup: true, zingopay: false },
+    online: { published: true, ordering: true, pay_delivery: true, zingopay: false },
     allow_credit: true,
   });
   const robe = await runOp(o, "product.save", { name: "Robe pagne", sell_price: 15000, buy_price: 9000, unit: "pièce", min_qty: 2, initial_stock: 5, barcode: "123456" });
@@ -188,10 +188,16 @@ describe("MiniSoft Shop : boutique en ligne", () => {
     await expect(runOp(o, "sale.create", { id: uid(), items: [{ product_id: robe, qty: 4 }], payments: [], register_id: reg })).rejects.toThrow(/Stock insuffisant/);
     const ord = (await store.get("order", r.id!))!.data as unknown as Order;
     expect(ord.total).toBe(31000);
+    expect(ord.status).toBe("attente");
     await runOp(o, "order.status", { id: r.id, to: "confirmee" });
     await runOp(o, "order.status", { id: r.id, to: "prete" });
     await runOp(o, "order.status", { id: r.id, to: "livraison" });
-    await runOp(o, "order.status", { id: r.id, to: "livree", pay_method: "especes", register_id: reg });
+    await runOp(o, "order.status", { id: r.id, to: "livree" });
+    // Livrée mais l'argent n'est pas encore encaissé : la vente reste à encaisser.
+    expect(dueOf(store.data.sale[0]!.data as unknown as Sale)).toBe(31000);
+    await runOp(o, "order.collect", { id: r.id, method: "especes", register_id: reg });
+    expect(dueOf(store.data.sale[0]!.data as unknown as Sale)).toBe(0);
+    expect(((await store.get("order", r.id!))!.data as unknown as Order).pay_status).toBe("paye");
     p = await prod(store, robe);
     expect(p.stock).toBe(3);
     expect(p.reservations).toHaveLength(0);
@@ -207,7 +213,7 @@ describe("MiniSoft Shop : boutique en ligne", () => {
     expect(availableOf(await prod(store, robe), null, t0)).toBe(3);
     expect(availableOf(await prod(store, robe), null, t0 + 3 * 3600_000)).toBe(5);
     const r2 = await runOp(pub(store), "public.order", order(robe));
-    await runOp(o, "order.status", { id: r2.id, to: "annulee" });
+    await runOp(o, "order.status", { id: r2.id, to: "annulee", note: "Produit épuisé" });
     expect((await prod(store, robe)).reservations.some((x) => x.key === r2.id)).toBe(false);
   });
   it("refuse : boutique non publiée, produit masqué, trop de quantité, moyen de paiement non proposé", async () => {
@@ -221,13 +227,15 @@ describe("MiniSoft Shop : boutique en ligne", () => {
   });
   it("ZingoPay : commande en attente tant que ZingoPay ne confirme pas ; confirmée seulement par l'opération interne", async () => {
     const { store, o, robe } = await shop();
-    await runOp(o, "settings.save", { type: "vetements", name: "Chez Awa Mode", units: ["pièce"], delivery: { enabled: true, fee: 0, info: "" }, pickup: { enabled: true, info: "" }, online: { published: true, ordering: true, pay_delivery: true, pay_pickup: true, zingopay: true } });
+    await runOp(o, "settings.save", { type: "vetements", name: "Chez Awa Mode", units: ["pièce"], delivery: { enabled: true, fee: 0, info: "" }, pickup: { enabled: true, info: "" }, online: { published: true, ordering: true, pay_delivery: true, zingopay: true } });
     const r = await runOp(ctxOf(store, "employee", null, { public: true, zingopay: true }), "public.order", order(robe, { pay_mode: "zingopay" }));
-    await expect(runOp(o, "order.status", { id: r.id, to: "confirmee" })).rejects.toThrow(/pas encore confirmé/);
+    await expect(runOp(o, "order.status", { id: r.id, to: "confirmee" })).rejects.toThrow(/n'est pas confirmé par ZingoPay/);
     await runOp(ctxOf(store, "employee", null, { internal: "zingopay" }), "order.zp_paid", { order_id: r.id, payment_id: "zp_1" });
     const ord = (await store.get("order", r.id!))!.data as unknown as Order;
     expect(ord.pay_status).toBe("paye");
-    expect(ord.status).toBe("nouvelle");
+    expect(ord.status).toBe("attente");
+    expect(ord.payments).toHaveLength(1);
+    expect(ord.payments![0]).toMatchObject({ method: "zingopay", verified: true, amount: 15000 * 2 });
   });
 });
 
@@ -298,5 +306,80 @@ describe("MiniSoft Shop : intégration à MiniSoft RCA", () => {
     expect(sectorOf("boutique")).toBe("autre");
     expect(positionsFor("shop").map((p) => p.key)).toEqual(expect.arrayContaining(["caissier", "magasinier", "vendeur", "responsable", "administrateur"]));
     expect(SECTOR_PERMISSIONS.shop).toContain("caisse");
+  });
+});
+
+
+describe("MiniSoft Shop : deux moyens de paiement (livraison, ZingoPay)", () => {
+  const pub = (store: MemoryStore, zingopay = false) => ctxOf(store, "employee", null, { public: true, zingopay });
+  const ord = (robe: string, extra = {}) => ({ id: uid(), items: [{ product_id: robe, qty: 1 }], customer: { name: "Jean", phone: "+236 75 11 22 33", address: "PK5" }, mode: "livraison", pay_mode: "livraison", ...extra });
+
+  it("paiement à la livraison : commande « en attente de confirmation », rien d'encaissé tant que le commerçant ne confirme pas avoir reçu l'argent", async () => {
+    const { store, o, robe, reg } = await shop();
+    const r = await runOp(pub(store), "public.order", ord(robe));
+    let od = (await store.get("order", r.id!))!.data as unknown as Order;
+    expect(od.status).toBe("attente");
+    expect(od.pay_status).toBe("en_attente");
+    expect(od.payments).toEqual([]);
+    // Pas d'encaissement avant confirmation de la commande.
+    await expect(runOp(o, "order.collect", { id: r.id, method: "especes", register_id: reg })).rejects.toThrow(/Confirmez d'abord/);
+    await runOp(o, "order.status", { id: r.id, to: "confirmee" });
+    await runOp(o, "order.status", { id: r.id, to: "prete" });
+    await runOp(o, "order.status", { id: r.id, to: "livraison" });
+    // Espèces : caisse ouverte obligatoire.
+    await expect(runOp(o, "order.collect", { id: r.id, method: "especes" })).rejects.toThrow(/Ouvrez la caisse/);
+    await runOp(o, "order.collect", { id: r.id, method: "especes", register_id: reg });
+    od = (await store.get("order", r.id!))!.data as unknown as Order;
+    expect(od.pay_status).toBe("paye");
+    expect(od.payments).toHaveLength(1);
+    expect(((await runOp(o, "order.collect", { id: r.id, method: "especes", register_id: reg })).duplicate)).toBe(true);
+    expect(od.payments).toHaveLength(1);
+    await runOp(o, "order.status", { id: r.id, to: "livree" });
+    const sale = store.data.sale[0]!.data as unknown as Sale;
+    expect(sale.payments).toHaveLength(1);
+    expect(dueOf(sale)).toBe(0);
+    // Les espèces comptent dans la caisse.
+    expect(expectedCash((await store.get("register", reg)) as Doc<Register>, store.data.sale as Doc<Sale>[])).toBe(10000 + 16000);
+  });
+  it("refus : motif obligatoire, stock libéré, commande conservée dans l'historique", async () => {
+    const { store, o, robe } = await shop();
+    const r = await runOp(pub(store), "public.order", ord(robe));
+    await expect(runOp(o, "order.status", { id: r.id, to: "annulee" })).rejects.toThrow(/motif du refus/);
+    await runOp(o, "order.status", { id: r.id, to: "annulee", note: "Hors zone de livraison" });
+    const od = (await store.get("order", r.id!))!.data as unknown as Order;
+    expect(od.status).toBe("annulee");
+    expect(od.history.at(-1)!.note).toBe("Hors zone de livraison");
+    expect((await prod(store, robe)).reservations).toHaveLength(0);
+    expect(store.data.order).toHaveLength(1);
+  });
+  it("ZingoPay : échec → paiement « non confirmé » mais commande conservée ; payée puis refusée → « à rembourser »", async () => {
+    const { store, o, robe } = await shop();
+    await runOp(o, "settings.save", { type: "vetements", name: "Chez Awa Mode", units: ["pièce"], delivery: { enabled: true, fee: 0, info: "" }, pickup: { enabled: true, info: "" }, online: { published: true, ordering: true, pay_delivery: true, zingopay: true } });
+    const r = await runOp(pub(store, true), "public.order", ord(robe, { pay_mode: "zingopay" }));
+    const internal = ctxOf(store, "employee", null, { internal: "zingopay" });
+    await runOp(internal, "order.zp_failed", { order_id: r.id, reason: "le lien de paiement a expiré", status: "expired" });
+    let od = (await store.get("order", r.id!))!.data as unknown as Order;
+    expect(od.pay_status).toBe("non_confirme");
+    expect(od.status).toBe("attente");
+    expect(od.payments).toEqual([]);
+    await expect(runOp(o, "order.collect", { id: r.id, method: "especes" })).rejects.toThrow(/ZingoPay/);
+    // Nouvel essai (lien recréé) puis paiement confirmé par ZingoPay.
+    await runOp(internal, "order.zp_attach", { order_id: r.id, zp: { id: "zp_2", pay_url: "https://pay.example/x", status: "pending", expires_at: null } });
+    expect(((await store.get("order", r.id!))!.data as unknown as Order).pay_status).toBe("en_attente");
+    await runOp(internal, "order.zp_paid", { order_id: r.id, payment_id: "zp_2" });
+    await runOp(o, "order.status", { id: r.id, to: "annulee", note: "Produit abîmé" });
+    od = (await store.get("order", r.id!))!.data as unknown as Order;
+    expect(od.pay_status).toBe("a_rembourser");
+    await runOp(o, "order.refund_done", { id: r.id, note: "Remboursé via ZingoPay" });
+    expect(((await store.get("order", r.id!))!.data as unknown as Order).pay_status).toBe("rembourse");
+  });
+  it("exactement deux moyens : « retrait » n'existe plus, ZingoPay refusé s'il n'est pas activé, au moins un moyen requis", async () => {
+    const { store, o, robe } = await shop();
+    await expect(runOp(pub(store), "public.order", ord(robe, { pay_mode: "retrait" }))).rejects.toThrow();
+    await expect(runOp(pub(store), "public.order", ord(robe, { pay_mode: "zingopay" }))).rejects.toThrow(/moyen de paiement/);
+    await expect(runOp(o, "settings.save", { type: "vetements", name: "X", units: ["pièce"], delivery: { enabled: true, fee: 0, info: "" }, pickup: { enabled: true, info: "" }, online: { published: true, ordering: true, pay_delivery: false, zingopay: false } })).rejects.toThrow(/moyen de paiement/);
+    // Retrait en boutique : le paiement à la livraison s'applique à la remise.
+    const r = await runOp(pub(store), "public.order", ord(robe, { mode: "retrait", pay_mode: "livraison" }));
+    expect(((await store.get("order", r.id!))!.data as unknown as Order).mode).toBe("retrait");
   });
 });

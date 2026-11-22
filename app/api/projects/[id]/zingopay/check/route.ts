@@ -3,6 +3,7 @@ import { z } from "zod";
 import { assertSameOrigin, readJson, route } from "@/lib/api";
 import { getAccess, HttpError } from "@/lib/access";
 import { serverRestaurant } from "@/lib/venue/public";
+import { checkPendingZp, serverShop } from "@/lib/shop/public";
 import { verifyZpOrder } from "@/lib/venue/zp-flow";
 import { clientIp, limited } from "@/lib/venue/public";
 import type { Doc } from "@/lib/venue/model";
@@ -22,6 +23,9 @@ export const POST = route(async (req, { params }: Ctx) => {
   if (role === "viewer") throw new HttpError(403, "Action non autorisée.");
   if (limited(`zpcheck:${id}:${clientIp(req)}`, 20)) return NextResponse.json({ checked: 0, paid: 0, throttled: true });
   const input = z.object({ mode: z.enum(["live", "demo"]).default("live") }).parse(await readJson(req, 500));
+  // Boutique MiniSoft Shop : même vérification, par le module boutique.
+  const shop = await serverShop(project.slug, input.mode === "demo").catch(() => null);
+  if (shop) return NextResponse.json({ ...(await checkPendingZp(shop)), configured: Boolean(shop.zp) });
   const p = await serverRestaurant(project.slug, input.mode === "demo");
   if (!p.zp) return NextResponse.json({ checked: 0, paid: 0, configured: false });
   const since = Date.now() - 3 * 3_600_000;

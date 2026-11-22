@@ -5,6 +5,7 @@ import {
   EXPENSE_CATS,
   LEVEL,
   ORDER_FLOW,
+  PAY_METHODS,
   ORDER_STATUS,
   SHOP_TYPE_IDS,
   availableOf,
@@ -335,11 +336,12 @@ const HANDLERS: Record<string, (ctx: OpContext, raw: unknown) => Promise<OpResul
         allow_credit: z.boolean().default(false),
         delivery: z.object({ enabled: z.boolean(), fee: amount.default(0), info: txt(300) }),
         pickup: z.object({ enabled: z.boolean(), info: txt(300) }),
-        online: z.object({ published: z.boolean(), ordering: z.boolean(), pay_delivery: z.boolean(), pay_pickup: z.boolean(), zingopay: z.boolean() }),
+        online: z.object({ published: z.boolean(), ordering: z.boolean(), pay_delivery: z.boolean(), zingopay: z.boolean() }),
         reservation_minutes: z.coerce.number().int().min(15).max(10080).default(120),
       })
       .parse(raw);
     if (i.online.published && i.online.ordering && !i.delivery.enabled && !i.pickup.enabled) throw new OpError(422, "Activez la livraison ou le retrait en boutique pour recevoir des commandes en ligne.");
+    if (i.online.published && i.online.ordering && !i.online.pay_delivery && !i.online.zingopay) throw new OpError(422, "Activez au moins un moyen de paiement : paiement à la livraison ou ZingoPay.");
     const units = [...new Set(i.units)];
     const { doc } = await settings(ctx);
     const data = { ...i, units } as Settings;
@@ -812,7 +814,7 @@ const HANDLERS: Record<string, (ctx: OpContext, raw: unknown) => Promise<OpResul
 
   // ----- Commandes en ligne -----
   async "order.status"(ctx, raw) {
-    const i = z.object({ id, to: z.enum(Object.keys(ORDER_STATUS) as [OrderStatus, ...OrderStatus[]]), note: txt(300), pay_method: payMethod.default("especes"), register_id: optId }).parse(raw);
+    const i = z.object({ id, to: z.enum(Object.keys(ORDER_STATUS) as [OrderStatus, ...OrderStatus[]]), note: txt(300), register_id: optId }).parse(raw);
     const cur = await must<Order>(ctx, "order", i.id, "Commande");
     const o = cur.data;
     if (o.status === i.to) return ok("Statut déjà à jour.", { duplicate: true });
@@ -820,7 +822,9 @@ const HANDLERS: Record<string, (ctx: OpContext, raw: unknown) => Promise<OpResul
     if (i.to === "remboursee" && !allowed(ctx.perms, ctx.actor.role, "remises")) throw new OpError(403, "Le remboursement demande l'autorisation « Remises, retours et annulations ».");
     if (i.to === "livraison" && o.mode !== "livraison") throw new OpError(409, "Cette commande est à retirer en boutique.");
     if (i.to === "retiree" && o.mode !== "retrait") throw new OpError(409, "Cette commande est à livrer.");
-    if (o.pay_mode === "zingopay" && o.pay_status !== "paye" && i.to !== "annulee") throw new OpError(409, "Le paiement ZingoPay de cette commande n'est pas encore confirmé par ZingoPay.");
+    // Refus : le client doit savoir pourquoi ; une commande ZingoPay non payée ne se confirme pas.
+    if (i.to === "annulee" && (o.status === "nouvelle" || o.status === "attente") && !i.note.trim()) throw new OpError(422, "Indiquez le motif du refus : il est montré au client.");
+    if (o.pay_mode === "zingopay" && o.pay_status !== "paye" && i.to !== "annulee") throw new OpError(409, "Le paiement ZingoPay de cette commande n'est pas confirmé par ZingoPay : attendez la confirmation ou refusez la commande.");
     const now = nowMs(ctx);
     const far = new Date(now + 30 * 86_400_000).toISOString();
     let saleId = o.sale_id;
@@ -830,7 +834,6 @@ const HANDLERS: Record<string, (ctx: OpContext, raw: unknown) => Promise<OpResul
     }
     if (i.to === "annulee") await release(ctx, cur.id, o.items);
     if (i.to === "livree" || i.to === "retiree") {
-      if (o.pay_mode !== "zingopay" && i.pay_method === "especes" && !i.register_id) throw new OpError(409, "Ouvrez la caisse pour encaisser le paiement en espèces.");
       saleId = saleId ?? newId(ctx);
       await mutate<Order>(ctx, "order", cur.id, "Commande", (x) => (x.sale_id ? null : { ...x, sale_id: saleId }));
       const fresh = await must<Order>(ctx, "order", cur.id, "Commande");
@@ -847,9 +850,10 @@ const HANDLERS: Record<string, (ctx: OpContext, raw: unknown) => Promise<OpResul
           await applyStock(ctx, { product_id: l.product_id, variant_id: l.variant_id, delta: -l.qty, type: "commande", reason: l.name, ref: o.number, op_key: `order:${cur.id}:${n}`, releaseKey: cur.id, allowNegative: true });
           lines.push({ product_id: l.product_id, variant_id: l.variant_id, name: l.name, unit: p.data.unit, qty: l.qty, unit_price: l.unit_price, buy_price: costOf(p.data, l.variant_id), discount: 0 });
         }
-        const at = nowIso(ctx);
-        const zp = o.pay_mode === "zingopay";
-        const sale: Sale = { number: num, at, channel: "en_ligne", items: lines, subtotal: o.total, discount: 0, total: o.total, payments: [{ id: newId(ctx), method: zp ? "zingopay" : (i.pay_method as PayMethod), amount: o.total, ref: zp ? (o.zp?.id ?? "") : "", at, by: ctx.actor.id, register_id: zp ? null : i.register_id, verified: zp }], returns: [], status: "validee", customer_id: o.customer_id, customer_name: o.customer.name, register_id: zp ? null : i.register_id, by: ctx.actor.id, order_id: cur.id, note: `Commande en ligne ${o.number}`, invoice_number: null, offline_at: null, conflict: null };
+        // Le paiement n'entre dans la vente que s'il a été encaissé (confirmé par le commerçant ou par ZingoPay) ;
+        // sinon la vente reste à encaisser (« reste dû ») jusqu'à « J'ai reçu l'argent ».
+        const payments = (cur.data.payments ?? []).map((x) => ({ ...x }));
+        const sale: Sale = { number: num, at: nowIso(ctx), channel: "en_ligne", items: lines, subtotal: o.total, discount: 0, total: o.total, payments, returns: [], status: "validee", customer_id: o.customer_id, customer_name: o.customer.name, register_id: payments.find((x) => x.register_id)?.register_id ?? null, by: ctx.actor.id, order_id: cur.id, note: `Commande en ligne ${o.number}`, invoice_number: null, offline_at: null, conflict: null };
         try {
           await ctx.store.insert("sale", sale, saleId);
         } catch (e) {
@@ -865,10 +869,47 @@ const HANDLERS: Record<string, (ctx: OpContext, raw: unknown) => Promise<OpResul
       ...x,
       status: i.to,
       reserved_until: i.to === "confirmee" ? far : ["annulee", "livree", "retiree", "remboursee"].includes(i.to) ? null : x.reserved_until,
-      pay_status: i.to === "remboursee" ? "rembourse" : i.to === "livree" || i.to === "retiree" ? "paye" : x.pay_status,
+      // Payée puis refusée : l'argent doit être rendu au client (à faire par le commerçant, hors du logiciel).
+      pay_status: i.to === "remboursee" ? "rembourse" : i.to === "annulee" && x.pay_status === "paye" ? "a_rembourser" : x.pay_status,
       history: [...x.history, { to: i.to, at: nowIso(ctx), by: ctx.actor.id, note: i.note }],
     }));
-    return ok(`Commande ${o.number} : ${ORDER_STATUS[i.to].toLowerCase()}.`, { id: cur.id });
+    return ok(i.to === "annulee" ? `Commande ${o.number} refusée.` : `Commande ${o.number} : ${ORDER_STATUS[i.to].toLowerCase()}.`, { id: cur.id });
+  },
+  /**
+   * Paiement à la livraison : l'argent n'est « encaissé » que lorsque le commerçant confirme l'avoir reçu
+   * (jamais à la commande). Les espèces entrent dans la caisse ouverte de la personne qui encaisse.
+   */
+  async "order.collect"(ctx, raw) {
+    const i = z.object({ id, method: payMethod, ref: txt(80), register_id: optId }).parse(raw);
+    const cur = await must<Order>(ctx, "order", i.id, "Commande");
+    const o = cur.data;
+    if (o.pay_mode === "zingopay") throw new OpError(409, "Cette commande se paie par ZingoPay : elle est marquée payée uniquement après confirmation de ZingoPay.");
+    if (o.pay_status === "paye") return ok("Paiement déjà encaissé.", { duplicate: true });
+    if (!["confirmee", "preparation", "prete", "livraison", "livree", "retiree"].includes(o.status)) throw new OpError(409, "Confirmez d'abord la commande avant d'enregistrer le paiement reçu.");
+    if (i.method === "especes") {
+      const reg = i.register_id ? await ctx.store.get("register", i.register_id) : null;
+      if (!reg || (reg.data as Register).status !== "ouverte") throw new OpError(409, "Ouvrez la caisse (page Caisse) pour enregistrer des espèces reçues.");
+    }
+    const pay: Pay = { id: newId(ctx), method: i.method, amount: o.total, ref: i.ref, at: nowIso(ctx), by: ctx.actor.id, register_id: i.method === "especes" ? i.register_id : null, verified: false };
+    const { written, doc } = await mutate<Order>(ctx, "order", cur.id, "Commande", (x) => {
+      if (x.pay_status === "paye") return null;
+      return { ...x, payments: [...(x.payments ?? []), pay], pay_status: "paye", history: [...x.history, { to: x.status, at: pay.at, by: ctx.actor.id, note: `Paiement encaissé : ${o.total.toLocaleString("fr-FR")} FCFA (${PAY_METHODS[i.method]}), reçu confirmé par le commerçant` }] };
+    });
+    if (!written) return ok("Paiement déjà encaissé.", { duplicate: true });
+    // Vente déjà créée (livrée avant l'encaissement) : le paiement y est ajouté.
+    if (doc.data.sale_id && (await ctx.store.get("sale", doc.data.sale_id)))
+      await mutate<Sale>(ctx, "sale", doc.data.sale_id, "Vente", (sl) => (sl.payments.some((x) => x.id === pay.id) ? null : { ...sl, payments: [...sl.payments, pay], register_id: sl.register_id ?? pay.register_id }));
+    return ok("Paiement encaissé : la commande est marquée payée.", { id: cur.id });
+  },
+  /** Remboursement d'une commande payée puis refusée : effectué par le commerçant, noté ici. */
+  async "order.refund_done"(ctx, raw) {
+    const i = z.object({ id, note: txt(300) }).parse(raw);
+    if (!allowed(ctx.perms, ctx.actor.role, "remises")) throw new OpError(403, "Le remboursement demande l'autorisation « Remises, retours et annulations ».");
+    await mutate<Order>(ctx, "order", i.id, "Commande", (o) => {
+      if (o.pay_status !== "a_rembourser") throw new OpError(409, "Cette commande n'est pas à rembourser.");
+      return { ...o, pay_status: "rembourse", history: [...o.history, { to: o.status, at: nowIso(ctx), by: ctx.actor.id, note: `Remboursement effectué${i.note ? ` : ${i.note}` : ""}` }] };
+    });
+    return ok("Remboursement noté.");
   },
 
   // ----- Dépenses -----
@@ -901,7 +942,7 @@ const PUBLIC: Record<string, (ctx: OpContext, raw: unknown) => Promise<OpResult>
         items: z.array(z.object({ product_id: id, variant_id: optId, qty: z.coerce.number().int().min(1).max(999) })).min(1, "Panier vide").max(50),
         customer: z.object({ name: req(80, "Votre nom"), phone: z.string().trim().min(6, "Votre téléphone").max(30).regex(/^[+0-9 ().-]+$/, "Téléphone invalide"), address: txt(300) }),
         mode: z.enum(["livraison", "retrait"]),
-        pay_mode: z.enum(["livraison", "retrait", "zingopay"]),
+        pay_mode: z.enum(["livraison", "zingopay"]),
         note: txt(300),
       })
       .parse(raw);
@@ -912,7 +953,7 @@ const PUBLIC: Record<string, (ctx: OpContext, raw: unknown) => Promise<OpResult>
     if (i.mode === "livraison" && !s.delivery.enabled) throw new OpError(422, "La livraison n'est pas proposée par cette boutique.");
     if (i.mode === "retrait" && !s.pickup.enabled) throw new OpError(422, "Le retrait en boutique n'est pas proposé.");
     if (i.mode === "livraison" && !i.customer.address) throw new OpError(422, "Indiquez l'adresse de livraison.");
-    const payOk = (i.pay_mode === "zingopay" && s.online.zingopay && ctx.zingopay) || (i.pay_mode === "livraison" && i.mode === "livraison" && s.online.pay_delivery) || (i.pay_mode === "retrait" && i.mode === "retrait" && s.online.pay_pickup);
+    const payOk = (i.pay_mode === "zingopay" && s.online.zingopay && ctx.zingopay) || (i.pay_mode === "livraison" && s.online.pay_delivery);
     if (!payOk) throw new OpError(422, "Ce moyen de paiement n'est pas proposé pour ce mode de remise.");
     const lines: OrderLine[] = [];
     for (const l of i.items) {
@@ -932,8 +973,9 @@ const PUBLIC: Record<string, (ctx: OpContext, raw: unknown) => Promise<OpResult>
     const customer = await findOrCreateCustomer(ctx, { name: i.customer.name, phone: i.customer.phone, address: i.customer.address }, "en_ligne");
     const num = await number(ctx, "CMD");
     const token = Array.from(crypto.getRandomValues(new Uint8Array(18)), (b) => "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"[b % 62]).join("");
-    const status: OrderStatus = i.pay_mode === "zingopay" ? "attente" : "nouvelle";
-    const order: Order = { number: num, at: nowIso(ctx), items: all, subtotal, delivery_fee: fee, total: subtotal + fee, customer: i.customer, customer_id: customer?.id ?? null, mode: i.mode, pay_mode: i.pay_mode, pay_status: "en_attente", status, history: [{ to: status, at: nowIso(ctx), by: null, note: "" }], tracking_token: token, reserved_until: until, sale_id: null, note: i.note };
+    // Dans les deux cas la commande arrive « En attente de confirmation » ; aucun paiement n'est encaissé à la commande.
+    const status: OrderStatus = "attente";
+    const order: Order = { number: num, at: nowIso(ctx), items: all, subtotal, delivery_fee: fee, total: subtotal + fee, customer: i.customer, customer_id: customer?.id ?? null, mode: i.mode, pay_mode: i.pay_mode, pay_status: "en_attente", payments: [], status, history: [{ to: status, at: nowIso(ctx), by: null, note: "" }], tracking_token: token, reserved_until: until, sale_id: null, note: i.note };
     try {
       await ctx.store.insert("order", order, i.id);
     } catch (e) {
@@ -949,7 +991,7 @@ const PUBLIC: Record<string, (ctx: OpContext, raw: unknown) => Promise<OpResult>
 const INTERNAL: Record<string, (ctx: OpContext, raw: unknown) => Promise<OpResult>> = {
   async "order.zp_attach"(ctx, raw) {
     const i = z.object({ order_id: id, zp: z.object({ id: z.string().max(80), pay_url: z.string().url().max(500), status: z.string().max(20), expires_at: z.string().nullish().transform((v) => v ?? null) }) }).parse(raw);
-    await mutate<Order>(ctx, "order", i.order_id, "Commande", (o) => ({ ...o, zp: i.zp }));
+    await mutate<Order>(ctx, "order", i.order_id, "Commande", (o) => ({ ...o, zp: i.zp, zp_error: null, pay_status: o.pay_status === "non_confirme" ? "en_attente" : o.pay_status }));
     return ok("Paiement préparé.");
   },
   /** Appelé seulement après vérification du statut « paid » auprès de ZingoPay (référence et montant identiques). */
@@ -958,11 +1000,23 @@ const INTERNAL: Record<string, (ctx: OpContext, raw: unknown) => Promise<OpResul
     const far = new Date(nowMs(ctx) + 30 * 86_400_000).toISOString();
     const { doc } = await mutate<Order>(ctx, "order", i.order_id, "Commande", (o) => {
       if (o.pay_status === "paye") return null;
-      return { ...o, pay_status: "paye", status: o.status === "attente" ? "nouvelle" : o.status, zp: o.zp ? { ...o.zp, status: "paid" } : o.zp, history: [...o.history, { to: o.status === "attente" ? "nouvelle" : o.status, at: nowIso(ctx), by: null, note: "Paiement ZingoPay confirmé par ZingoPay" }] };
+      const at = nowIso(ctx);
+      const pay: Pay = { id: newId(ctx), method: "zingopay", amount: o.total, ref: i.payment_id, at, by: "zingopay", register_id: null, verified: true };
+      // La commande reste « En attente de confirmation » : c'est le commerçant qui la confirme.
+      return { ...o, pay_status: "paye", zp_error: null, payments: [...(o.payments ?? []), pay], zp: o.zp ? { ...o.zp, status: "paid" } : o.zp, history: [...o.history, { to: o.status, at, by: null, note: "Paiement ZingoPay confirmé par ZingoPay" }] };
     });
     // Commande payée : le stock reste réservé jusqu'à la remise, même au-delà du délai habituel.
     await reserve(ctx, doc.id, doc.data.items.filter((l) => l.product_id !== "__livraison"), far).catch(() => undefined);
     return ok("Paiement confirmé.");
+  },
+  /** Échec, expiration ou annulation du paiement ZingoPay : la commande est conservée, paiement « non confirmé ». */
+  async "order.zp_failed"(ctx, raw) {
+    const i = z.object({ order_id: id, reason: z.string().max(300), status: z.string().max(20).optional() }).parse(raw);
+    await mutate<Order>(ctx, "order", i.order_id, "Commande", (o) => {
+      if (o.pay_status === "paye" || o.pay_status === "non_confirme") return null;
+      return { ...o, pay_status: "non_confirme", zp_error: i.reason, zp: o.zp && i.status ? { ...o.zp, status: i.status } : o.zp, history: [...o.history, { to: o.status, at: nowIso(ctx), by: null, note: `Paiement ZingoPay non confirmé : ${i.reason}` }] };
+    });
+    return ok("Paiement marqué non confirmé.");
   },
 };
 

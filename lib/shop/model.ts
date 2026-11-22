@@ -72,7 +72,8 @@ export type Settings = {
   allow_credit: boolean;
   delivery: { enabled: boolean; fee: number; info: string };
   pickup: { enabled: boolean; info: string };
-  online: { published: boolean; ordering: boolean; pay_delivery: boolean; pay_pickup: boolean; zingopay: boolean };
+  /** Deux moyens de paiement en ligne seulement : à la livraison (ou à la remise) et ZingoPay. */
+  online: { published: boolean; ordering: boolean; pay_delivery: boolean; zingopay: boolean };
   /** Durée de réservation du stock d'une commande en ligne non confirmée. */
   reservation_minutes: number;
 };
@@ -97,7 +98,7 @@ export function defaultSettings(name = "Ma boutique", type: ShopType = "autre"):
     allow_credit: false,
     delivery: { enabled: false, fee: 0, info: "" },
     pickup: { enabled: true, info: "" },
-    online: { published: false, ordering: true, pay_delivery: true, pay_pickup: true, zingopay: false },
+    online: { published: false, ordering: true, pay_delivery: true, zingopay: false },
     reservation_minutes: 120,
   };
 }
@@ -303,6 +304,8 @@ export const ORDER_STATUS = {
 } as const;
 export type OrderStatus = keyof typeof ORDER_STATUS;
 export const OPEN_ORDER: OrderStatus[] = ["nouvelle", "attente", "confirmee", "preparation", "prete", "livraison"];
+export const PAY_STATUS_LABELS = { en_attente: "Paiement non encaissé", paye: "Payée", non_confirme: "Paiement non confirmé", a_rembourser: "À rembourser", rembourse: "Remboursée" } as const;
+export const PAY_MODE_LABELS = { livraison: "Paiement à la livraison", retrait: "Paiement au retrait", zingopay: "ZingoPay" } as const;
 export const ORDER_FLOW: Record<OrderStatus, OrderStatus[]> = {
   nouvelle: ["confirmee", "annulee"],
   attente: ["confirmee", "annulee"],
@@ -326,8 +329,13 @@ export type Order = {
   customer: { name: string; phone: string; address: string };
   customer_id: string | null;
   mode: "livraison" | "retrait";
+  /** « livraison » : le client paie à la réception (livraison ou retrait) ; « retrait » : ancien libellé, lecture seule. */
   pay_mode: "livraison" | "retrait" | "zingopay";
-  pay_status: "en_attente" | "paye" | "rembourse";
+  /** non_confirme : ZingoPay n'a pas confirmé (échec, expiration) ; a_rembourser : payée puis refusée/annulée. */
+  pay_status: "en_attente" | "paye" | "non_confirme" | "a_rembourser" | "rembourse";
+  /** Paiements encaissés (confirmés par le commerçant, ou par ZingoPay après vérification). */
+  payments?: Pay[];
+  zp_error?: string | null;
   status: OrderStatus;
   history: { to: OrderStatus; at: string; by: string | null; note: string }[];
   tracking_token: string;

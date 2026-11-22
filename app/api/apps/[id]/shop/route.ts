@@ -93,7 +93,7 @@ export const GET = route(async (req, { params }: Ctx) => {
   });
 });
 
-const SENSITIVE = new Set(["sale.cancel", "sale.return", "stock.move", "stock.inventory", "register.close", "product.delete", "expense.delete", "settings.save", "order.status"]);
+const SENSITIVE = new Set(["sale.cancel", "sale.return", "stock.move", "stock.inventory", "register.close", "product.delete", "expense.delete", "settings.save", "order.status", "order.collect", "order.refund_done"]);
 
 export const POST = route(async (req, { params }: Ctx) => {
   assertSameOrigin(req);

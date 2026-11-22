@@ -46,12 +46,12 @@ export function MobileNav({ isAdmin, signedIn = false }: { isAdmin: boolean; sig
               <div className="mt-4 grid gap-2">
                 {signedIn ? (
                   <>
-                    <Link href="/espace" className="btn btn-primary text-base">Mon espace</Link>
+                    <Link href="/inscription" className="btn btn-primary text-base">Créer un compte</Link>
                     <form action="/auth/signout" method="post"><button type="submit" className="btn btn-ghost w-full text-base">Se déconnecter</button></form>
                   </>
                 ) : (
                   <>
-                    <Link href="/inscription" className="btn btn-primary text-base">S&apos;inscrire</Link>
+                    <Link href="/inscription" className="btn btn-primary text-base">Créer un compte</Link>
                     <Link href="/connexion" className="btn btn-ghost text-base">Se connecter</Link>
                   </>
                 )}

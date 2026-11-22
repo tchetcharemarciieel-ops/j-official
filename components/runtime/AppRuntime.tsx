@@ -17,6 +17,7 @@ import { NotificationBell } from "@/components/espace/NotificationBell";
 import { effectiveWorkspace } from "@/lib/workspace";
 import { SlidingNotch, SlidingPill, useSlidingIndicator } from "@/components/ui/SlidingIndicator";
 import { ShopApp } from "@/components/shop/ShopApp";
+import { zoneForEntity } from "@/lib/zone-map";
 import { TransportApp } from "@/components/transport/TransportApp";
 import { BureauApp } from "@/components/bureau/BureauApp";
 
@@ -78,6 +79,19 @@ function GeneratedRuntime({ projectId, spec, mode, role, perms = null, compact =
     setMenuOpen(false);
   };
 
+  // Restaurant, hôtel, garage : un module touché dans le plan ou sur le tableau de bord ouvre la zone détaillée
+  // (écran cuisine, ingrédients et stock, chambres…) et non un simple tableau de données. Le menu garde l'accès classique.
+  const zoneLayout = ws.enabled && (ws.layout === "restaurant" || ws.layout === "hotel" || ws.layout === "garage") ? ws.layout : null;
+  const goSmart = (target: string, recordId?: string) => {
+    const e = entities.find((x) => x.key === target);
+    if (zoneLayout && e && !recordId) {
+      setWsCommand({ kind: "zone", zone: zoneForEntity(zoneLayout, e), n: Date.now() });
+      go("__workspace");
+      return;
+    }
+    go(target, recordId);
+  };
+
   const rowsFor = (key: string): Row[] => (data.records[key] ?? []).map((r) => ({ id: r.id, data: r.data, created_at: r.created_at }));
   const style = useMemo(() => ({ "--app-primary": spec.theme.primary, "--app-accent": spec.theme.accent }) as React.CSSProperties, [spec.theme]);
 
@@ -96,7 +110,7 @@ function GeneratedRuntime({ projectId, spec, mode, role, perms = null, compact =
   // Barre du bas sur téléphone. Avec un espace de travail (plan) : Espace, Plan 2D, Configurer le
   // plan et Menu (les tableaux restent dans « Menu »). Sinon : accès direct aux premiers modules.
   const canConfigure = (role === "owner" || role === "admin" || role === "manager") && (perms === null || perms.includes("parametres"));
-  const [wsCommand, setWsCommand] = useState<{ kind: "configure"; n: number } | null>(null);
+  const [wsCommand, setWsCommand] = useState<{ kind: "configure"; n: number } | { kind: "zone"; zone: string; n: number } | null>(null);
   const tabs: { id: string; label: string; icon: LucideIcon }[] = ws.enabled
     ? [{ id: "__workspace", label: "Espace", icon: Building2 }, { id: "__plan2d", label: "Plan 2D", icon: MapIcon }, ...(canConfigure ? [{ id: "__configure", label: "Configurer", icon: Settings2 }] : [])]
     : [...(dataAllowed ? [{ id: "__dashboard", label: "Accueil", icon: LayoutDashboard }] : []), ...entities.map((e) => ({ id: e.key, label: e.labelPlural, icon: Table2 }))].slice(0, 4);
@@ -151,7 +165,7 @@ function GeneratedRuntime({ projectId, spec, mode, role, perms = null, compact =
           {current ? (
             <EntityView key={`${current.key}:${openRecord ?? ""}`} spec={spec} entity={current} role={role} data={data} notify={notify} openRecordId={openRecord} />
           ) : page === "__workspace" && ws.enabled ? (
-            <WorkspaceView projectId={projectId} spec={spec} ws={ws} mode={mode} role={role} readable={entities.map((e) => e.key)} records={data.records} loading={data.loading} reload={data.reload} prefs={prefs} savePrefs={save} onOpen={go} onClassic={dataAllowed ? () => go("__dashboard") : undefined} perms={perms} command={wsCommand} />
+            <WorkspaceView projectId={projectId} spec={spec} ws={ws} mode={mode} role={role} readable={entities.map((e) => e.key)} records={data.records} loading={data.loading} reload={data.reload} prefs={prefs} savePrefs={save} onOpen={goSmart} onClassic={dataAllowed ? () => go("__dashboard") : undefined} perms={perms} command={wsCommand} />
           ) : (
             <div className="space-y-6">
               <div>
@@ -165,7 +179,7 @@ function GeneratedRuntime({ projectId, spec, mode, role, perms = null, compact =
                   {spec.dashboard
                     .filter((w) => entities.some((e) => e.key === w.entity))
                     .map((w, i) => (
-                      <WidgetCard key={`${w.label}-${i}`} spec={spec} widget={w} rows={rowsFor(w.entity)} onOpen={(k) => go(k)} />
+                      <WidgetCard key={`${w.label}-${i}`} spec={spec} widget={w} rows={rowsFor(w.entity)} onOpen={(k) => goSmart(k)} />
                     ))}
                 </div>
               )}

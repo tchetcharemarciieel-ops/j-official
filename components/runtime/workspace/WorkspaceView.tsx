@@ -75,7 +75,7 @@ type Props = {
   /** Absent : interface classique non autorisée pour ce poste. */
   onClassic?: () => void;
   /** Ordre venu de la barre du bas (téléphone) : ouvrir « Configurer le plan ». */
-  command?: { kind: "configure"; n: number } | null;
+  command?: { kind: "configure"; n: number } | { kind: "zone"; zone: string; n: number } | null;
   /** Permissions du poste (null = sans restriction). */
   perms?: string[] | null;
 };
@@ -110,14 +110,27 @@ export function WorkspaceView({ projectId, spec, ws, mode, role, readable, recor
   const handled = useRef(0);
   const ready = Boolean(venue.state);
   useEffect(() => {
-    if (command?.kind !== "configure" || !venueKind || !venue.state || handled.current === command.n) return;
+    if (!command || handled.current === command.n) return;
+    if (command.kind === "zone") {
+      // Un module touché ailleurs (tableau de bord, menu) : on ouvre la zone détaillée correspondante du plan.
+      if (garageMode) {
+        handled.current = command.n;
+        if ((GARAGE_ZONE_IDS as readonly string[]).includes(command.zone)) setZone(command.zone as GarageZoneId);
+      } else if (venueKind && venue.state && !needsSetup) {
+        handled.current = command.n;
+        const z = (vZones as string[]).includes(command.zone) ? command.zone : vZones.includes("bureau") ? "bureau" : (vZones[0] ?? null);
+        if (z) openZone(z as VenueZone);
+      }
+      return;
+    }
+    if (command.kind !== "configure" || !venueKind || !venue.state) return;
     handled.current = command.n;
     if (VENUE_LEVEL[venue.state.role] >= 2 && has(myPerms, "parametres")) {
       setSetupOpen(true);
       setVZone(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [command?.n, ready]);
+  }, [command?.n, ready, needsSetup]);
   // Écran cuisine : ouvert depuis la zone Cuisine, ou directement avec l'adresse « ?cuisine=1 » (tablette de la cuisine).
   const [kdsOpen, setKdsOpen] = useState(false);
   useEffect(() => {

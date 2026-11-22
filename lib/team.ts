@@ -9,7 +9,7 @@
 
 import type { Role } from "./spec";
 
-export type Sector = "restaurant" | "hotel" | "garage" | "shop" | "bureau" | "autre";
+export type Sector = "restaurant" | "hotel" | "garage" | "shop" | "bureau" | "transport" | "autre";
 
 /** Permissions : une par grande fonction de l'entreprise. */
 export const PERMISSIONS = {
@@ -39,6 +39,10 @@ export const PERMISSIONS = {
   personnel: { label: "Personnel", hint: "Fiches du personnel et horaires" },
   donnees: { label: "Interface classique", hint: "Tables de données du logiciel (toutes les fiches)" },
   parametres: { label: "Paramètres", hint: "Configuration, menu en ligne, QR codes, caméras" },
+  livraisons: { label: "Commandes de livraison", hint: "Créer, modifier, affecter et suivre les commandes et colis" },
+  livreurs: { label: "Livreurs", hint: "Profils, disponibilités, zones, performances" },
+  vehicules: { label: "Véhicules", hint: "Motos, voitures, camions, entretien, carburant" },
+  missions: { label: "Mes missions (livreur)", hint: "Voir et mettre à jour ses propres missions de livraison" },
   equipe: { label: "Gestion des équipes", hint: "Inviter, modifier, suspendre des employés" },
 } as const;
 export type Permission = keyof typeof PERMISSIONS;
@@ -51,6 +55,7 @@ export const SECTOR_PERMISSIONS: Record<Sector, Permission[]> = {
   garage: ["accueil_garage", "atelier", "pieces", "rapports", "finances", "personnel", "donnees", "parametres", "equipe"],
   shop: ["caisse", "stock", "commandes", "clients", "achats", "remises", "rapports", "finances", "parametres", "equipe"],
   bureau: ["clients", "projets", "agenda", "documents", "finances", "personnel", "equipements", "metier", "rapports", "parametres", "equipe"],
+  transport: ["livraisons", "livreurs", "vehicules", "missions", "rapports", "finances", "parametres", "equipe"],
   autre: ["donnees", "rapports", "finances", "personnel", "parametres", "equipe"],
 };
 
@@ -96,6 +101,13 @@ export const POSITIONS: Record<Sector, Position[]> = {
     { key: "employe", label: "Employé", role: "employee", permissions: ["projets", "agenda"] },
     { key: "comptable", label: "Comptable", role: "employee", permissions: ["finances", "documents", "rapports", "clients"] },
   ],
+  transport: [
+    { key: "administrateur", label: "Administrateur", role: "admin", permissions: [] },
+    { key: "responsable", label: "Responsable logistique", role: "manager", permissions: [] },
+    { key: "agent", label: "Agent de dispatch", role: "employee", permissions: ["livraisons", "livreurs", "vehicules"] },
+    { key: "livreur", label: "Livreur", role: "employee", permissions: ["missions"] },
+    { key: "comptable", label: "Comptable", role: "employee", permissions: ["finances", "rapports"] },
+  ],
   autre: [
     { key: "administrateur", label: "Administrateur", role: "admin", permissions: [] },
     { key: "responsable", label: "Responsable", role: "manager", permissions: [] },
@@ -107,6 +119,7 @@ export const POSITIONS: Record<Sector, Position[]> = {
 export function sectorOf(layout: string | null | undefined, module?: string | null): Sector {
   if (module === "shop") return "shop";
   if (module === "bureau") return "bureau";
+  if (module === "transport") return "transport";
   return layout === "restaurant" || layout === "hotel" || layout === "garage" ? layout : "autre";
 }
 

@@ -185,3 +185,17 @@ export function opDenied(table: Record<string, Permission[]>, op: string, perms:
   if (!need) return "Cette action n'est pas autorisée pour votre poste.";
   return has(perms, need) ? null : "Cette action ne fait pas partie de votre poste : demandez à votre responsable de modifier vos autorisations.";
 }
+
+const TR_ANY: Permission[] = ["livraisons", "livreurs", "vehicules", "missions", "finances", "rapports", "parametres", "equipe"];
+export const TRANSPORT_OP_PERMS: Record<string, Permission[]> = {
+  "settings.save": P("parametres"),
+  "order.quote": TR_ANY,
+  "order.save": P("livraisons"), "order.delete": P("livraisons"), "order.assign": P("livraisons"), "order.status": P("livraisons"), "order.cancel": P("livraisons"), "order.eta": P("livraisons"),
+  "order.accept": P("missions"), "order.problem": P("missions"), "order.step": P("missions"), "order.deliver": P("missions"), "order.fail": P("missions"),
+  "order.payment": P("livraisons", "finances"), "order.payment_cancel": P("finances"),
+  "courier.save": P("livreurs"), "courier.delete": P("livreurs"),
+  "courier.availability": P("missions", "livreurs"), "courier.locate": P("missions"), "courier.sharing": P("missions"),
+  "vehicle.save": P("vehicules"), "vehicle.delete": P("vehicules"), "vehicle.maintenance": P("vehicules"), "vehicle.fuel": P("vehicules"), "vehicle.entry_delete": P("vehicules"),
+  "transaction.save": P("finances"), "transaction.delete": P("finances"),
+  "photo.add": P("livraisons", "missions"),
+};

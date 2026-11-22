@@ -1,0 +1,127 @@
+{
+  "name": "Assistant clients MiniSoft RCA",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "options": {
+          "title": "Assistant MiniSoft RCA",
+          "subtitle": "Posez votre question, je réponds en français.",
+          "inputPlaceholder": "Écrivez votre question…",
+          "loadPreviousSession": "memory",
+          "allowedOrigins": "*"
+        },
+        "initialMessages": "Bonjour ! Je suis l'assistant de MiniSoft RCA. Quelle est votre activité (restaurant, boutique, garage…) ?"
+      },
+      "id": "a1",
+      "name": "Chat MiniSoft",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "minisoft-rca-assistant"
+    },
+    {
+      "parameters": {
+        "promptType": "auto",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "Tu es l'assistant clients de MiniSoft RCA. Tu réponds en français simple, poli et court (3 à 6 phrases, ou une petite liste), comme à un commerçant pressé qui lit sur son téléphone.\n\nQUI EST MINISOFT RCA\nMiniSoft RCA crée des logiciels de gestion (« mini-logiciels ») pour les commerces d'Afrique centrale : restaurants, hôtels, garages, pharmacies, boutiques, salons… En français, en FCFA, utilisables sur téléphone. Site : https://minisoft-rca.onrender.com\n\nCOMMENT ÇA MARCHE\n1. Le client crée un compte gratuit sur le site.\n2. Il choisit son activité (un appui) ou décrit son besoin en une ou deux phrases.\n3. L'IA pose au plus 2 petites questions (on peut passer), puis propose un plan avec les fonctionnalités.\n4. Il touche « Générer mon logiciel ».\n\nFORMULES (prix par mois)\n- Découverte : gratuite. 1 logiciel, 20 crédits par mois, sans publication (le logiciel généré reste verrouillé tant qu'on ne passe pas à une formule avec publication).\n- Pro : 15 000 FCFA. 5 logiciels, 200 crédits, publication incluse.\n- Business : 45 000 FCFA. 20 logiciels, 800 crédits, équipes et permissions avancées.\n- Agence : 120 000 FCFA. 100 logiciels, 3 000 crédits, pour créer des logiciels pour plusieurs clients.\nCoûts en crédits : analyse 2 crédits, génération 3, modification 2. Une opération IA échouée est remboursée.\nPaiement : depuis « Mon espace » → « Abonnement » → bouton « Payer » (Mobile Money ou carte).\n\nFONCTIONNALITÉS POUR LES RESTAURANTS\n- Menu QR personnalisable (thèmes, couleurs, photos) : le client scanne, commande depuis sa table, la commande arrive sur l'écran cuisine.\n- Écran cuisine : « Commencer », « Prête » en un appui.\n- Suivi de commande en direct pour le client, avec notifications (même téléphone verrouillé sur Android ; sur iPhone, il faut garder la page ouverte).\n- Paiement à la caisse ou par ZingoPay (si le restaurant a connecté son compte ZingoPay).\n- Plan 3D et 2D de l'établissement, ventes, dépenses, stock.\nMINISOFT SHOP (boutiques : vêtements, supérettes, parfumeries, téléphones, chaussures, quincailleries…)\n- Caisse avec reçu, stock avec variantes (taille, couleur), alertes de stock bas, clients, fournisseurs, dépenses, rapports.\n- Boutique en ligne par lien et QR code : le client commande sans compte. Deux moyens de paiement seulement : à la livraison (le commerçant note l'argent reçu quand il l'a vraiment reçu) ou ZingoPay (si le commerçant a connecté son compte ZingoPay).\n- Le commerçant confirme ou refuse chaque commande et suit la préparation et la livraison.\nAUTRES SECTEURS : hôtel (chambres, réservations, paiements), garage (réparations, pièces, clients), et d'autres modules selon le besoin décrit.\n\nÉQUIPE\nLe responsable invite ses employés par e-mail. Chacun a son poste (caisse, cuisine, stock…) et ne voit que ce qui le concerne. L'accès peut être suspendu en un appui.\n\nSITE INTERNET CONNECTÉ\nUne entreprise qui a déjà un site peut le relier à son logiciel (onglet « Site Internet ») pour voir ses visiteurs, pages vues et demandes de contact. MiniSoft ne crée pas de site.\n\nRÈGLES\n- N'invente jamais un prix, une fonctionnalité, un délai ou une promesse qui n'est pas écrit ci-dessus. Si tu ne sais pas, dis-le et propose le contact humain.\n- Ne demande jamais de mot de passe, de code de carte ou de code Mobile Money.\n- Pour une démonstration, un rendez-vous, un problème de paiement ou une demande particulière : propose le contact humain.\nCONTACT HUMAIN : WhatsApp +33 7 45 53 96 93 · e-mail minisoltrca@gmail.com · ou « Mon espace » → « Assistance » sur le site.\n- Termine, quand c'est utile, par une question simple pour aider le client à avancer (par exemple : « Quelle est votre activité ? »).",
+          "maxIterations": 3
+        }
+      },
+      "id": "a2",
+      "name": "Assistant MiniSoft",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-5-5"
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxTokensToSample": 700
+        }
+      },
+      "id": "a3",
+      "name": "Modèle de langage",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        240,
+        240
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 10
+      },
+      "id": "a4",
+      "name": "Mémoire de conversation",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        420,
+        240
+      ]
+    }
+  ],
+  "connections": {
+    "Chat MiniSoft": {
+      "main": [
+        [
+          {
+            "node": "Assistant MiniSoft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modèle de langage": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Assistant MiniSoft",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mémoire de conversation": {
+      "ai_memory": [
+        [
+          {
+            "node": "Assistant MiniSoft",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "Chat MiniSoft",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "description": "Assistant clients MiniSoft RCA : répond aux questions des commerçants sur les formules, le menu QR, MiniSoft Shop. À importer dans n8n, puis choisir votre modèle (identifiant à créer dans n8n)."
+  }
+}

@@ -61,7 +61,7 @@ export function MapPage() {
               {pts.map((p) => { const { x, y } = xy(p); const on = s?.id === p.id; return (
                 <g key={p.id} onClick={() => setSel(p.id)} className="cursor-pointer" role="button" tabIndex={0} aria-label={p.label} onKeyDown={(e) => e.key === "Enter" && setSel(p.id)}>
                   <circle cx={x} cy={y} r={on ? 3.4 : 2.4} fill={COLORS[p.kind]} stroke="#fff" strokeWidth="0.6" />
-                  {on && <text x={x} y={y - 4.5} fontSize="3.2" textAnchor="middle" fill="#0f172a">{p.label.slice(0, 22)}</text>}
+                  {on && <text x={x < 30 ? x + 4 : x > 70 ? x - 4 : x} y={y - 4.5} fontSize="3" textAnchor={x < 30 ? "start" : x > 70 ? "end" : "middle"} fill="#0f172a">{p.label.slice(0, 26)}</text>}
                 </g>); })}
             </svg>
             <p className="mt-2 flex flex-wrap gap-3 text-xs text-slate-600">{(Object.keys(COLORS) as (keyof typeof COLORS)[]).map((k) => <span key={k}><span className="mr-1 inline-block h-2.5 w-2.5 rounded-full" style={{ background: COLORS[k] }} />{NAMES[k]}</span>)}</p>

@@ -1,6 +1,6 @@
 import { siteHref, STATIC_SITE } from "@/lib/site-mode";
 import Link from "next/link";
-import { ArrowRight, BarChart3, Boxes, Briefcase, Building2, CalendarDays, Check, FileText, LifeBuoy, QrCode, Receipt, Settings, ShieldCheck, ShoppingCart, Users, Wallet } from "lucide-react";
+import { ArrowRight, BarChart3, Bike, Boxes, Briefcase, MapPin, Package, Truck, Building2, CalendarDays, Check, FileText, LifeBuoy, QrCode, Receipt, Settings, ShieldCheck, ShoppingCart, Users, Wallet } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { HeroPrompt } from "@/components/HeroPrompt";
@@ -148,11 +148,12 @@ export default async function Home() {
         {/* Deux logiciels prêts à l'emploi */}
         <section id="logiciels" className="scroll-mt-20 bg-gradient-to-b from-white to-indigo-50/60 px-4 py-20 sm:px-6">
           <div className="mx-auto max-w-7xl">
-            <SectionTitle eyebrow="Prêts à l'emploi" title="Deux logiciels complets, créés en quelques minutes" text="Choisissez votre type d'activité : vous obtenez un logiciel déjà organisé, que vous adaptez ensuite." />
-            <div className="mt-12 grid gap-6 lg:grid-cols-2">
+            <SectionTitle eyebrow="Prêts à l'emploi" title="Trois logiciels complets, créés en quelques minutes" text="Choisissez votre type d'activité : vous obtenez un logiciel déjà organisé, que vous adaptez ensuite." />
+            <div className="mt-12 grid gap-6 lg:grid-cols-3">
               {[
                 { name: "MiniSoft Shop", tag: "Pour les boutiques et commerces", icon: ShoppingCart, tone: "bg-blue-600", border: "hover:border-blue-300", items: [[ShoppingCart, "Caisse avec reçus et monnaie"], [Boxes, "Stock, variantes, alertes"], [QrCode, "Boutique en ligne et QR code"], [Wallet, "Paiement à la livraison ou ZingoPay"]] as const },
                 { name: "MiniSoft Bureau", tag: "Pour les agences et bureaux", icon: Briefcase, tone: "bg-indigo-600", border: "hover:border-indigo-300", items: [[Users, "Clients, projets, équipe et postes"], [CalendarDays, "Agenda et rendez-vous"], [Receipt, "Devis, factures et reçus PDF"], [Building2, "Bureau virtuel 2D / 3D"]] as const },
+                { name: "MiniSoft Transport", tag: "Pour la livraison et le transport", icon: Truck, tone: "bg-emerald-600", border: "hover:border-emerald-300", items: [[Package, "Commandes, colis et suivi public"], [Bike, "Application livreur sur téléphone"], [MapPin, "Carte, véhicules, entretien"], [Receipt, "Tarifs automatiques et factures"]] as const },
               ].map((p, i) => (
                 <Reveal key={p.name} delay={i * 80} className={`rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-colors sm:p-8 ${p.border}`}>
                   <span className={`grid h-12 w-12 place-items-center rounded-xl text-white ${p.tone}`}><p.icon className="h-6 w-6" aria-hidden /></span>
@@ -163,7 +164,7 @@ export default async function Home() {
                       <li key={t} className="flex items-center gap-2.5"><I className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />{t}</li>
                     ))}
                   </ul>
-                  <Link href={siteHref("/creer")} className="btn btn-primary mt-6 w-full sm:w-auto">Créer avec {p.name} <ArrowRight className="h-4 w-4" aria-hidden /></Link>
+                  <Link href={siteHref("/creer")} className="btn btn-primary mt-6 w-full sm:w-auto">Créer {p.name} <ArrowRight className="h-4 w-4" aria-hidden /></Link>
                 </Reveal>
               ))}
             </div>

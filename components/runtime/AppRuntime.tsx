@@ -17,6 +17,7 @@ import { NotificationBell } from "@/components/espace/NotificationBell";
 import { effectiveWorkspace } from "@/lib/workspace";
 import { SlidingNotch, SlidingPill, useSlidingIndicator } from "@/components/ui/SlidingIndicator";
 import { ShopApp } from "@/components/shop/ShopApp";
+import { BureauApp } from "@/components/bureau/BureauApp";
 
 type Answer = { answer: string; facts: string[]; period: string; basis: string; missing: string[]; mode: string; engine: string };
 
@@ -29,6 +30,10 @@ export function AppRuntime(props: { projectId: string; spec: AppSpec; mode: Data
   if (props.spec.module === "shop") {
     if (props.mode === "local") return <p className="p-6 text-sm text-slate-600">MiniSoft Shop demande un compte : créez votre boutique pour l&apos;essayer avec vos propres produits.</p>;
     return <ShopApp projectId={props.projectId} mode={props.mode} />;
+  }
+  if (props.spec.module === "bureau") {
+    if (props.mode === "local") return <p className="p-6 text-sm text-slate-600">MiniSoft Bureau demande un compte : créez votre espace pour l&apos;essayer avec vos propres données.</p>;
+    return <BureauApp projectId={props.projectId} mode={props.mode} />;
   }
   return <GeneratedRuntime {...props} />;
 }

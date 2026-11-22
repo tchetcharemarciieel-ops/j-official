@@ -5,7 +5,7 @@ import { PAY_METHODS, dueOf, lineTotal, paidOf, refundedOf, type Customer, type 
  * vrai fichier PDF téléchargeable, sans dépendance externe ni service tiers.
  */
 
-const A4 = { w: 595, h: 842 };
+export const A4 = { w: 595, h: 842 };
 const CP1252: Record<string, number> = { "€": 0x80, "’": 0x92, "‘": 0x91, "“": 0x93, "”": 0x94, "–": 0x96, "—": 0x97, "…": 0x85, "œ": 0x9c, "Œ": 0x8c };
 
 function enc(s: string): Buffer {
@@ -23,7 +23,7 @@ const esc = (b: Buffer) => Buffer.from(b.toString("latin1").replace(/([\\()])/g,
 type Op = { x: number; y: number; size: number; bold: boolean; text: string; right?: boolean; color?: [number, number, number] };
 const textWidth = (s: string, size: number, bold: boolean) => s.length * size * (bold ? 0.56 : 0.52);
 
-class Page {
+export class Page {
   ops: Op[] = [];
   lines: { x1: number; y1: number; x2: number; y2: number; w: number; gray: number }[] = [];
   rects: { x: number; y: number; w: number; h: number; rgb: [number, number, number] }[] = [];
@@ -38,7 +38,7 @@ class Page {
   }
 }
 
-function build(pages: Page[]): Buffer {
+export function build(pages: Page[]): Buffer {
   const objs: Buffer[] = [];
   const add = (b: Buffer | string) => (objs.push(typeof b === "string" ? Buffer.from(b, "latin1") : b), objs.length);
   add("<< /Type /Catalog /Pages 2 0 R >>");
@@ -76,12 +76,12 @@ function build(pages: Page[]): Buffer {
 }
 
 const money = (n: number) => `${Math.round(n).toLocaleString("fr-FR")} FCFA`;
-const hex = (h: string): [number, number, number] => {
+export const hex = (h: string): [number, number, number] => {
   const m = /^#([0-9a-f]{6})$/i.exec(h);
   const v = m ? parseInt(m[1]!, 16) : 0x2563eb;
   return [((v >> 16) & 255) / 255, ((v >> 8) & 255) / 255, (v & 255) / 255];
 };
-const cut = (s: string, size: number, width: number) => {
+export const cut = (s: string, size: number, width: number) => {
   let t = s;
   while (t.length > 3 && textWidth(t, size, false) > width) t = t.slice(0, -2);
   return t === s ? s : `${t.trimEnd()}…`;

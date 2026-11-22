@@ -152,6 +152,7 @@ const HANDLERS: Record<string, (c: OpContext, raw: unknown) => Promise<OpResult>
         phone: txt(30),
         email: z.union([z.literal(""), z.string().trim().email("E-mail invalide").max(120)]).default(""),
         logo_id: optId,
+        logo: z.object({ mime: z.enum(["image/png", "image/jpeg", "image/webp"]), data: z.string().max(520_000).regex(/^[A-Za-z0-9+/=]+$/, "Logo invalide") }).nullish(),
         currency: z.enum(Object.keys(CURRENCIES) as [string, ...string[]]),
         primary: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#2563eb"),
         tax_rate: z.coerce.number().min(0).max(100).default(0),
@@ -160,9 +161,16 @@ const HANDLERS: Record<string, (c: OpContext, raw: unknown) => Promise<OpResult>
         spaces: z.array(z.object({ id: z.string().regex(/^[a-z0-9_-]{2,30}$/), name: req(40, "Nom de l'espace"), kind: z.enum(["reception", "desk", "meeting", "stock", "counter", "cashier"]), links: z.array(z.string().max(20)).max(8), enabled: z.boolean() })).min(1).max(12),
       })
       .parse(raw);
+    const { logo, ...fields } = i;
+    if (logo) {
+      const size = Math.floor((logo.data.length * 3) / 4) - (logo.data.endsWith("==") ? 2 : logo.data.endsWith("=") ? 1 : 0);
+      if (size > 380_000) throw new OpError(413, "Logo trop lourd (380 Ko maximum).");
+      const f = await c.store.insert("file", { name: "logo", mime: logo.mime, size, data: logo.data } satisfies FileDoc);
+      fields.logo_id = f.id;
+    }
     const { doc } = await settings(c);
-    if (doc) await mutate<Settings>(c, "settings", doc.id, "Réglages", (cur) => ({ ...cur, ...i }) as unknown as Settings);
-    else await c.store.insert("settings", i);
+    if (doc) await mutate<Settings>(c, "settings", doc.id, "Réglages", (cur) => ({ ...cur, ...fields }) as unknown as Settings);
+    else await c.store.insert("settings", fields);
     return ok("Configuration enregistrée.");
   },
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { VoiceButton } from "@/components/VoiceButton";
 import { ShopPitch } from "./ShopPitch";
+import { BureauPitch } from "./BureauPitch";
 import { useToast } from "@/components/Toaster";
 import { api, ApiError } from "@/lib/fetcher";
 import { detectColumns, type ColumnInfo } from "@/lib/csv";
@@ -177,6 +178,7 @@ export function CreateWizard({ initialProblem, ai, credits, costs }: { initialPr
       )}
 
       {step === "describe" && <ShopPitch />}
+      {step === "describe" && <BureauPitch />}
 
       {step === "describe" && (
         <section className="glass rounded-2xl p-5 sm:p-8">

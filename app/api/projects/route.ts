@@ -11,9 +11,23 @@ import { getSetting } from "@/lib/settings";
 import { saveVersion, uniqueSlug } from "@/lib/projects";
 import { audit } from "@/lib/audit";
 import { shopSpec } from "@/lib/shop/spec";
+import { bureauSpec } from "@/lib/bureau/spec";
+import { AGENCY_TYPES, AGENCY_TYPE_IDS, CURRENCIES, defaultSettings as bureauDefaults, entityKey as bureauKey, type AgencyType } from "@/lib/bureau/model";
 import { SHOP_TYPE_IDS, SHOP_TYPES, defaultSettings, entityKey, type ShopType } from "@/lib/shop/model";
 
+const bureauInput = z.object({
+  name: z.string().trim().min(2).max(80),
+  agency_type: z.enum(AGENCY_TYPE_IDS as [string, ...string[]]),
+  sector: z.string().trim().max(80).default(""),
+  employees_count: z.coerce.number().int().min(1).max(100000).default(1),
+  offices_count: z.coerce.number().int().min(1).max(1000).default(1),
+  address: z.string().trim().max(200).default(""),
+  phone: z.string().trim().max(30).default(""),
+  currency: z.enum(Object.keys(CURRENCIES) as [string, ...string[]]).default("XAF"),
+  logo: z.string().max(380_000).regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/).nullish(),
+});
 const body = z.union([
+  z.object({ bureau: bureauInput }),
   z.object({ shop: z.object({ name: z.string().trim().min(2).max(80), type: z.enum(SHOP_TYPE_IDS as [string, ...string[]]) }) }),
   z.object({ diagnosis: diagnosisSchema, problem: z.string().max(4000) }),
   z.object({ templateId: z.string().max(40), name: z.string().trim().min(2).max(80) }),
@@ -37,7 +51,13 @@ export const POST = route(async (req) => {
 
   let spec, problem, diagnosis, templateId: string | null = null, sector;
   const shopType = "shop" in input ? (input.shop.type as ShopType) : null;
-  if ("shop" in input) {
+  const bureau = "bureau" in input ? input.bureau : null;
+  if ("bureau" in input) {
+    spec = bureauSpec(input.bureau.name, input.bureau.agency_type as AgencyType, "#2563eb", input.bureau.sector || undefined);
+    problem = "MiniSoft Bureau : gestion de bureau et d'agence.";
+    diagnosis = null;
+    sector = AGENCY_TYPES[input.bureau.agency_type as AgencyType].label;
+  } else if ("shop" in input) {
     spec = shopSpec(input.shop.name, shopType!);
     problem = "MiniSoft Shop : gestion complète de boutique (caisse, stock, boutique en ligne).";
     diagnosis = null;
@@ -67,6 +87,18 @@ export const POST = route(async (req) => {
   if (error || !project) throw new HttpError(500, "Création du projet impossible.");
   await db.from("project_members").insert({ project_id: project.id, user_id: profile.id, role: "owner" });
   await audit("project.created", { projectId: project.id, actorId: profile.id, details: { templateId, slug, ...(shopType ? { module: "shop", type: shopType } : {}) } });
+  if (bureau) {
+    // Réglages de départ (configuration saisie par le client), pour les données réelles et de test.
+    for (const demo of [false, true]) {
+      let logoId: string | null = null;
+      if (bureau.logo) {
+        const { data: f } = await db.from("records").insert({ project_id: project.id, entity: bureauKey("file"), data: { name: "logo", mime: bureau.logo.slice(5, bureau.logo.indexOf(";")), size: Math.floor((bureau.logo.length * 3) / 4), data: bureau.logo.slice(bureau.logo.indexOf(",") + 1) }, is_demo: demo, created_by: profile.id, updated_by: profile.id }).select("id").single();
+        logoId = f?.id ?? null;
+      }
+      const base = { ...bureauDefaults(bureau.name, bureau.agency_type as AgencyType), sector: bureau.sector || AGENCY_TYPES[bureau.agency_type as AgencyType].sector, employees_count: bureau.employees_count, offices_count: bureau.offices_count, address: bureau.address, phone: bureau.phone, currency: bureau.currency, logo_id: logoId };
+      await db.from("records").insert({ project_id: project.id, entity: bureauKey("settings"), data: base, is_demo: demo, created_by: profile.id, updated_by: profile.id });
+    }
+  }
   if (shopType) {
     // Réglages de départ de la boutique, pour les données réelles et pour les données de test.
     const base = defaultSettings(spec.name, shopType);

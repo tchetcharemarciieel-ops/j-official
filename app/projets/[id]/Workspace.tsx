@@ -113,7 +113,7 @@ export function Workspace({ data, initialTab }: { data: WorkspaceData; initialTa
       <div className="mt-6 overflow-x-auto">
         <div ref={tabsRef} role="tablist" aria-label="Sections du projet" className="relative flex min-w-max gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1">
           <SlidingPill box={tabBox} animate={tabAnimate} className="rounded-xl bg-white shadow-sm ring-1 ring-slate-200" />
-          {TABS.filter(([id]) => !(data.spec?.module === "shop" && id === "donnees")).map(([id, label, Icon]) => (
+          {TABS.filter(([id]) => !((data.spec?.module === "shop" || data.spec?.module === "bureau") && id === "donnees")).map(([id, label, Icon]) => (
             <button key={id} data-tab={id} role="tab" aria-selected={tab === id} aria-controls={`panel-${id}`} id={`tab-${id}`} onClick={() => setTab(id)} className={`tab-press relative inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm transition-colors duration-300 ${tab === id ? "font-medium text-slate-900" : "text-slate-600 hover:text-slate-900"}`}>
               <Icon key={tab === id ? "on" : "off"} className={`h-4 w-4 ${tab === id ? "tab-pop text-blue-600" : "text-slate-500"}`} aria-hidden />
               {label}

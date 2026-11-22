@@ -418,3 +418,32 @@ select.input option {
 .kds-card { animation: kds-in 0.22s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
 @keyframes kds-in { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .kds-card { animation: none; } }
+
+/* Mode sombre de MiniSoft Bureau : réglages des couleurs claires utilisées par l'interface. */
+.bu-dark { color-scheme: dark; background: #0b1220; color: #e2e8f0; }
+.bu-dark .bg-white { background-color: #111a2e !important; }
+.bu-dark .bg-white\/90, .bu-dark .bg-white\/95 { background-color: rgba(17, 26, 46, 0.92) !important; }
+.bu-dark .bg-slate-50, .bu-dark .bg-slate-50\/60 { background-color: #0b1220 !important; }
+.bu-dark .bg-slate-100 { background-color: #1b2742 !important; }
+.bu-dark .hover\:bg-slate-50:hover, .bu-dark .hover\:bg-slate-100:hover { background-color: #1b2742 !important; }
+.bu-dark .text-slate-900, .bu-dark .text-slate-800, .bu-dark .text-slate-700 { color: #e2e8f0 !important; }
+.bu-dark .text-slate-600, .bu-dark .text-slate-500 { color: #9aa8c2 !important; }
+.bu-dark .text-slate-400 { color: #7083a6 !important; }
+.bu-dark .border-slate-200, .bu-dark .border-slate-100, .bu-dark .border-slate-300 { border-color: #27365a !important; }
+.bu-dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #27365a !important; }
+.bu-dark .input { background: #0b1220; color: #e2e8f0; border-color: #34466e; }
+.bu-dark .input::placeholder { color: #6b7d9f; }
+.bu-dark .btn-ghost { background: #111a2e; color: #e2e8f0; border-color: #34466e; }
+.bu-dark .btn-ghost:not(:disabled):hover { background: #1b2742; }
+.bu-dark .btn-danger { background: #3b1a22; color: #fca5a5; border-color: #6b2630; }
+.bu-dark .bg-emerald-50, .bu-dark .bg-emerald-100 { background-color: #12372c !important; color: #6ee7b7 !important; }
+.bu-dark .bg-amber-50, .bu-dark .bg-amber-100 { background-color: #3b2f12 !important; color: #fcd34d !important; }
+.bu-dark .bg-red-50, .bu-dark .bg-red-100 { background-color: #3b1a22 !important; color: #fca5a5 !important; }
+.bu-dark .bg-blue-50, .bu-dark .bg-blue-100 { background-color: #14284f !important; color: #93c5fd !important; }
+.bu-dark .bg-violet-100 { background-color: #2a1f52 !important; color: #c4b5fd !important; }
+.bu-dark .text-emerald-700, .bu-dark .text-emerald-800 { color: #6ee7b7 !important; }
+.bu-dark .text-amber-800, .bu-dark .text-amber-900 { color: #fcd34d !important; }
+.bu-dark .text-red-600, .bu-dark .text-red-700 { color: #fca5a5 !important; }
+.bu-dark .text-blue-800 { color: #93c5fd !important; }
+.bu-dark .shadow-sm, .bu-dark .shadow { box-shadow: none !important; }
+.bu-dark .bg-slate-900\/40 { background-color: rgba(2, 6, 14, 0.7) !important; }

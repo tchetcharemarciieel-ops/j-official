@@ -4,9 +4,8 @@ import { ArrowLeft, Bot, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { VoiceButton } from "@/components/VoiceButton";
-import { ShopPitch } from "./ShopPitch";
-import { BureauPitch } from "./BureauPitch";
-import { TransportPitch } from "./TransportPitch";
+import { Suspense } from "react";
+import { ProductCatalog } from "@/components/catalog/ProductCatalog";
 import { useToast } from "@/components/Toaster";
 import { api, ApiError } from "@/lib/fetcher";
 import { detectColumns, type ColumnInfo } from "@/lib/csv";
@@ -178,12 +177,15 @@ export function CreateWizard({ initialProblem, ai, credits, costs }: { initialPr
         </div>
       )}
 
-      {step === "describe" && <ShopPitch />}
-      {step === "describe" && <BureauPitch />}
-      {step === "describe" && <TransportPitch />}
+      {step === "describe" && (
+        <section className="mb-5" aria-labelledby="catalogue-title">
+          <h2 id="catalogue-title" className="mb-2 text-sm font-semibold text-slate-900">Logiciels prêts à l&apos;emploi</h2>
+          <Suspense fallback={null}><ProductCatalog mode="create" /></Suspense>
+        </section>
+      )}
 
       {step === "describe" && (
-        <section className="glass rounded-2xl p-5 sm:p-8">
+        <section id="decrire" className="glass scroll-mt-20 rounded-2xl p-5 sm:p-8">
           <h1 className="font-display text-2xl font-bold text-slate-900 sm:text-3xl">Décrivez votre problème</h1>
           <p className="mt-2 text-sm text-slate-600">Choisissez votre activité ou écrivez votre besoin en une phrase. Votre plan est prêt en moins d&apos;une minute.</p>
           <p className="label mt-6">Votre activité (un appui pour commencer)</p>

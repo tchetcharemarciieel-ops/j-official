@@ -19,10 +19,10 @@ const FEATURES: [typeof Package, string][] = [
 ];
 
 /** Présentation de MiniSoft Transport &amp; Delivery : configuration de l'agence (nom, type, secteur, effectifs, adresse, logo, devise) puis création. */
-export function TransportPitch() {
+export function TransportPitch({ embedded = false, onCancel }: { embedded?: boolean; onCancel?: () => void } = {}) {
   const router = useRouter();
   const toast = useToast();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(embedded);
   const [f, setF] = useState({ name: "", transport_type: "livraison" as TransportType, address: "", phone: "", couriers_count: "1", vehicles_count: "1", zones: "", goods: "", currency: "XAF" });
   const [logo, setLogo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -51,20 +51,8 @@ export function TransportPitch() {
       setBusy(false);
     }
   }
-  return (
-    <section className="mb-6 overflow-hidden rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white shadow-sm" aria-labelledby="transport-title">
-      <div className="p-5 sm:p-7">
-        <span className="inline-block rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white">Nouveau</span>
-        <h2 id="transport-title" className="mt-2 text-xl font-bold text-slate-900 sm:text-2xl">MiniSoft Transport &amp; Delivery</h2>
-        <p className="text-sm font-medium text-emerald-700">Transport et livraison</p>
-        <p className="mt-2 text-sm text-slate-600">Commandes, livreurs, véhicules, suivi des colis, tarifs et paiements au même endroit : services de livraison, coursiers, transport de marchandises, livraison de restaurant, boutiques avec livraison, logistique.</p>
-        <ul className="mt-3 grid gap-x-4 gap-y-1.5 text-sm text-slate-700 sm:grid-cols-2">
-          {FEATURES.map(([I, t]) => <li key={t} className="flex items-center gap-2"><I className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />{t}</li>)}
-        </ul>
-        {!open ? (
-          <button className="btn btn-primary mt-5" onClick={() => setOpen(true)}>Créer mon service</button>
-        ) : (
-          <form className="mt-5 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2" onSubmit={(e) => (e.preventDefault(), void create())}>
+  const formEl = (
+    <form className="mt-5 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2" onSubmit={(e) => (e.preventDefault(), void create())}>
             <label className="block sm:col-span-2"><span className="label">Nom de l&apos;entreprise *</span><input className="input" value={f.name} onChange={(e) => set("name", e.target.value)} maxLength={80} placeholder="Ex. Express Bangui Livraison" autoFocus required /></label>
             <label className="block"><span className="label">Type de transport</span>
               <select className="input" value={f.transport_type} onChange={(e) => set("transport_type", e.target.value)}>{TRANSPORT_TYPE_IDS.map((k) => <option key={k} value={k}>{TRANSPORT_TYPES[k].icon} {TRANSPORT_TYPES[k].label}</option>)}</select>
@@ -91,9 +79,25 @@ export function TransportPitch() {
             {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 sm:col-span-2">{error}</p>}
             <div className="flex gap-2 sm:col-span-2">
               <button className="btn btn-primary" disabled={busy || f.name.trim().length < 2}>{busy ? "Création…" : "Créer mon service"}</button>
-              <button type="button" className="btn btn-ghost" onClick={() => setOpen(false)}>Annuler</button>
+              <button type="button" className="btn btn-ghost" onClick={() => (embedded ? onCancel?.() : setOpen(false))}>Annuler</button>
             </div>
           </form>
+  );
+  if (embedded) return formEl;
+  return (
+    <section className="mb-6 overflow-hidden rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white shadow-sm" aria-labelledby="transport-title">
+      <div className="p-5 sm:p-7">
+        <span className="inline-block rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white">Nouveau</span>
+        <h2 id="transport-title" className="mt-2 text-xl font-bold text-slate-900 sm:text-2xl">MiniSoft Transport &amp; Delivery</h2>
+        <p className="text-sm font-medium text-emerald-700">Transport et livraison</p>
+        <p className="mt-2 text-sm text-slate-600">Commandes, livreurs, véhicules, suivi des colis, tarifs et paiements au même endroit : services de livraison, coursiers, transport de marchandises, livraison de restaurant, boutiques avec livraison, logistique.</p>
+        <ul className="mt-3 grid gap-x-4 gap-y-1.5 text-sm text-slate-700 sm:grid-cols-2">
+          {FEATURES.map(([I, t]) => <li key={t} className="flex items-center gap-2"><I className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />{t}</li>)}
+        </ul>
+        {!open ? (
+          <button className="btn btn-primary mt-5" onClick={() => setOpen(true)}>Créer mon service</button>
+        ) : (
+          formEl
         )}
       </div>
     </section>

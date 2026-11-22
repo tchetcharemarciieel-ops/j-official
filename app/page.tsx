@@ -13,6 +13,9 @@ import { LeadForm } from "@/components/LeadForm";
 import { getSite } from "@/lib/site";
 import { ScrollStory } from "@/components/story/ScrollStory";
 import { TiltOnScroll } from "@/components/TiltOnScroll";
+import { Suspense } from "react";
+import { Catalog, type CatalogItem } from "@/components/catalog/Catalog";
+import { ProductCatalog } from "@/components/catalog/ProductCatalog";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +80,8 @@ export default async function Home() {
   // Textes et FAQ réglables dans l'administration ; à défaut, les textes d'origine.
   const faq = site.faq.items.length ? site.faq.items : FAQ;
   const solutions = SECTOR_PAGES.filter((s) => !site.templates.disabled.includes(s.slug));
+  const iconFor = (slug: string) => (["restaurant", "garage", "hotel", "pharmacie", "ecole"].find((k) => slug.includes(k)) ?? "default");
+  const solutionItems: CatalogItem[] = solutions.map((s) => ({ id: s.slug, icon: iconFor(s.slug), tone: "slate", name: s.template.name, short: s.template.description, features: s.template.modules.slice(0, 3).map((m) => getModule(m)?.title ?? m), href: `/secteurs/${s.slug}` }));
   return (
     <div className="bg-white">
       <script
@@ -145,30 +150,11 @@ export default async function Home() {
           <ScrollStory />
         </div>
 
-        {/* Deux logiciels prêts à l'emploi */}
-        <section id="logiciels" className="scroll-mt-20 bg-gradient-to-b from-white to-indigo-50/60 px-4 py-20 sm:px-6">
+        {/* Logiciels prêts à l'emploi : catalogue compact */}
+        <section id="logiciels" className="scroll-mt-20 bg-gradient-to-b from-white to-indigo-50/60 px-4 py-14 sm:px-6 sm:py-16">
           <div className="mx-auto max-w-7xl">
-            <SectionTitle eyebrow="Prêts à l'emploi" title="Trois logiciels complets, créés en quelques minutes" text="Choisissez votre type d'activité : vous obtenez un logiciel déjà organisé, que vous adaptez ensuite." />
-            <div className="mt-12 grid gap-6 lg:grid-cols-3">
-              {[
-                { name: "MiniSoft Shop", tag: "Pour les boutiques et commerces", icon: ShoppingCart, tone: "bg-blue-600", border: "hover:border-blue-300", items: [[ShoppingCart, "Caisse avec reçus et monnaie"], [Boxes, "Stock, variantes, alertes"], [QrCode, "Boutique en ligne et QR code"], [Wallet, "Paiement à la livraison ou ZingoPay"]] as const },
-                { name: "MiniSoft Bureau", tag: "Pour les agences et bureaux", icon: Briefcase, tone: "bg-indigo-600", border: "hover:border-indigo-300", items: [[Users, "Clients, projets, équipe et postes"], [CalendarDays, "Agenda et rendez-vous"], [Receipt, "Devis, factures et reçus PDF"], [Building2, "Bureau virtuel 2D / 3D"]] as const },
-                { name: "MiniSoft Transport", tag: "Pour la livraison et le transport", icon: Truck, tone: "bg-emerald-600", border: "hover:border-emerald-300", items: [[Package, "Commandes, colis et suivi public"], [Bike, "Application livreur sur téléphone"], [MapPin, "Carte, véhicules, entretien"], [Receipt, "Tarifs automatiques et factures"]] as const },
-              ].map((p, i) => (
-                <Reveal key={p.name} delay={i * 80} className={`rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-colors sm:p-8 ${p.border}`}>
-                  <span className={`grid h-12 w-12 place-items-center rounded-xl text-white ${p.tone}`}><p.icon className="h-6 w-6" aria-hidden /></span>
-                  <h3 className="mt-4 text-xl font-bold text-slate-900">{p.name}</h3>
-                  <p className="text-sm font-medium text-slate-600">{p.tag}</p>
-                  <ul className="mt-5 grid gap-2.5 text-sm text-slate-700">
-                    {p.items.map(([I, t]) => (
-                      <li key={t} className="flex items-center gap-2.5"><I className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />{t}</li>
-                    ))}
-                  </ul>
-                  <Link href={siteHref("/creer")} className="btn btn-primary mt-6 w-full sm:w-auto">Créer {p.name} <ArrowRight className="h-4 w-4" aria-hidden /></Link>
-                </Reveal>
-              ))}
-            </div>
-            <p className="mt-6 text-center text-sm text-slate-600">Votre métier est différent ? Décrivez-le en une phrase : nous créons un logiciel sur mesure.</p>
+            <SectionTitle eyebrow="Prêts à l'emploi" title="Trois logiciels complets, créés en quelques minutes" text="Touchez une carte pour voir le détail, puis créez votre logiciel." />
+            <div className="mt-8"><Suspense fallback={null}><ProductCatalog mode="link" /></Suspense></div>
           </div>
         </section>
 
@@ -196,25 +182,7 @@ export default async function Home() {
                 Voir tous les modèles
               </Link>
             </div>
-            <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {solutions.map((s, i) => (
-                <Reveal key={s.slug} delay={(i % 3) * 60}>
-                  <Link href={`/secteurs/${s.slug}`} className="group flex h-full flex-col rounded-xl border border-slate-200 bg-white p-6 transition-colors hover:border-blue-300">
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{s.template.category}</p>
-                    <h3 className="mt-2 text-lg font-semibold text-slate-900">{s.template.name}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-600">{s.template.description}</p>
-                    <ul className="mt-4 flex flex-wrap gap-1.5">
-                      {s.template.modules.map((m) => (
-                        <li key={m} className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{getModule(m)?.title ?? m}</li>
-                      ))}
-                    </ul>
-                    <span className="mt-auto inline-flex items-center gap-1 pt-5 text-sm font-semibold text-blue-600">
-                      Découvrir <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
-                    </span>
-                  </Link>
-                </Reveal>
-              ))}
-            </div>
+            <div className="mt-8"><Catalog items={solutionItems} /></div>
           </div>
         </section>
 

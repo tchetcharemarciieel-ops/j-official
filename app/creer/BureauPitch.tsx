@@ -19,10 +19,10 @@ const FEATURES: [typeof Users, string][] = [
 ];
 
 /** Présentation de MiniSoft Bureau : configuration de l'agence (nom, type, secteur, effectifs, adresse, logo, devise) puis création. */
-export function BureauPitch() {
+export function BureauPitch({ embedded = false, onCancel }: { embedded?: boolean; onCancel?: () => void } = {}) {
   const router = useRouter();
   const toast = useToast();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(embedded);
   const [f, setF] = useState({ name: "", agency_type: "classique" as AgencyType, sector: "", employees_count: "1", offices_count: "1", address: "", phone: "", currency: "XAF" });
   const [logo, setLogo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -51,20 +51,8 @@ export function BureauPitch() {
       setBusy(false);
     }
   }
-  return (
-    <section className="mb-6 overflow-hidden rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-white shadow-sm" aria-labelledby="bureau-title">
-      <div className="p-5 sm:p-7">
-        <span className="inline-block rounded-full bg-indigo-600 px-3 py-1 text-xs font-semibold text-white">Nouveau</span>
-        <h2 id="bureau-title" className="mt-2 text-xl font-bold text-slate-900 sm:text-2xl">MiniSoft Bureau</h2>
-        <p className="text-sm font-medium text-indigo-700">Gestion d&apos;une agence ou d&apos;un bureau</p>
-        <p className="mt-2 text-sm text-slate-600">Clients, projets, personnel, agenda, facturation et finances au même endroit, adaptés à votre métier : agence immobilière, de communication, cabinet administratif, agence commerciale ou bureau classique.</p>
-        <ul className="mt-3 grid gap-x-4 gap-y-1.5 text-sm text-slate-700 sm:grid-cols-2">
-          {FEATURES.map(([I, t]) => <li key={t} className="flex items-center gap-2"><I className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden />{t}</li>)}
-        </ul>
-        {!open ? (
-          <button className="btn btn-primary mt-5" onClick={() => setOpen(true)}>Créer mon bureau</button>
-        ) : (
-          <form className="mt-5 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2" onSubmit={(e) => (e.preventDefault(), void create())}>
+  const formEl = (
+    <form className="mt-5 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2" onSubmit={(e) => (e.preventDefault(), void create())}>
             <label className="block sm:col-span-2"><span className="label">Nom de l&apos;entreprise *</span><input className="input" value={f.name} onChange={(e) => set("name", e.target.value)} maxLength={80} placeholder="Ex. Agence Bangui Immo" autoFocus required /></label>
             <label className="block"><span className="label">Type d&apos;agence</span>
               <select className="input" value={f.agency_type} onChange={(e) => set("agency_type", e.target.value)}>{AGENCY_TYPE_IDS.map((t) => <option key={t} value={t}>{AGENCY_TYPES[t].icon} {AGENCY_TYPES[t].label}</option>)}</select>
@@ -89,9 +77,25 @@ export function BureauPitch() {
             {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 sm:col-span-2">{error}</p>}
             <div className="flex gap-2 sm:col-span-2">
               <button className="btn btn-primary" disabled={busy || f.name.trim().length < 2}>{busy ? "Création…" : "Créer mon bureau"}</button>
-              <button type="button" className="btn btn-ghost" onClick={() => setOpen(false)}>Annuler</button>
+              <button type="button" className="btn btn-ghost" onClick={() => (embedded ? onCancel?.() : setOpen(false))}>Annuler</button>
             </div>
           </form>
+  );
+  if (embedded) return formEl;
+  return (
+    <section className="mb-6 overflow-hidden rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-white shadow-sm" aria-labelledby="bureau-title">
+      <div className="p-5 sm:p-7">
+        <span className="inline-block rounded-full bg-indigo-600 px-3 py-1 text-xs font-semibold text-white">Nouveau</span>
+        <h2 id="bureau-title" className="mt-2 text-xl font-bold text-slate-900 sm:text-2xl">MiniSoft Bureau</h2>
+        <p className="text-sm font-medium text-indigo-700">Gestion d&apos;une agence ou d&apos;un bureau</p>
+        <p className="mt-2 text-sm text-slate-600">Clients, projets, personnel, agenda, facturation et finances au même endroit, adaptés à votre métier : agence immobilière, de communication, cabinet administratif, agence commerciale ou bureau classique.</p>
+        <ul className="mt-3 grid gap-x-4 gap-y-1.5 text-sm text-slate-700 sm:grid-cols-2">
+          {FEATURES.map(([I, t]) => <li key={t} className="flex items-center gap-2"><I className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden />{t}</li>)}
+        </ul>
+        {!open ? (
+          <button className="btn btn-primary mt-5" onClick={() => setOpen(true)}>Créer mon bureau</button>
+        ) : (
+          formEl
         )}
       </div>
     </section>

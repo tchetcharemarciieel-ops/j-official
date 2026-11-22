@@ -12,9 +12,9 @@ import { ArrowLeft } from "lucide-react";
 export const metadata = { title: "Créer mon logiciel" };
 export const dynamic = "force-dynamic";
 
-export default async function Page({ searchParams }: { searchParams: Promise<{ probleme?: string }> }) {
-  const { probleme } = await searchParams;
-  const profile = await requireProfile(`/creer${probleme ? `?probleme=${encodeURIComponent(probleme)}` : ""}`);
+export default async function Page({ searchParams }: { searchParams: Promise<{ probleme?: string; logiciel?: string }> }) {
+  const { probleme, logiciel } = await searchParams;
+  const profile = await requireProfile(`/creer${probleme ? `?probleme=${encodeURIComponent(probleme)}` : logiciel && /^[a-z]{3,12}$/.test(logiciel) ? `?logiciel=${logiciel}` : ""}`);
   // Nombre de logiciels selon la formule : limite atteinte, on propose la formule supérieure.
   if (!profile.is_admin) {
     const { limit, planName } = await projectLimit(profile.plan);

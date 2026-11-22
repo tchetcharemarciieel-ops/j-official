@@ -157,6 +157,27 @@ export const SHOP_OP_PERMS: Record<string, Permission[]> = {
   "expense.delete": P("finances"),
 };
 
+const ANY_BUREAU: Permission[] = ["clients", "projets", "agenda", "documents", "finances", "personnel", "equipements", "metier", "rapports", "parametres", "equipe"];
+export const BUREAU_OP_PERMS: Record<string, Permission[]> = {
+  "settings.save": P("parametres"),
+  "client.save": P("clients"), "client.delete": P("clients"), "interaction.add": P("clients"), "interaction.delete": P("clients"),
+  "project.save": P("projets"), "project.delete": P("projets"), "project.status": P("projets"),
+  "task.save": P("projets"), "task.status": P("projets"), "task.delete": P("projets"),
+  "comment.add": P("projets", "clients"), "comment.delete": P("projets", "clients"),
+  "employee.save": P("personnel"), "employee.delete": P("personnel"),
+  "attendance.save": P("personnel"), "attendance.delete": P("personnel"), "attendance.checkin": ANY_BUREAU,
+  "appointment.save": P("agenda"), "appointment.status": P("agenda"), "appointment.delete": P("agenda"),
+  "quote.save": P("documents"), "quote.status": P("documents"), "quote.convert": P("documents"), "quote.delete": P("documents"), "quote.archive": P("documents"),
+  "invoice.save": P("documents"), "invoice.status": P("documents"), "invoice.delete": P("documents"), "invoice.archive": P("documents"),
+  "invoice.payment": P("finances"), "invoice.payment_cancel": P("finances"),
+  "contract.save": P("documents"), "contract.status": P("documents"), "contract.archive": P("documents"), "contract.delete": P("documents"),
+  "document.add": P("documents"), "document.archive": P("documents"), "document.delete": P("documents"),
+  "transaction.save": P("finances"), "transaction.delete": P("finances"),
+  "equipment.save": P("equipements"), "equipment.assign": P("equipements"), "equipment.state": P("equipements"), "equipment.delete": P("equipements"),
+  "message.send": ANY_BUREAU, "message.read": ANY_BUREAU,
+  "record.save": P("metier"), "record.delete": P("metier"),
+};
+
 /** Message clair (et refus) si l'opération n'est pas autorisée pour ces permissions. */
 export function opDenied(table: Record<string, Permission[]>, op: string, perms: Permission[] | null | undefined): string | null {
   if (perms === null || perms === undefined) return null;

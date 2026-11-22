@@ -9,7 +9,7 @@
 
 import type { Role } from "./spec";
 
-export type Sector = "restaurant" | "hotel" | "garage" | "shop" | "autre";
+export type Sector = "restaurant" | "hotel" | "garage" | "shop" | "bureau" | "autre";
 
 /** Permissions : une par grande fonction de l'entreprise. */
 export const PERMISSIONS = {
@@ -29,6 +29,11 @@ export const PERMISSIONS = {
   clients: { label: "Clients", hint: "Fiches clients, historique des achats, paiements en attente" },
   achats: { label: "Fournisseurs et achats", hint: "Fournisseurs, bons de commande, réceptions" },
   remises: { label: "Remises, retours et annulations", hint: "Remises en caisse, retours, remboursements, annulations de vente" },
+  projets: { label: "Projets et tâches", hint: "Projets, tâches, commentaires, fichiers (un employé ne voit que les siens)" },
+  agenda: { label: "Agenda et rendez-vous", hint: "Calendrier, rendez-vous, réunions, rappels" },
+  documents: { label: "Documents et facturation", hint: "Devis, factures, reçus, contrats, archives" },
+  equipements: { label: "Équipements", hint: "Matériel, attribution aux employés, état et historique" },
+  metier: { label: "Modules du métier", hint: "Biens, campagnes, dossiers, prospects… selon l'activité" },
   rapports: { label: "Rapports", hint: "Tableau de bord et rapports (consultation)" },
   finances: { label: "Dépenses et finances", hint: "Dépenses, recettes, bénéfice" },
   personnel: { label: "Personnel", hint: "Fiches du personnel et horaires" },
@@ -45,6 +50,7 @@ export const SECTOR_PERMISSIONS: Record<Sector, Permission[]> = {
   hotel: ["reception", "chambres", "menage", "restaurant", "cuisine", "caisse", "stock", "vision", "rapports", "finances", "personnel", "donnees", "parametres", "equipe"],
   garage: ["accueil_garage", "atelier", "pieces", "rapports", "finances", "personnel", "donnees", "parametres", "equipe"],
   shop: ["caisse", "stock", "commandes", "clients", "achats", "remises", "rapports", "finances", "parametres", "equipe"],
+  bureau: ["clients", "projets", "agenda", "documents", "finances", "personnel", "equipements", "metier", "rapports", "parametres", "equipe"],
   autre: ["donnees", "rapports", "finances", "personnel", "parametres", "equipe"],
 };
 
@@ -83,6 +89,13 @@ export const POSITIONS: Record<Sector, Position[]> = {
     { key: "magasinier", label: "Magasinier", role: "employee", permissions: ["stock", "achats"] },
     { key: "vendeur", label: "Vendeur", role: "employee", permissions: ["commandes", "clients"] },
   ],
+  bureau: [
+    { key: "administrateur", label: "Administrateur", role: "admin", permissions: [] },
+    { key: "directeur", label: "Directeur", role: "manager", permissions: [] },
+    { key: "secretaire", label: "Secrétaire", role: "employee", permissions: ["clients", "agenda", "documents", "projets"] },
+    { key: "employe", label: "Employé", role: "employee", permissions: ["projets", "agenda"] },
+    { key: "comptable", label: "Comptable", role: "employee", permissions: ["finances", "documents", "rapports", "clients"] },
+  ],
   autre: [
     { key: "administrateur", label: "Administrateur", role: "admin", permissions: [] },
     { key: "responsable", label: "Responsable", role: "manager", permissions: [] },
@@ -93,6 +106,7 @@ export const POSITIONS: Record<Sector, Position[]> = {
 
 export function sectorOf(layout: string | null | undefined, module?: string | null): Sector {
   if (module === "shop") return "shop";
+  if (module === "bureau") return "bureau";
   return layout === "restaurant" || layout === "hotel" || layout === "garage" ? layout : "autre";
 }
 

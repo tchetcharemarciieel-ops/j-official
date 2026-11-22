@@ -11,6 +11,7 @@ import { api, ApiError } from "@/lib/fetcher";
 import { detectColumns, type ColumnInfo } from "@/lib/csv";
 import { readImage, readTabular } from "@/lib/file-read";
 import { MODULES } from "@/lib/modules";
+import { adaptModule, getModuleFor } from "@/lib/module-variants";
 import type { DiagnoseResponse, Diagnosis, Feature } from "@/lib/generator";
 
 /** Exemples en un appui : le client choisit son activité au lieu de tout écrire. */
@@ -117,10 +118,10 @@ export function CreateWizard({ initialProblem, ai, credits, costs }: { initialPr
     setDiagnosis({ ...diagnosis, features: diagnosis.features.map((f) => (f.id === id ? { ...f, selected: !f.selected } : f)) });
   }
 
-  const available = useMemo(() => MODULES.filter((m) => !diagnosis?.features.some((f) => f.id === m.id || f.entity?.key === m.entity.key)), [diagnosis]);
+  const available = useMemo(() => MODULES.filter((m) => !diagnosis?.features.some((f) => f.id === m.id || f.entity?.key === m.entity.key)).map((m) => adaptModule(m, diagnosis?.sector)), [diagnosis]);
 
   function addModule(id: string) {
-    const m = MODULES.find((x) => x.id === id);
+    const m = getModuleFor(id, diagnosis?.sector);
     if (!m || !diagnosis) return;
     const f: Feature = { id: m.id, title: m.title, description: m.description, selected: true };
     setDiagnosis({ ...diagnosis, features: [...diagnosis.features, f] });
@@ -327,7 +328,7 @@ export function CreateWizard({ initialProblem, ai, credits, costs }: { initialPr
             <input id="nm" className="input" value={businessName} onChange={(e) => setBusinessName(e.target.value)} maxLength={80} placeholder={`Gestion ${diagnosis.sectorLabel.toLowerCase()}`} />
             <ul className="mt-5 grid gap-3 sm:grid-cols-2">
               {diagnosis.features.map((f) => {
-                const fields = f.entity?.fields ?? MODULES.find((m) => m.id === f.id)?.entity.fields ?? [];
+                const fields = f.entity?.fields ?? getModuleFor(f.id, diagnosis.sector)?.entity.fields ?? [];
                 return (
                   <li key={f.id}>
                     <label className={`flex h-full cursor-pointer gap-3 rounded-xl border p-4 transition ${f.selected ? "border-blue-300 bg-blue-50" : "border-slate-200 bg-slate-50 hover:border-slate-300"}`}>

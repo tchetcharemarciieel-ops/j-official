@@ -1,5 +1,5 @@
 import { composeSpec, SECTORS } from "./generator";
-import { getModule } from "./modules";
+import { getModuleFor } from "./module-variants";
 import type { AppSpec } from "./spec";
 
 export type Template = {
@@ -32,7 +32,7 @@ function tpl(t: Omit<Template, "build">): Template {
         automations: [],
         limits: [],
         questions: [],
-        features: t.modules.map((id) => ({ id, title: getModule(id)!.title, description: "", selected: true })),
+        features: t.modules.map((id) => ({ id, title: getModuleFor(id, t.sector)!.title, description: "", selected: true })),
       }),
   };
 }

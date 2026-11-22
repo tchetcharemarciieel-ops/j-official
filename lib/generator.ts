@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { MODULES, getModule } from "./modules";
+import { MODULES } from "./modules";
+import { getModuleFor } from "./module-variants";
 import { appSpecSchema, entitySchema, widgetSchema, type AppSpec, type Entity, type Widget } from "./spec";
 import { buildWorkspace } from "./workspace";
 
@@ -107,13 +108,13 @@ export function diagnoseWithRules(input: DiagnoseInput): Diagnosis {
   }
 
   const features: Feature[] = (ids.length ? ids : ["clients", "taches"]).map((id) => {
-    const m = getModule(id)!;
+    const m = getModuleFor(id, sectorId)!;
     return { id: m.id, title: m.title, description: m.description, selected: true };
   });
   // Modules supplémentaires proposés mais non cochés
   for (const id of ["employes", "depenses", "factures"]) {
     if (!features.some((f) => f.id === id)) {
-      const m = getModule(id)!;
+      const m = getModuleFor(id, sectorId)!;
       features.push({ id: m.id, title: m.title, description: m.description, selected: false });
     }
   }
@@ -147,7 +148,7 @@ export function diagnoseWithRules(input: DiagnoseInput): Diagnosis {
     dataToKeep: features
       .filter((f) => f.selected)
       .map((f) => {
-        const e = f.entity ?? getModule(f.id)?.entity;
+        const e = f.entity ?? getModuleFor(f.id, sectorId)?.entity;
         return e ? `${e.labelPlural} : ${e.fields.map((x) => x.label.toLowerCase()).join(", ")}` : f.title;
       }),
     users: usersAnswer ?? "Le propriétaire, puis les collaborateurs invités selon leur rôle.",
@@ -188,13 +189,13 @@ export function composeSpec(diagnosis: Diagnosis): AppSpec {
   const entities: Entity[] = [];
   const widgets: Widget[] = [];
   for (const f of selected) {
-    const mod = getModule(f.id);
+    const mod = getModuleFor(f.id, diagnosis.sector);
     const entity = f.entity ?? mod?.entity;
     if (!entity || entities.some((e) => e.key === entity.key)) continue;
     entities.push(structuredClone(entity));
     widgets.push(...(f.widgets ?? mod?.widgets ?? []));
   }
-  if (entities.length === 0) entities.push(structuredClone(getModule("taches")!.entity));
+  if (entities.length === 0) entities.push(structuredClone(getModuleFor("taches", diagnosis.sector)!.entity));
 
   const keys = new Set(entities.map((e) => e.key));
   for (const e of entities) {

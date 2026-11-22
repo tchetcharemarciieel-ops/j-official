@@ -18,6 +18,7 @@ import { effectiveWorkspace } from "@/lib/workspace";
 import { SlidingNotch, SlidingPill, useSlidingIndicator } from "@/components/ui/SlidingIndicator";
 import { ShopApp } from "@/components/shop/ShopApp";
 import { zoneForEntity } from "@/lib/zone-map";
+import { StationPanel } from "./workspace/StationPanel";
 import { TransportApp } from "@/components/transport/TransportApp";
 import { BureauApp } from "@/components/bureau/BureauApp";
 
@@ -82,6 +83,12 @@ function GeneratedRuntime({ projectId, spec, mode, role, perms = null, compact =
   // Restaurant, hôtel, garage : un module touché dans le plan ou sur le tableau de bord ouvre la zone détaillée
   // (écran cuisine, ingrédients et stock, chambres…) et non un simple tableau de données. Le menu garde l'accès classique.
   const zoneLayout = ws.enabled && (ws.layout === "restaurant" || ws.layout === "hotel" || ws.layout === "garage") ? ws.layout : null;
+  // Autres métiers (salon, boutique, école, transport…) : un poste touché dans le plan ouvre un écran détaillé de zone.
+  const [panel, setPanel] = useState<string | null>(null);
+  const goPlan = (target: string, recordId?: string) => {
+    if (!zoneLayout && ws.enabled && !recordId && entities.some((x) => x.key === target)) return setPanel(target);
+    goSmart(target, recordId);
+  };
   const goSmart = (target: string, recordId?: string) => {
     const e = entities.find((x) => x.key === target);
     if (zoneLayout && e && !recordId) {
@@ -165,7 +172,7 @@ function GeneratedRuntime({ projectId, spec, mode, role, perms = null, compact =
           {current ? (
             <EntityView key={`${current.key}:${openRecord ?? ""}`} spec={spec} entity={current} role={role} data={data} notify={notify} openRecordId={openRecord} />
           ) : page === "__workspace" && ws.enabled ? (
-            <WorkspaceView projectId={projectId} spec={spec} ws={ws} mode={mode} role={role} readable={entities.map((e) => e.key)} records={data.records} loading={data.loading} reload={data.reload} prefs={prefs} savePrefs={save} onOpen={goSmart} onClassic={dataAllowed ? () => go("__dashboard") : undefined} perms={perms} command={wsCommand} />
+            <WorkspaceView projectId={projectId} spec={spec} ws={ws} mode={mode} role={role} readable={entities.map((e) => e.key)} records={data.records} loading={data.loading} reload={data.reload} prefs={prefs} savePrefs={save} onOpen={goPlan} onClassic={dataAllowed ? () => go("__dashboard") : undefined} perms={perms} command={wsCommand} />
           ) : (
             <div className="space-y-6">
               <div>
@@ -186,6 +193,7 @@ function GeneratedRuntime({ projectId, spec, mode, role, perms = null, compact =
             </div>
           )}
         </main>
+        {panel && <StationPanel spec={spec} stations={ws.stations} target={panel} role={role} data={data} notify={notify} onClose={() => setPanel(null)} onSelect={setPanel} />}
         <BottomTabs withMenu={!ws.enabled} tabs={tabs} page={tabPage} onGo={goTab} menuOpen={menuOpen} onMenu={() => setMenuOpen((o) => !o)} />
       </div>
     </div>

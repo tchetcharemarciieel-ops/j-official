@@ -11,12 +11,12 @@ import type { Rec, useAppData } from "./useAppData";
 
 type Data = ReturnType<typeof useAppData>;
 
-export function EntityView({ spec, entity, role, data, notify, openRecordId }: { spec: AppSpec; entity: Entity; role: Role; data: Data; notify: (kind: "success" | "error" | "info", msg: string) => void; openRecordId?: string }) {
+export function EntityView({ spec, entity, role, data, notify, openRecordId, startNew = false }: { startNew?: boolean; spec: AppSpec; entity: Entity; role: Role; data: Data; notify: (kind: "success" | "error" | "info", msg: string) => void; openRecordId?: string }) {
   const rows = data.records[entity.key] ?? [];
   const [q, setQ] = useState("");
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 } | null>(null);
-  const [editing, setEditing] = useState<Rec | "new" | null>(null);
+  const [editing, setEditing] = useState<Rec | "new" | null>(startNew && can(entity, role, "create") ? "new" : null);
   const [confirmDelete, setConfirmDelete] = useState<Rec | null>(null);
   // Fiche demandée depuis l'espace de travail : ouverte dès que les données sont chargées.
   const [opened, setOpened] = useState(false);

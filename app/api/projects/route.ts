@@ -13,6 +13,8 @@ import { audit } from "@/lib/audit";
 import { shopSpec } from "@/lib/shop/spec";
 import { bureauSpec } from "@/lib/bureau/spec";
 import { AGENCY_TYPES, AGENCY_TYPE_IDS, CURRENCIES, defaultSettings as bureauDefaults, entityKey as bureauKey, type AgencyType } from "@/lib/bureau/model";
+import { TRANSPORT_TYPES, TRANSPORT_TYPE_IDS, CURRENCIES as TR_CURRENCIES, defaultSettings as transportDefaults, entityKey as transportKey, type TransportType } from "@/lib/transport/model";
+import { transportSpec } from "@/lib/transport/spec";
 import { SHOP_TYPE_IDS, SHOP_TYPES, defaultSettings, entityKey, type ShopType } from "@/lib/shop/model";
 
 const bureauInput = z.object({
@@ -26,7 +28,20 @@ const bureauInput = z.object({
   currency: z.enum(Object.keys(CURRENCIES) as [string, ...string[]]).default("XAF"),
   logo: z.string().max(380_000).regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/).nullish(),
 });
+const transportInput = z.object({
+  name: z.string().trim().min(2).max(80),
+  transport_type: z.enum(TRANSPORT_TYPE_IDS as [string, ...string[]]),
+  address: z.string().trim().max(200).default(""),
+  phone: z.string().trim().max(30).default(""),
+  couriers_count: z.coerce.number().int().min(0).max(100000).default(1),
+  vehicles_count: z.coerce.number().int().min(0).max(100000).default(1),
+  zones: z.array(z.string().trim().min(1).max(60)).max(30).default([]),
+  goods: z.array(z.string().trim().min(1).max(60)).max(30).default([]),
+  currency: z.enum(Object.keys(TR_CURRENCIES) as [string, ...string[]]).default("XAF"),
+  logo: z.string().max(380_000).regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/).nullish(),
+});
 const body = z.union([
+  z.object({ transport: transportInput }),
   z.object({ bureau: bureauInput }),
   z.object({ shop: z.object({ name: z.string().trim().min(2).max(80), type: z.enum(SHOP_TYPE_IDS as [string, ...string[]]) }) }),
   z.object({ diagnosis: diagnosisSchema, problem: z.string().max(4000) }),
@@ -52,7 +67,13 @@ export const POST = route(async (req) => {
   let spec, problem, diagnosis, templateId: string | null = null, sector;
   const shopType = "shop" in input ? (input.shop.type as ShopType) : null;
   const bureau = "bureau" in input ? input.bureau : null;
-  if ("bureau" in input) {
+  const transport = "transport" in input ? input.transport : null;
+  if ("transport" in input) {
+    spec = transportSpec(input.transport.name, input.transport.transport_type as TransportType);
+    problem = "MiniSoft Transport & Delivery : gestion de transport et de livraison.";
+    diagnosis = null;
+    sector = TRANSPORT_TYPES[input.transport.transport_type as TransportType].label;
+  } else if ("bureau" in input) {
     spec = bureauSpec(input.bureau.name, input.bureau.agency_type as AgencyType, "#2563eb", input.bureau.sector || undefined);
     problem = "MiniSoft Bureau : gestion de bureau et d'agence.";
     diagnosis = null;
@@ -87,6 +108,18 @@ export const POST = route(async (req) => {
   if (error || !project) throw new HttpError(500, "Création du projet impossible.");
   await db.from("project_members").insert({ project_id: project.id, user_id: profile.id, role: "owner" });
   await audit("project.created", { projectId: project.id, actorId: profile.id, details: { templateId, slug, ...(shopType ? { module: "shop", type: shopType } : {}) } });
+  if (transport) {
+    for (const demo of [false, true]) {
+      let logoId: string | null = null;
+      if (transport.logo) {
+        const { data: f } = await db.from("records").insert({ project_id: project.id, entity: transportKey("file"), data: { name: "logo", mime: transport.logo.slice(5, transport.logo.indexOf(";")), size: Math.floor((transport.logo.length * 3) / 4), data: transport.logo.slice(transport.logo.indexOf(",") + 1) }, is_demo: demo, created_by: profile.id, updated_by: profile.id }).select("id").single();
+        logoId = f?.id ?? null;
+      }
+      const d = transportDefaults(transport.name, transport.transport_type as TransportType);
+      const base = { ...d, address: transport.address, phone: transport.phone, couriers_count: transport.couriers_count, vehicles_count: transport.vehicles_count, currency: transport.currency, goods: transport.goods, logo_id: logoId, tariff: { ...d.tariff, zones: transport.zones.map((name) => ({ name, fee: 0 })), parcel_types: transport.goods.length ? transport.goods.map((name) => ({ name, mult: 1 })) : d.tariff.parcel_types } };
+      await db.from("records").insert({ project_id: project.id, entity: transportKey("settings"), data: base, is_demo: demo, created_by: profile.id, updated_by: profile.id });
+    }
+  }
   if (bureau) {
     // Réglages de départ (configuration saisie par le client), pour les données réelles et de test.
     for (const demo of [false, true]) {

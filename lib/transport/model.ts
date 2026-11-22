@@ -291,3 +291,8 @@ export function monthlySeries(txs: Doc<Transaction>[], now = new Date(), months 
   return out;
 }
 export const normPhone = (p: string) => p.replace(/\D/g, "");
+export function monthRange(ym: string) {
+  const [y, m] = ym.split("-").map(Number) as [number, number];
+  const last = new Date(y, m, 0).getDate();
+  return { from: `${ym}-01`, to: `${ym}-${String(last).padStart(2, "0")}` };
+}

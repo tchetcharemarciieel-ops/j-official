@@ -14,6 +14,7 @@ import { getSite } from "@/lib/site";
 import { ScrollStory } from "@/components/story/ScrollStory";
 import { TiltOnScroll } from "@/components/TiltOnScroll";
 import { Suspense } from "react";
+import { PresentationVideo } from "@/components/PresentationVideo";
 import { Catalog, type CatalogItem } from "@/components/catalog/Catalog";
 import { ProductCatalog } from "@/components/catalog/ProductCatalog";
 
@@ -142,6 +143,18 @@ export default async function Home() {
                 <ScreenPreview />
               </TiltOnScroll>
             </Reveal>
+          </div>
+        </section>
+
+        {/* Vidéo de présentation */}
+        <section id="presentation" className="scroll-mt-20 border-b border-slate-200 bg-white px-4 py-12 sm:px-6 sm:py-16">
+          <div className="mx-auto max-w-4xl">
+            <SectionTitle eyebrow="En 25 secondes" title="Voir MiniSoft RCA en action" text="Du cahier perdu au logiciel prêt, en français et en FCFA." />
+            <Reveal className="mt-8"><PresentationVideo /></Reveal>
+            <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link href={siteHref("/creer")} className="btn btn-primary px-6">Créer mon logiciel</Link>
+              <Link href="/#logiciels" className="btn btn-ghost px-6">Voir les logiciels prêts à l&apos;emploi</Link>
+            </div>
           </div>
         </section>
 

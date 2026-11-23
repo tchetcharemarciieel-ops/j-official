@@ -11,7 +11,6 @@ import { getPlans, xaf } from "@/lib/plans";
 import { CREDIT_COSTS, SITE_URL } from "@/lib/config";
 import { LeadForm } from "@/components/LeadForm";
 import { getSite } from "@/lib/site";
-import { ScrollStory } from "@/components/story/ScrollStory";
 import { TiltOnScroll } from "@/components/TiltOnScroll";
 import { Suspense } from "react";
 import { PresentationVideo } from "@/components/PresentationVideo";
@@ -157,11 +156,6 @@ export default async function Home() {
             </div>
           </div>
         </section>
-
-        {/* Histoire animée au défilement */}
-        <div id="histoire" className="scroll-mt-16">
-          <ScrollStory />
-        </div>
 
         {/* Logiciels prêts à l'emploi : catalogue compact */}
         <section id="logiciels" className="scroll-mt-20 bg-gradient-to-b from-white to-indigo-50/60 px-4 py-14 sm:px-6 sm:py-16">

@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MiniSoft RCA · Votre logiciel de gestion, prêt en quelques minutes</title>
+<meta name="description" content="Créez le logiciel de gestion de votre commerce à Bangui en quelques minutes : stock, ventes, clients, factures, dépenses, personnel. Simple, en français, en FCFA.">
+<meta name="theme-color" content="#061638">
+<meta property="og:title" content="MiniSoft RCA · Votre logiciel de gestion, prêt en quelques minutes">
+<meta property="og:description" content="Stock, ventes, clients, factures, dépenses, personnel. Simple. En français. En FCFA.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="/cinema/images/hero-poster.webp">
+<link rel="canonical" href="https://minisoft-rca.onrender.com/cinema">
+
+<!-- ───────────────────────── 1. DÉTECTION CONNEXION / ANIMATIONS (avant tout affichage) ─────────────────────────
+     « lite » = connexion lente (2G/3G), économiseur de données, ou « réduire les animations » activé.
+     En mode lite : pas de vidéo (image seule), pas de GSAP (≈ 90 Ko économisés), pas de pin ni de parallaxe.
+     Le contenu reste complet et lisible, avec de simples apparitions douces. -->
+<script>
+  (function () {
+    var d = document.documentElement, c = navigator.connection || {};
+    var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var slow = !!c.saveData || /^(slow-2g|2g|3g)$/.test(c.effectiveType || "");
+    d.className += " js" + (reduce || slow ? " lite" : "");
+  })();
+</script>
+
+<!-- Police Poppins : seulement 2 graisses (400 et 700), chargement non bloquant -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap"></noscript>
+
+<style>
+  /* ───────────────────────── 2. STYLES ─────────────────────────
+     Mobile d'abord : tout est pensé pour un téléphone Android, puis élargi pour tablette et ordinateur. */
+  :root {
+    --nuit-1: #061638; --nuit-2: #0D2A66;
+    --bleu: #2F7BFF; --cyan: #22C3EE; --blanc: #fff;
+    --vert-wa: #25D366;
+    --pad: clamp(20px, 6vw, 72px);
+    --t-geant: clamp(2.5rem, 11.5vw, 7.5rem);
+    --t-grand: clamp(2rem, 8.5vw, 5.5rem);
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body { margin: 0; background: var(--nuit-1); color: var(--blanc); font-family: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-weight: 400; line-height: 1.5; overflow-x: hidden; }
+  img, video { display: block; max-width: 100%; }
+  a { color: inherit; }
+  h1, h2, h3 { font-weight: 700; line-height: 1.05; letter-spacing: -0.02em; margin: 0; }
+  :focus-visible { outline: 3px solid var(--cyan); outline-offset: 3px; border-radius: 6px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .skip { position: absolute; left: 12px; top: -60px; background: #fff; color: #061638; padding: 10px 14px; border-radius: 10px; z-index: 100; }
+  .skip:focus { top: 12px; }
+
+  section { position: relative; }
+  .wrap { padding-inline: var(--pad); max-width: 1400px; margin-inline: auto; }
+
+  /* Mots qui apparaissent un par un : chaque mot est dans un « masque » (voir splitWords) */
+  .w { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: .12em; margin-bottom: -.12em; }
+  .w > span { display: inline-block; }
+
+  /* ── Boutons ── */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: .6em; min-height: 56px; padding: 0 28px; border-radius: 999px; font: 700 1rem/1 "Poppins", system-ui, sans-serif; text-decoration: none; border: 2px solid transparent; transition: transform .2s, background .2s, border-color .2s; -webkit-tap-highlight-color: transparent; }
+  .btn:active { transform: scale(.97); }
+  .btn-main { background: var(--bleu); color: #fff; box-shadow: 0 12px 40px -10px rgba(47,123,255,.8); }
+  .btn-main:hover { background: #4a8dff; }
+  .btn-ghost { border-color: rgba(255,255,255,.5); color: #fff; background: rgba(255,255,255,.06); }
+  .btn-ghost:hover { border-color: #fff; }
+  .btn-wa { background: var(--vert-wa); color: #04260f; }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 14px; }
+
+  /* ── 1. HERO ── */
+  #hero { min-height: 100svh; display: grid; align-items: end; overflow: hidden; z-index: 1; background: linear-gradient(160deg, var(--nuit-1), var(--nuit-2)); }
+  .hero-media { position: absolute; inset: -6% 0 -6%; }
+  /* Image « poster » : affichée tout de suite, la vidéo prend le relais quand elle est prête */
+  .hero-media img, .hero-media video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .hero-media video { opacity: 0; transition: opacity 1s; }
+  .hero-media video.on { opacity: 1; }
+  .hero-veil { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(6,22,56,.55) 0%, rgba(6,22,56,.35) 40%, rgba(6,22,56,.92) 100%); }
+  .hero-body { position: relative; padding: 120px var(--pad) 110px; max-width: 1400px; margin: 0 auto; width: 100%; }
+  .logo { position: absolute; top: 22px; left: var(--pad); z-index: 3; font-weight: 700; font-size: 1.15rem; text-decoration: none; }
+  .logo b { color: var(--cyan); }
+  h1 { font-size: var(--t-geant); }
+  .hero-sub { font-size: clamp(1.1rem, 4.2vw, 1.8rem); color: #cfe0ff; margin: 22px 0 34px; }
+  .scroll-hint { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 3; display: grid; justify-items: center; gap: 4px; font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: #cfe0ff; text-decoration: none; }
+  .scroll-hint svg { animation: bounce 1.6s ease-in-out infinite; }
+  @keyframes bounce { 0%,100% { transform: translateY(0); opacity: .6 } 50% { transform: translateY(8px); opacity: 1 } }
+
+  /* ── 2. LE PROBLÈME ── */
+  #probleme { background: #000; z-index: 2; min-height: 100svh; display: grid; place-items: center; text-align: center; }
+  .p-line { font-size: var(--t-grand); padding-inline: var(--pad); }
+  .p-line em { font-style: normal; color: var(--cyan); }
+  /* Les mots sont des blocs en ligne : on les range en lignes centrées (flex wrap), pas en grille */
+  .p-line { display: flex; flex-wrap: wrap; justify-content: center; align-content: center; column-gap: .26em; }
+  html:not(.lite) .p-line { position: absolute; inset: 0; }
+  #probleme { overflow: hidden; }
+
+  /* ── 3. LA SOLUTION ── */
+  #solution { background: radial-gradient(120% 80% at 50% 0%, var(--nuit-2), var(--nuit-1) 70%); z-index: 3; min-height: 100svh; display: grid; place-items: center; overflow: hidden; padding: 90px var(--pad) 40px; }
+  .sol-inner { display: grid; justify-items: center; gap: 26px; text-align: center; }
+  .sol-title { font-size: clamp(1.8rem, 7vw, 4rem); max-width: 14ch; }
+  .sol-title em { font-style: normal; color: var(--cyan); }
+  .phone { width: min(260px, 64vw); aspect-ratio: 9 / 18.5; border-radius: 38px; background: #0a0f1f; padding: 10px; box-shadow: 0 40px 100px -20px rgba(34,195,238,.45), 0 0 0 2px #1b2a4d inset; }
+  .screen { height: 100%; border-radius: 30px; background: #f4f7fd; color: #0f172a; padding: 26px 12px 12px; display: grid; align-content: start; gap: 8px; text-align: left; overflow: hidden; position: relative; }
+  .screen::before { content: ""; position: absolute; top: 8px; left: 50%; width: 70px; height: 16px; background: #0a0f1f; border-radius: 99px; transform: translateX(-50%); }
+  .s-name { font-weight: 700; font-size: .72rem; }
+  .s-name small { display: block; font-weight: 400; color: #64748b; font-size: .6rem; }
+  .stat { border-radius: 12px; padding: 8px 10px; color: #fff; }
+  .stat small { display: block; font-size: .58rem; opacity: .85; }
+  .stat b { font-size: 1.05rem; }
+  .stat.a { background: var(--bleu); } .stat.b { background: #0e9f8e; } .stat.c { background: #7c4dff; }
+  .alert { background: #fff1f0; border: 1px solid #fecaca; color: #991b1b; border-radius: 12px; padding: 8px 10px; font-size: .62rem; }
+  .alert b { display: block; font-size: .7rem; }
+  .bars { display: flex; align-items: flex-end; gap: 4px; height: 46px; margin-top: 2px; }
+  .bars i { flex: 1; background: #bfd3ff; border-radius: 3px 3px 0 0; } .bars i:last-child { background: var(--bleu); }
+
+  /* ── 4. LES MÉTIERS ── */
+  #metiers { background: var(--nuit-1); z-index: 4; padding: 110px 0; }
+  .titre-section { font-size: var(--t-grand); margin-bottom: 40px; }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .card { margin: 0; position: relative; border-radius: 22px; overflow: hidden; aspect-ratio: 3 / 4; background: linear-gradient(160deg, #123a85, #081d49); }
+  .card .zoom { position: absolute; inset: 0; overflow: hidden; }
+  .card img { width: 100%; height: 100%; object-fit: cover; transform-origin: center; }
+  .card figcaption { position: absolute; inset: auto 0 0 0; padding: 40px 16px 16px; font-weight: 700; font-size: clamp(1.1rem, 4.5vw, 1.6rem); background: linear-gradient(0deg, rgba(6,22,56,.9), transparent); }
+  .card::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: 0 0 0 1px rgba(255,255,255,.12) inset; pointer-events: none; }
+
+  /* ── 5. COMMENT ÇA MARCHE ── */
+  #etapes { background: linear-gradient(180deg, var(--nuit-1), var(--nuit-2)); z-index: 5; padding: 110px 0; }
+  .steps { position: relative; display: grid; gap: 38px; padding-left: 44px; margin-top: 30px; }
+  .line { position: absolute; left: 14px; top: 8px; bottom: 8px; width: 4px; background: rgba(255,255,255,.14); border-radius: 4px; }
+  .line-fill { position: absolute; inset: 0; background: linear-gradient(180deg, var(--bleu), var(--cyan)); border-radius: 4px; transform-origin: top; }
+  .step { position: relative; opacity: .35; transition: opacity .4s; }
+  .step::before { content: attr(data-n); position: absolute; left: -44px; top: 0; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; background: var(--nuit-2); border: 2px solid rgba(255,255,255,.3); font-weight: 700; font-size: .9rem; transition: .4s; }
+  .step.on { opacity: 1; } .step.on::before { background: var(--bleu); border-color: var(--cyan); }
+  .step h3 { font-size: clamp(1.5rem, 6vw, 2.2rem); } .step p { margin: 6px 0 0; color: #b9cdf5; }
+
+  /* ── 6. LES AVANTAGES ── */
+  #avantages { background: var(--nuit-2); z-index: 6; padding: 110px 0; }
+  .avantage { display: grid; gap: 6px; padding: 28px 0; border-top: 1px solid rgba(255,255,255,.16); }
+  .avantage h3 { font-size: clamp(1.6rem, 7vw, 3.2rem); }
+  .avantage p { margin: 0; color: #b9cdf5; max-width: 46ch; }
+
+  /* ── 7. TÉMOIGNAGES ── */
+  #temoignages { background: var(--nuit-1); z-index: 7; padding: 110px 0; }
+  .slots { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  .slot { position: relative; aspect-ratio: 9 / 14; border-radius: 22px; overflow: hidden; display: grid; place-items: center; text-align: center; padding: 20px; border: 2px dashed rgba(255,255,255,.28); background: rgba(255,255,255,.04); }
+  .slot video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+  .slot b { display: block; font-size: 1.1rem; } .slot small { color: #9fb6e6; }
+
+  /* ── 8. FINAL ── */
+  #final { background: radial-gradient(100% 70% at 50% 100%, var(--bleu), var(--nuit-2) 45%, var(--nuit-1)); z-index: 8; min-height: 100svh; display: grid; place-items: center; text-align: center; padding: 100px var(--pad) 140px; }
+  #final h2 { font-size: var(--t-geant); }
+  #final p { font-size: clamp(1.1rem, 4vw, 1.6rem); color: #d6e5ff; margin: 18px 0 34px; }
+  #final .btn-row { justify-content: center; }
+  footer { background: #030b1d; text-align: center; padding: 26px var(--pad); color: #7f95c4; font-size: .85rem; position: relative; z-index: 8; }
+
+  /* ── WhatsApp flottant ── */
+  .wa-float { position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); z-index: 50; width: 60px; height: 60px; border-radius: 50%; background: var(--vert-wa); display: grid; place-items: center; box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+  .wa-float::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--vert-wa); animation: ping 2.4s ease-out infinite; }
+  @keyframes ping { 0% { transform: scale(1); opacity: .8 } 100% { transform: scale(1.7); opacity: 0 } }
+
+  /* ── Mode « lite » et apparitions douces (sans GSAP) ── */
+  .reveal { transition: opacity .7s ease, transform .7s ease; }
+  html.js .reveal:not(.in) { opacity: 0; transform: translateY(26px); }
+  html.lite .step { opacity: 1; } html.lite .step::before { background: var(--bleu); border-color: var(--cyan); }
+  html.lite .line-fill { transform: none; }
+  html.lite .p-line { margin: 14px 0; } html.lite #probleme { padding: 90px 0; gap: 20px; }
+  html.lite .scroll-hint svg, html.lite .wa-float::after { animation: none; }
+  @media (prefers-reduced-motion: reduce) { .reveal, .btn { transition: none; } html { scroll-behavior: auto; } .scroll-hint svg, .wa-float::after { animation: none; } }
+
+  /* ── Tablette / ordinateur ── */
+  @media (min-width: 768px) {
+    .grid { grid-template-columns: repeat(4, 1fr); gap: 18px; }
+    .slots { grid-template-columns: repeat(3, 1fr); }
+    .steps { grid-template-columns: repeat(4, 1fr); padding: 60px 0 0; gap: 28px; }
+    .line { left: 0; right: 0; top: 14px; bottom: auto; width: auto; height: 4px; }
+    .line-fill { transform-origin: left; }
+    .step::before { left: 0; top: -60px; }
+    .avantage { grid-template-columns: 1fr 1fr; align-items: center; }
+  }
+</style>
+</head>
+
+<body>
+<a class="skip" href="#probleme">Aller au contenu</a>
+
+<!-- ───────────────────────── 3. CONTENU ───────────────────────── -->
+
+<!-- 1. HERO -->
+<section id="hero" aria-label="Présentation">
+  <div class="hero-media" aria-hidden="true">
+    <!-- 📷 REMPLACEZ : images/hero-poster.webp  (1080×1920 pour mobile, < 120 Ko, WebP qualité ~70).
+         Elle s'affiche immédiatement, avant et sans la vidéo. -->
+    <img src="/cinema/images/hero-poster.webp" alt="" fetchpriority="high" decoding="async" onerror="this.remove()">
+    <!-- 🎬 REMPLACEZ : videos/hero-mobile.mp4 (720×1280) et videos/hero-desktop.mp4 (1280×720), MOINS DE 3 Mo, sans son.
+         Les sources ne sont chargées que si la connexion est bonne (voir le script). -->
+    <video muted loop playsinline preload="none" data-mobile="/cinema/videos/hero-mobile.mp4" data-desktop="/cinema/videos/hero-desktop.mp4" poster="/cinema/images/hero-poster.webp"></video>
+  </div>
+  <div class="hero-veil" aria-hidden="true"></div>
+  <a class="logo" href="#hero" aria-label="MiniSoft RCA">MiniSoft <b>RCA</b></a>
+
+  <div class="hero-body">
+    <h1 data-split>Votre logiciel de gestion, prêt en quelques minutes.</h1>
+    <p class="hero-sub reveal">Simple. En français. En FCFA.</p>
+    <div class="btn-row reveal">
+      <a class="btn btn-main" href="/creer">Créer mon logiciel</a>
+      <a class="btn btn-ghost" href="/demo">Voir la démo</a>
+    </div>
+  </div>
+  <a class="scroll-hint" href="#probleme" aria-label="Défiler vers le bas">
+    Défiler
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+  </a>
+</section>
+
+<main>
+  <!-- 2. LE PROBLÈME : une phrase par écran -->
+  <section id="probleme" aria-label="Le problème">
+    <h2 class="p-line" data-split>Votre cahier de stock a <em>disparu</em> ?</h2>
+    <h2 class="p-line" data-split>Vos ventes <em>d’hier</em> ?</h2>
+    <h2 class="p-line" data-split>Les crédits jamais <em>payés</em> ?</h2>
+  </section>
+
+  <!-- 3. LA SOLUTION : le téléphone monte pendant le scroll -->
+  <section id="solution" aria-label="La solution">
+    <div class="sol-inner">
+      <h2 class="sol-title reveal">Tout est là, <em>dans votre poche.</em></h2>
+      <div class="phone" role="img" aria-label="Tableau de bord MiniSoft RCA : ventes du jour 85 000 FCFA, 342 produits en stock, 58 clients, alerte de stock">
+        <div class="screen">
+          <div class="s-name">Boutique Mama Grâce<small>Tableau de bord</small></div>
+          <div class="stat a"><small>Ventes du jour</small><b><span data-count="85000">85 000</span> FCFA</b></div>
+          <div class="stat b"><small>Produits en stock</small><b data-count="342">342</b></div>
+          <div class="stat c"><small>Clients</small><b data-count="58">58</b></div>
+          <div class="alert"><b>Alerte stock</b>3 produits bientôt épuisés</div>
+          <div class="bars" aria-hidden="true"><i style="height:35%"></i><i style="height:55%"></i><i style="height:42%"></i><i style="height:70%"></i><i style="height:60%"></i><i style="height:90%"></i></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. LES MÉTIERS -->
+  <section id="metiers" aria-label="Les métiers">
+    <div class="wrap">
+      <h2 class="titre-section" data-split>Pour tous les métiers.</h2>
+      <!-- 📷 REMPLACEZ chaque images/metier-*.webp : 600×800 px, < 70 Ko, WebP qualité ~65 (photos de commerces de Bangui). -->
+      <div class="grid">
+        <figure class="card"><div class="zoom"><img src="/cinema/images/metier-boutique.webp" alt="Boutique" width="600" height="800" loading="lazy" decoding="async" onerror="this.remove()"></div><figcaption>Boutique</figcaption></figure>
+        <figure class="card"><div class="zoom"><img src="/cinema/images/metier-restaurant.webp" alt="Restaurant" width="600" height="800" loading="lazy" decoding="async" onerror="this.remove()"></div><figcaption>Restaurant</figcaption></figure>
+        <figure class="card"><div class="zoom"><img src="/cinema/images/metier-pharmacie.webp" alt="Pharmacie" width="600" height="800" loading="lazy" decoding="async" onerror="this.remove()"></div><figcaption>Pharmacie</figcaption></figure>
+        <figure class="card"><div class="zoom"><img src="/cinema/images/metier-ecole.webp" alt="École" width="600" height="800" loading="lazy" decoding="async" onerror="this.remove()"></div><figcaption>École</figcaption></figure>
+        <figure class="card"><div class="zoom"><img src="/cinema/images/metier-garage.webp" alt="Garage" width="600" height="800" loading="lazy" decoding="async" onerror="this.remove()"></div><figcaption>Garage</figcaption></figure>
+        <figure class="card"><div class="zoom"><img src="/cinema/images/metier-hotel.webp" alt="Hôtel" width="600" height="800" loading="lazy" decoding="async" onerror="this.remove()"></div><figcaption>Hôtel</figcaption></figure>
+        <figure class="card"><div class="zoom"><img src="/cinema/images/metier-salon.webp" alt="Salon" width="600" height="800" loading="lazy" decoding="async" onerror="this.remove()"></div><figcaption>Salon</figcaption></figure>
+        <figure class="card"><div class="zoom"><img src="/cinema/images/metier-transport.webp" alt="Transport" width="600" height="800" loading="lazy" decoding="async" onerror="this.remove()"></div><figcaption>Transport</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. COMMENT ÇA MARCHE : la ligne se dessine au scroll -->
+  <section id="etapes" aria-label="Comment ça marche">
+    <div class="wrap">
+      <h2 class="titre-section" data-split>Quatre étapes.</h2>
+      <ol class="steps" style="list-style:none;margin-block:30px 0">
+        <div class="line" aria-hidden="true"><div class="line-fill"></div></div>
+        <li class="step" data-n="1"><h3>Décrivez votre activité</h3><p>Une phrase suffit.</p></li>
+        <li class="step" data-n="2"><h3>Validez le plan</h3><p>Gardez ou retirez chaque fonction.</p></li>
+        <li class="step" data-n="3"><h3>Testez l’application</h3><p>Avec des exemples, avant de publier.</p></li>
+        <li class="step" data-n="4"><h3>Publiez</h3><p>Invitez votre équipe.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 6. LES AVANTAGES -->
+  <section id="avantages" aria-label="Les avantages">
+    <div class="wrap">
+      <h2 class="titre-section" data-split>Pensé pour Bangui.</h2>
+      <div class="avantage reveal"><h3>Même sans connexion</h3><p>Saisissez vos ventes hors ligne : tout est envoyé au retour du réseau.</p></div>
+      <div class="avantage reveal"><h3>Accès par rôle</h3><p>Patron, gérant, employé : chacun voit seulement ce qui le concerne.</p></div>
+      <div class="avantage reveal"><h3>Export Excel et PDF</h3><p>Vos chiffres et vos factures, prêts à partager.</p></div>
+      <div class="avantage reveal"><h3>Prix en FCFA</h3><p>Tous les montants dans votre monnaie, sans conversion.</p></div>
+    </div>
+  </section>
+
+  <!-- 7. TÉMOIGNAGES : 3 cases à remplir -->
+  <section id="temoignages" aria-label="Témoignages">
+    <div class="wrap">
+      <h2 class="titre-section" data-split>Ils l’utilisent.</h2>
+      <!-- 🎬 POUR REMPLIR UNE CASE : renseignez data-video (mp4 vertical < 3 Mo) et data-poster (WebP).
+           Exemple : data-video="/cinema/videos/temoignage-1.mp4" data-poster="/cinema/images/temoignage-1.webp"
+           La vidéo ne se charge que lorsque la personne touche la case. -->
+      <div class="slots">
+        <div class="slot reveal" data-video="" data-poster=""><div><b>Témoignage 1</b><small>Nom du commerçant · Quartier</small></div></div>
+        <div class="slot reveal" data-video="" data-poster=""><div><b>Témoignage 2</b><small>Nom du commerçant · Quartier</small></div></div>
+        <div class="slot reveal" data-video="" data-poster=""><div><b>Témoignage 3</b><small>Nom du commerçant · Quartier</small></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. FINAL -->
+  <section id="final" aria-label="Créer votre logiciel">
+    <div>
+      <h2 data-split>Créez votre logiciel aujourd’hui</h2>
+      <p class="reveal">Gratuit pour commencer.</p>
+      <div class="btn-row reveal">
+        <a class="btn btn-main" href="/creer">Créer mon logiciel</a>
+        <a class="btn btn-wa" href="https://wa.me/23674332619?text=Bonjour%2C%20je%20veux%20cr%C3%A9er%20mon%20logiciel%20avec%20MiniSoft%20RCA">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.5 3.5A11 11 0 0 0 3.2 16.9L2 22l5.3-1.4A11 11 0 1 0 20.5 3.5zM12 20a8.9 8.9 0 0 1-4.5-1.2l-.3-.2-3.1.8.8-3-.2-.3A9 9 0 1 1 12 20zm5-6.7c-.3-.1-1.6-.8-1.9-.9s-.5-.1-.7.1-.8.9-.9 1.1-.3.2-.6.1a7.4 7.4 0 0 1-3.7-3.2c-.3-.5.3-.5.8-1.5a.6.6 0 0 0 0-.5l-.9-2.1c-.2-.6-.5-.5-.7-.5h-.6a1.2 1.2 0 0 0-.9.4 3.7 3.7 0 0 0-1.1 2.7 6.4 6.4 0 0 0 1.4 3.4 14.6 14.6 0 0 0 5.6 4.9c2 .8 2 .6 2.4.5a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.6-.3z"/></svg>
+          Écrire sur WhatsApp
+        </a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>MiniSoft RCA · Bangui, République centrafricaine · WhatsApp : +236 74 33 26 19</footer>
+
+<!-- Bouton WhatsApp flottant, visible sur toute la page -->
+<a class="wa-float" href="https://wa.me/23674332619?text=Bonjour%2C%20je%20veux%20cr%C3%A9er%20mon%20logiciel%20avec%20MiniSoft%20RCA" aria-label="Discuter sur WhatsApp" rel="noopener">
+  <svg width="32" height="32" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M20.5 3.5A11 11 0 0 0 3.2 16.9L2 22l5.3-1.4A11 11 0 1 0 20.5 3.5zM12 20a8.9 8.9 0 0 1-4.5-1.2l-.3-.2-3.1.8.8-3-.2-.3A9 9 0 1 1 12 20zm5-6.7c-.3-.1-1.6-.8-1.9-.9s-.5-.1-.7.1-.8.9-.9 1.1-.3.2-.6.1a7.4 7.4 0 0 1-3.7-3.2c-.3-.5.3-.5.8-1.5a.6.6 0 0 0 0-.5l-.9-2.1c-.2-.6-.5-.5-.7-.5h-.6a1.2 1.2 0 0 0-.9.4 3.7 3.7 0 0 0-1.1 2.7 6.4 6.4 0 0 0 1.4 3.4 14.6 14.6 0 0 0 5.6 4.9c2 .8 2 .6 2.4.5a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.6-.3z"/></svg>
+</a>
+
+<!-- ───────────────────────── 4. SCRIPT ─────────────────────────
+     Seules bibliothèques : GSAP + ScrollTrigger (chargées seulement si la connexion le permet). -->
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement;
+  var lite = root.classList.contains("lite");
+
+  /* ── Utilitaires ── */
+  var $$ = function (s, c) { return Array.prototype.slice.call((c || document).querySelectorAll(s)); };
+
+  /* Découpe un titre en mots, chacun dans un masque : prêt pour l'apparition « mot par mot » */
+  function splitWords(el) {
+    if (el.dataset.done) return;
+    el.dataset.done = "1";
+    var label = el.textContent.trim().replace(/\s+/g, " ");
+    el.setAttribute("aria-label", label);                       // lecteurs d'écran : phrase complète
+    var walk = function (node) {
+      Array.prototype.slice.call(node.childNodes).forEach(function (n) {
+        if (n.nodeType === 3) {
+          var frag = document.createDocumentFragment();
+          n.textContent.split(/(\s+)/).forEach(function (part) {
+            if (!part) return;
+            if (/^\s+$/.test(part)) { frag.appendChild(document.createTextNode(" ")); return; }
+            var w = document.createElement("span"); w.className = "w"; w.setAttribute("aria-hidden", "true");
+            var i = document.createElement("span"); i.textContent = part; w.appendChild(i); frag.appendChild(w);
+          });
+          node.replaceChild(frag, n);
+        } else if (n.nodeType === 1) walk(n);
+      });
+    };
+    walk(el);
+  }
+
+  /* ── Mode lite : simples apparitions douces (IntersectionObserver), aucune bibliothèque ── */
+  function liteMode() {
+    root.classList.add("lite");
+    $$(".step").forEach(function (s) { s.classList.add("on"); });
+    var io = "IntersectionObserver" in window ? new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } });
+    }, { rootMargin: "0px 0px -8% 0px" }) : null;
+    $$(".reveal").forEach(function (el) { io ? io.observe(el) : el.classList.add("in"); });
+  }
+
+  /* ── Vidéo du hero : seulement si la connexion est bonne ; sinon l'image reste seule ── */
+  function startHeroVideo() {
+    var v = $$("#hero video")[0];
+    if (!v || lite) return;
+    var src = window.innerWidth < 800 ? v.dataset.mobile : v.dataset.desktop;
+    v.muted = true; v.setAttribute("muted", "");
+    v.addEventListener("canplay", function () { v.classList.add("on"); }, { once: true });
+    v.addEventListener("error", function () { v.remove(); });
+    v.src = src; v.load();
+    var p = v.play(); if (p && p.catch) p.catch(function () {});
+    // Pause hors écran : économise batterie et données
+    if ("IntersectionObserver" in window) new IntersectionObserver(function (es) {
+      es[0].isIntersecting ? v.play().catch(function () {}) : v.pause();
+    }).observe(v);
+  }
+
+  /* ── Témoignages : la vidéo ne se charge qu'au toucher de la case ── */
+  function initSlots() {
+    $$(".slot").forEach(function (slot) {
+      if (!slot.dataset.video) return;
+      if (slot.dataset.poster) slot.style.background = "center/cover url(" + slot.dataset.poster + ")";
+      slot.style.cursor = "pointer"; slot.setAttribute("role", "button"); slot.setAttribute("tabindex", "0");
+      var go = function () {
+        var v = document.createElement("video");
+        v.src = slot.dataset.video; v.controls = true; v.playsInline = true; v.autoplay = true;
+        if (slot.dataset.poster) v.poster = slot.dataset.poster;
+        slot.innerHTML = ""; slot.appendChild(v); slot.removeAttribute("role"); slot.style.cursor = "";
+      };
+      slot.addEventListener("click", go, { once: true });
+      slot.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+    });
+  }
+
+  /* ── Animations GSAP (mode normal) ── */
+  function initGsap() {
+    gsap.registerPlugin(ScrollTrigger);
+    $$("[data-split]").forEach(splitWords);
+
+    // HERO : mots du titre, puis sous-titre et boutons ; parallaxe légère ; le hero reste en place et la suite le recouvre (« pin »)
+    gsap.fromTo("#hero h1 .w > span", { yPercent: 115 }, { yPercent: 0, duration: 1.1, stagger: 0.09, ease: "power4.out", delay: 0.2 });
+    gsap.fromTo("#hero .reveal", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.9, stagger: 0.15, delay: 0.9, ease: "power2.out", onStart: function () { $$("#hero .reveal").forEach(function (e) { e.classList.add("in"); }); } });
+    gsap.to(".hero-media", { yPercent: 10, ease: "none", scrollTrigger: { trigger: "#hero", start: "top top", end: "bottom top", scrub: true } });
+    gsap.to("#hero .hero-body, .scroll-hint", { opacity: 0, ease: "none", scrollTrigger: { trigger: "#hero", start: "top top", end: "60% top", scrub: true } });
+    ScrollTrigger.create({ trigger: "#hero", start: "top top", end: "bottom top", pin: true, pinSpacing: false });
+
+    // LE PROBLÈME : une phrase par écran, mot par mot (section épinglée)
+    var lines = $$(".p-line");
+    var tlP = gsap.timeline({ scrollTrigger: { trigger: "#probleme", start: "top top", end: "+=" + lines.length * 100 + "%", pin: true, scrub: 0.5 } });
+    gsap.set(lines, { opacity: 0 });
+    lines.forEach(function (l, i) {
+      var t = i * 3;
+      tlP.set(l, { opacity: 1 }, t)
+         .fromTo(l.querySelectorAll(".w > span"), { yPercent: 115 }, { yPercent: 0, duration: 1, stagger: 0.12, ease: "power3.out" }, t)
+         .fromTo(l, { scale: 1 }, { scale: 1.06, duration: 2.6, ease: "none" }, t);                    // zoom lent
+      if (i < lines.length - 1) tlP.to(l, { opacity: 0, duration: 0.5 }, t + 2.5);
+    });
+
+    // LA SOLUTION : le téléphone monte du bas et reste au centre ; les chiffres défilent
+    var counters = $$("[data-count]"), state = { v: 0 };
+    var fmt = new Intl.NumberFormat("fr-FR");
+    var tlS = gsap.timeline({ scrollTrigger: { trigger: "#solution", start: "top top", end: "+=220%", pin: true, scrub: 0.6 } });
+    gsap.set(".sol-title", { opacity: 0 }); gsap.set(".screen .alert", { opacity: 0, y: 10 });
+    tlS.fromTo(".phone", { y: function () { return window.innerHeight * 0.95; }, scale: 0.9 }, { y: 0, scale: 1, duration: 2, ease: "power2.out" })
+       .to(".sol-title", { opacity: 1, duration: 1 }, 0.8).addLabel("chiffres", ">")
+       .to(state, { v: 1, duration: 2, ease: "power1.out", onUpdate: function () {
+           counters.forEach(function (el) { el.textContent = fmt.format(Math.round(parseInt(el.dataset.count, 10) * state.v)).replace(/ /g, " "); });
+         } }, "chiffres")
+       .to(".screen .alert", { opacity: 1, y: 0, duration: 0.8 }, ">-0.3")
+       .to({}, { duration: 1 });                                                                          // temps de lecture
+
+    // LES MÉTIERS : cartes une par une + zoom lent de chaque photo
+    gsap.set(".card", { opacity: 0, y: 70 });
+    ScrollTrigger.batch(".card", { start: "top 90%", onEnter: function (b) { gsap.to(b, { opacity: 1, y: 0, stagger: 0.12, duration: 0.8, ease: "power3.out", overwrite: true }); } });
+    $$(".card img").forEach(function (img) {
+      gsap.fromTo(img, { scale: 1.25 }, { scale: 1, ease: "none", scrollTrigger: { trigger: img.closest(".card"), start: "top bottom", end: "bottom top", scrub: true } });
+    });
+
+    // COMMENT ÇA MARCHE : la ligne se dessine (horizontale sur grand écran, verticale sur téléphone)
+    var mm = gsap.matchMedia();
+    mm.add("(min-width: 768px)", function () {
+      gsap.fromTo(".line-fill", { scaleX: 0, scaleY: 1 }, { scaleX: 1, ease: "none", scrollTrigger: { trigger: ".steps", start: "top 75%", end: "bottom 55%", scrub: true } });
+    });
+    mm.add("(max-width: 767px)", function () {
+      gsap.fromTo(".line-fill", { scaleY: 0, scaleX: 1 }, { scaleY: 1, ease: "none", scrollTrigger: { trigger: ".steps", start: "top 70%", end: "bottom 60%", scrub: true } });
+    });
+    $$(".step").forEach(function (s) {
+      ScrollTrigger.create({ trigger: s, start: "top 72%", onEnter: function () { s.classList.add("on"); }, onLeaveBack: function () { s.classList.remove("on"); } });
+    });
+
+    // TITRES DE SECTION (mot par mot) et apparitions
+    $$(".titre-section, #final h2").forEach(function (h) {
+      gsap.fromTo(h.querySelectorAll(".w > span"), { yPercent: 115 }, { yPercent: 0, duration: 0.9, stagger: 0.09, ease: "power3.out", scrollTrigger: { trigger: h, start: "top 85%" } });
+    });
+    $$("#solution .reveal, #avantages .reveal, #temoignages .reveal, #final .reveal").forEach(function (el) {
+      ScrollTrigger.create({ trigger: el, start: "top 90%", onEnter: function () { el.classList.add("in"); } });
+    });
+    // Parallaxe légère sur le grand titre final
+    gsap.fromTo("#final > div", { y: 60 }, { y: -30, ease: "none", scrollTrigger: { trigger: "#final", start: "top bottom", end: "bottom bottom", scrub: true } });
+
+    window.addEventListener("load", function () { ScrollTrigger.refresh(); });
+  }
+
+  /* ── Chargement de GSAP seulement en mode normal (jamais en 3G ni avec « réduire les animations ») ── */
+  function loadScript(src, ok, ko) {
+    var s = document.createElement("script"); s.src = src; s.async = false; s.onload = ok; s.onerror = ko;
+    document.head.appendChild(s);
+  }
+  initSlots();
+  if (lite) { liteMode(); return; }
+  var failed = false;
+  var fail = function () { if (!failed) { failed = true; liteMode(); } };
+  var guard = setTimeout(fail, 8000);                    // GSAP trop lent à arriver : on bascule en mode lite
+  loadScript("https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js", function () {
+    loadScript("https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js", function () {
+      if (failed) return; clearTimeout(guard);
+      try { initGsap(); startHeroVideo(); } catch (e) { console.error(e); fail(); }
+    }, fail);
+  }, fail);
+})();
+</script>
+</body>
+</html>

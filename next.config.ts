@@ -14,6 +14,10 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Landing page cinématique : fichier statique unique servi à l'adresse /cinema.
+  async rewrites() {
+    return [{ source: "/cinema", destination: "/cinema/index.html" }];
+  },
   async headers() {
     return [
       { source: "/(.*)", headers: securityHeaders },

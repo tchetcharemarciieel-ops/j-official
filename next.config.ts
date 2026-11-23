@@ -14,9 +14,17 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  // Landing page cinématique : fichier statique unique servi à l'adresse /cinema.
+  // Landing page cinématique (fichier statique unique) : page d'accueil du site, et aussi /cinema.
+  // L'ancienne page d'accueil reste disponible à /accueil.
   async rewrites() {
-    return [{ source: "/cinema", destination: "/cinema/index.html" }];
+    return {
+      beforeFiles: [
+        { source: "/", destination: "/cinema/index.html" },
+        { source: "/cinema", destination: "/cinema/index.html" },
+      ],
+      afterFiles: [],
+      fallback: [],
+    };
   },
   async headers() {
     return [

@@ -10,7 +10,7 @@
 <meta property="og:description" content="Stock, ventes, clients, factures, dépenses, personnel. Simple. En français. En FCFA.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="/cinema/images/hero-poster.webp">
-<link rel="canonical" href="https://minisoft-rca.onrender.com/cinema">
+<link rel="canonical" href="https://minisoft-rca.onrender.com/">
 
 <!-- ───────────────────────── 1. DÉTECTION CONNEXION / ANIMATIONS (avant tout affichage) ─────────────────────────
      « lite » = connexion lente (2G/3G), économiseur de données, ou « réduire les animations » activé.
@@ -81,6 +81,7 @@
   .hero-body { position: relative; padding: 120px var(--pad) 110px; max-width: 1400px; margin: 0 auto; width: 100%; }
   .logo { position: absolute; top: 22px; left: var(--pad); z-index: 3; font-weight: 700; font-size: 1.15rem; text-decoration: none; }
   .logo b { color: var(--cyan); }
+  .top-link { position: absolute; top: 14px; right: var(--pad); z-index: 3; min-height: 44px; display: inline-flex; align-items: center; padding: 0 16px; border-radius: 999px; border: 1.5px solid rgba(255,255,255,.45); background: rgba(6,22,56,.35); font-weight: 700; font-size: .9rem; text-decoration: none; backdrop-filter: blur(6px); }
   h1 { font-size: var(--t-geant); }
   .hero-sub { font-size: clamp(1.1rem, 4.2vw, 1.8rem); color: #cfe0ff; margin: 22px 0 34px; }
   .scroll-hint { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 3; display: grid; justify-items: center; gap: 4px; font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: #cfe0ff; text-decoration: none; }
@@ -199,6 +200,7 @@
   </div>
   <div class="hero-veil" aria-hidden="true"></div>
   <a class="logo" href="#hero" aria-label="MiniSoft RCA">MiniSoft <b>RCA</b></a>
+  <a class="top-link" href="/connexion">Se connecter</a>
 
   <div class="hero-body">
     <h1 data-split>Votre logiciel de gestion, prêt en quelques minutes.</h1>
@@ -313,7 +315,7 @@
   </section>
 </main>
 
-<footer>MiniSoft RCA · Bangui, République centrafricaine · WhatsApp : +236 74 33 26 19</footer>
+<footer><nav aria-label="Liens du site" style="display:flex;flex-wrap:wrap;justify-content:center;gap:6px 18px;margin-bottom:10px"><a href="/accueil#logiciels">Les logiciels</a><a href="/modeles">Modèles</a><a href="/accueil#faq">Questions fréquentes</a><a href="/connexion">Se connecter</a><a href="/inscription">Créer un compte</a></nav>MiniSoft RCA · Bangui, République centrafricaine · WhatsApp : +236 74 33 26 19</footer>
 
 <!-- Bouton WhatsApp flottant, visible sur toute la page -->
 <a class="wa-float" href="https://wa.me/23674332619?text=Bonjour%2C%20je%20veux%20cr%C3%A9er%20mon%20logiciel%20avec%20MiniSoft%20RCA" aria-label="Discuter sur WhatsApp" rel="noopener">

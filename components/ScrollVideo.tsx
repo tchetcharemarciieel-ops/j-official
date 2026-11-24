@@ -16,11 +16,12 @@ const SCENES: { from: number; title: string; text: string }[] = [
 ];
 
 const FRAMES = 214;              // images extraites de la vidéo (8 par seconde) : public/videos/frames/f001.webp …
-const frameUrl = (i: number) => `/videos/frames/f${String(i + 1).padStart(3, "0")}.webp`;
+const frameUrl = (i: number, portrait: boolean) => `/videos/${portrait ? "frames-9x16" : "frames"}/f${String(i + 1).padStart(3, "0")}.webp`;
 
 /**
  * Présentation pilotée par le défilement, en suite d'images dessinées sur un canvas : fonctionne partout
  * (iPhone en économie d'énergie compris), sans dépendre de la lecture vidéo du navigateur.
+ * Téléphone : version verticale 9:16 (images frames-9x16) ; tablette et ordinateur : version 16:9 (frames).
  */
 export function ScrollVideo() {
   const [scene, setScene] = useState(0);
@@ -29,15 +30,21 @@ export function ScrollVideo() {
   const bar = useRef<HTMLDivElement>(null);
   const [fallback, setFallback] = useState(false);
   const [ready, setReady] = useState(false);
+  const [portrait, setPortrait] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) setFallback(true);
+    const mq = window.matchMedia("(max-width: 767px)");
+    setPortrait(mq.matches);
+    const on = () => setPortrait(mq.matches);
+    mq.addEventListener?.("change", on);
+    return () => mq.removeEventListener?.("change", on);
   }, []);
 
   useEffect(() => {
     const w = wrap.current;
     const cv = canvas.current;
-    if (!w || !cv || fallback) return;
+    if (!w || !cv || fallback || portrait === null) return;
     const ctx = cv.getContext("2d");
     if (!ctx) { setFallback(true); return; }
     const imgs: (HTMLImageElement | null)[] = new Array(FRAMES).fill(null);
@@ -89,7 +96,7 @@ export function ScrollVideo() {
       im.decoding = "async";
       im.onload = () => { imgs[i] = im; res(); };
       im.onerror = () => res();
-      im.src = frameUrl(i);
+      im.src = frameUrl(i, portrait);
     });
     load(0).then(() => { if (!alive) return; draw(0); setReady(true); });
     const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
@@ -115,25 +122,28 @@ export function ScrollVideo() {
       window.removeEventListener("resize", onScroll);
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [fallback]);
+  }, [fallback, portrait]);
 
   if (fallback) {
     return (
-      <video className="aspect-video w-full rounded-2xl border border-slate-200 bg-slate-900 object-cover shadow-lg" src="/videos/minisoft-rca-presentation.mp4" poster="/videos/minisoft-rca-presentation.jpg" controls muted playsInline preload="metadata" aria-label="Présentation de MiniSoft RCA" />
+      <video className={`${portrait ? "mx-auto aspect-[9/16] max-h-[78svh]" : "aspect-video w-full"} rounded-2xl border border-slate-200 bg-slate-900 object-cover shadow-lg`} src={portrait ? "/videos/minisoft-rca-presentation-9x16.mp4" : "/videos/minisoft-rca-presentation.mp4"} poster={portrait ? "/videos/minisoft-rca-presentation-9x16.jpg" : "/videos/minisoft-rca-presentation.jpg"} controls muted playsInline preload="metadata" aria-label="Présentation de MiniSoft RCA" />
     );
   }
+  const vertical = portrait === true;
   return (
-    <div ref={wrap} className="relative" style={{ height: "260vh" }}>
+    <div ref={wrap} className="relative" style={{ height: vertical ? "320vh" : "260vh" }}>
       <div className="sticky top-[4.5rem]">
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 shadow-lg">
-          <canvas ref={canvas} width={720} height={405} className="aspect-video w-full" role="img" aria-label="Présentation de MiniSoft RCA : l'image avance quand vous faites défiler la page" />
+        <div className={`${vertical ? "mx-auto" : ""} overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 shadow-lg`} style={vertical ? { height: "calc(100svh - 10rem)", maxWidth: "100%", aspectRatio: "9 / 16" } : undefined}>
+          <canvas ref={canvas} width={vertical ? 540 : 720} height={vertical ? 960 : 405} className={vertical ? "block h-[calc(100%-6px)] w-full" : "aspect-video w-full"} role="img" aria-label="Présentation de MiniSoft RCA : l'image avance quand vous faites défiler la page" />
           <div className="h-1.5 w-full bg-white/15" aria-hidden><div ref={bar} className="h-full bg-sky-400" style={{ width: "0%" }} /></div>
         </div>
-        <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-center" aria-live="polite">
-          <p className="text-base font-bold text-slate-900">{SCENES[scene]!.title}</p>
-          <p className="mt-1 text-sm leading-snug text-slate-600">{SCENES[scene]!.text}</p>
-          {scene === SCENES.length - 1 && <a href="/creer" className="btn btn-primary mt-3 w-full sm:w-auto">Créer mon logiciel</a>}
-        </div>
+        {!vertical && (
+          <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-center" aria-live="polite">
+            <p className="text-base font-bold text-slate-900">{SCENES[scene]!.title}</p>
+            <p className="mt-1 text-sm leading-snug text-slate-600">{SCENES[scene]!.text}</p>
+            {scene === SCENES.length - 1 && <a href="/creer" className="btn btn-primary mt-3 w-full sm:w-auto">Créer mon logiciel</a>}
+          </div>
+        )}
         <p className="mt-2 text-center text-xs text-slate-500">{ready ? "↓ Faites défiler pour avancer dans la vidéo, ↑ pour reculer" : "Chargement…"}</p>
         <p className="sr-only">Vidéo sans son. Résumé : votre cahier de stock a disparu ? Chaque jour, de l&apos;argent se perd sans qu&apos;on le voie : ventes oubliées, stock qui manque, crédits jamais payés. MiniSoft RCA crée votre logiciel de gestion en quelques minutes, en français et en FCFA, pour tous les métiers. Décrivez votre activité, validez le plan, testez, publiez.</p>
       </div>

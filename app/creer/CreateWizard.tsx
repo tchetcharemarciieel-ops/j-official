@@ -79,13 +79,40 @@ export function CreateWizard({ initialProblem, ai, credits, costs }: { initialPr
     }
   }
 
+  const PENDING = "minisoft:analyse";
+  const readPending = (): { jobId: string; problem: string; businessName: string; answers: { question: string; answer: string }[]; at: number } | null => {
+    try {
+      const v = JSON.parse(localStorage.getItem(PENDING) ?? "null");
+      return v && Date.now() - v.at < 10 * 60_000 ? v : null;
+    } catch { return null; }
+  };
+  const clearPending = () => { try { localStorage.removeItem(PENDING); } catch { /* stockage indisponible */ } };
+
+  /** Applique le résultat d'une analyse (reçu tout de suite, ou retrouvé après un retour sur la page). */
+  function applyResult(res: DiagnoseResponse, withAnswers: { question: string; answer: string }[], currentName: string) {
+    setResult({ engine: res.engine, provider: res.provider, fallbackReason: res.fallbackReason, creditsUsed: res.creditsUsed });
+    setBalance((b) => b - res.creditsUsed);
+    setDiagnosis(res.diagnosis);
+    if (res.diagnosis.businessName && !currentName) setBusinessName(res.diagnosis.businessName);
+    const pending = res.diagnosis.questions.filter((q) => !withAnswers.some((a) => a.question === q));
+    if (pending.length && withAnswers.length === 0) {
+      setDiagnosis({ ...res.diagnosis, questions: pending });
+      setQuick({});
+      setAnsweredBase(withAnswers.length);
+      setStep("questions");
+    } else setStep("plan");
+  }
+
   async function diagnose(withAnswers = answers) {
     setLoading(true);
     setError("");
     setRetry(null);
+    const jobId = crypto.randomUUID();
+    try { localStorage.setItem(PENDING, JSON.stringify({ jobId, problem, businessName, answers: withAnswers, at: Date.now() })); } catch { /* stockage indisponible */ }
     try {
       const res = await api<DiagnoseResponse>("/api/diagnose", {
         body: {
+          jobId,
           problem,
           businessName: businessName || undefined,
           answers: withAnswers.length ? withAnswers : undefined,
@@ -93,25 +120,49 @@ export function CreateWizard({ initialProblem, ai, credits, costs }: { initialPr
           image: attachment?.kind === "image" ? { mediaType: attachment.mediaType, data: attachment.data } : undefined,
         },
       });
-      setResult({ engine: res.engine, provider: res.provider, fallbackReason: res.fallbackReason, creditsUsed: res.creditsUsed });
-      setBalance((b) => b - res.creditsUsed);
-      setDiagnosis(res.diagnosis);
-      if (res.diagnosis.businessName && !businessName) setBusinessName(res.diagnosis.businessName);
-      const pending = res.diagnosis.questions.filter((q) => !withAnswers.some((a) => a.question === q));
-      if (pending.length && withAnswers.length === 0) {
-        setDiagnosis({ ...res.diagnosis, questions: pending });
-        setQuick({});
-        setAnsweredBase(withAnswers.length);
-        setStep("questions");
-      } else setStep("plan");
+      clearPending();
+      applyResult(res, withAnswers, businessName);
     } catch (e) {
+      if (e instanceof ApiError && e.status === 0) {
+        // Connexion coupée (page quittée, téléphone verrouillé…) : l'analyse continue sur le serveur, on la retrouve.
+        void resume();
+        return;
+      }
+      clearPending();
       if (e instanceof ApiError && e.status === 401) router.push(`/connexion?next=${encodeURIComponent(`/creer?probleme=${encodeURIComponent(problem)}`)}`);
       setError(e instanceof Error ? e.message : "L'analyse n'a pas pu aboutir.");
       setRetry(() => () => void diagnose(withAnswers));
-    } finally {
       setLoading(false);
+      return;
     }
+    setLoading(false);
   }
+
+  /** Retrouve une analyse lancée avant que la personne quitte la page (elle tourne côté serveur). */
+  async function resume() {
+    const p = readPending();
+    if (!p) { setLoading(false); return; }
+    setProblem(p.problem);
+    setBusinessName(p.businessName);
+    setLoading(true);
+    setError("");
+    for (let i = 0; i < 90; i++) {
+      try {
+        const r = await api<{ status: string; response?: DiagnoseResponse; error?: string }>(`/api/diagnose/${p.jobId}`);
+        if (r.status === "done" && r.response) { clearPending(); applyResult(r.response, p.answers, p.businessName); setLoading(false); return; }
+        if (r.status === "error") { clearPending(); setError(r.error ?? "L'analyse n'a pas pu aboutir."); setLoading(false); return; }
+      } catch (e) {
+        if (e instanceof ApiError && (e.status === 404 || e.status === 401)) { clearPending(); break; }
+      }
+      await new Promise((ok) => setTimeout(ok, 2000));
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    if (readPending()) void resume();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function toggleFeature(id: string) {
     if (!diagnosis) return;

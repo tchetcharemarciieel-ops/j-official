@@ -8,9 +8,11 @@ import { CREDIT_COSTS } from "@/lib/config";
 import { withCredits } from "@/lib/credits";
 import { aiConfig, aiDiagnose, refreshAiSettings, type AiUsage } from "@/lib/ai";
 import { burstLimited, checkAiQuota } from "@/lib/ai-quota";
+import { adminClient } from "@/lib/supabase/admin";
 import { diagnoseWithRules, type Diagnosis, type DiagnoseResponse } from "@/lib/generator";
 
 const body = z.object({
+  jobId: z.string().uuid().optional(),
   problem: z.string().trim().min(5, "Décrivez votre problème en quelques mots.").max(4000),
   businessName: z.string().trim().max(80).optional(),
   answers: z.array(z.object({ question: z.string().max(200), answer: z.string().trim().max(1000) })).max(10).optional(),
@@ -31,13 +33,11 @@ export const maxDuration = 120;
  * d'utilisation et avec assez de crédits), sinon système de secours par mots-clés.
  * La clé API reste côté serveur ; la réponse indique toujours quel moteur a produit le résultat.
  */
-export const POST = route(async (req) => {
-  assertSameOrigin(req);
+async function handle(req: Request, input: z.infer<typeof body>): Promise<NextResponse> {
   const profile = await getProfile();
   if (!profile) throw new HttpError(401, "Connectez-vous pour lancer l'analyse.");
   const ip = clientIp(req);
   if (burstLimited(`diagnose:${ip}`) || burstLimited(`diagnose:${profile.id}`)) throw new HttpError(429, "Trop d'analyses en peu de temps. Patientez quelques minutes avant de réessayer.");
-  const input = body.parse(await readJson(req, 6_000_000));
 
   await refreshAiSettings();
   const cfg = aiConfig();
@@ -75,4 +75,27 @@ export const POST = route(async (req) => {
     return { result: d };
   });
   return NextResponse.json({ diagnosis: result, engine: "rules", provider: null, fallbackReason, creditsUsed: 0 } satisfies DiagnoseResponse);
+}
+
+/**
+ * L'analyse tourne jusqu'au bout côté serveur même si la personne quitte la page : le résultat est gardé
+ * (table diagnose_jobs) et retrouvé avec GET /api/diagnose/[jobId] quand elle revient.
+ */
+export const POST = route(async (req) => {
+  assertSameOrigin(req);
+  const input = body.parse(await readJson(req, 6_000_000));
+  const profile = await getProfile();
+  const jobId = input.jobId;
+  if (!jobId || !profile) return handle(req, input);
+  const db = adminClient();
+  await db.from("diagnose_jobs").insert({ id: jobId, user_id: profile.id, status: "running" });
+  try {
+    const res = await handle(req, input);
+    await db.from("diagnose_jobs").update({ status: "done", response: await res.clone().json() }).eq("id", jobId);
+    return res;
+  } catch (err) {
+    const message = err instanceof HttpError ? err.message : "L'analyse n'a pas pu aboutir.";
+    await db.from("diagnose_jobs").update({ status: "error", error: message }).eq("id", jobId);
+    throw err;
+  }
 });

@@ -133,8 +133,8 @@ export function ScrollVideo() {
   return (
     <div ref={wrap} className="relative" style={{ height: vertical ? "320vh" : "260vh" }}>
       <div className="sticky top-[4.5rem]">
-        <div className={`${vertical ? "mx-auto" : ""} overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 shadow-lg`} style={vertical ? { height: "calc(100svh - 10rem)", maxWidth: "100%", aspectRatio: "9 / 16" } : undefined}>
-          <canvas ref={canvas} width={vertical ? 540 : 720} height={vertical ? 960 : 405} className={vertical ? "block h-[calc(100%-6px)] w-full" : "aspect-video w-full"} role="img" aria-label="Présentation de MiniSoft RCA : l'image avance quand vous faites défiler la page" />
+        <div className={`overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 shadow-lg`} style={vertical ? { height: "calc(100svh - 7.5rem)" } : undefined}>
+          <canvas ref={canvas} width={vertical ? 540 : 720} height={vertical ? 960 : 405} className={vertical ? "block h-[calc(100%-6px)] w-full object-cover" : "aspect-video w-full"} role="img" aria-label="Présentation de MiniSoft RCA : l'image avance quand vous faites défiler la page" />
           <div className="h-1.5 w-full bg-white/15" aria-hidden><div ref={bar} className="h-full bg-sky-400" style={{ width: "0%" }} /></div>
         </div>
         {!vertical && (

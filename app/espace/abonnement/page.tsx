@@ -74,6 +74,7 @@ export default async function Abonnement({ searchParams }: { searchParams: Promi
                 <li>{p.monthly_credits} crédits / mois</li>
                 <li>{p.max_projects} logiciel{p.max_projects > 1 ? "s" : ""}, {p.max_members} utilisateur(s)</li>
                 <li>{p.can_publish ? "Publication incluse" : "Sans publication"}</li>
+                <li>{p.can_publish ? "Formation incluse" : "Sans formation"}</li>
               </ul>
               {current ? (
                 <button className="btn btn-ghost mt-6" disabled>Formule actuelle</button>

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { SlidingPill, useSlidingIndicator } from "@/components/ui/SlidingIndicator";
-import { BarChart3, Database, LayoutDashboard, LifeBuoy, Menu, Plus, Settings, SquareStack, Users, X, type LucideIcon } from "lucide-react";
+import { BarChart3, Database, GraduationCap, LayoutDashboard, LifeBuoy, Menu, Plus, Settings, SquareStack, Users, X, type LucideIcon } from "lucide-react";
 
 export const ESPACE_NAV: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/espace", label: "Vue d'ensemble", icon: LayoutDashboard },
@@ -15,6 +15,7 @@ export const ESPACE_NAV: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/espace/equipe", label: "Mon équipe", icon: Users },
   { href: "/espace/statistiques", label: "Statistiques", icon: BarChart3 },
   { href: "/espace/parametres", label: "Paramètres", icon: Settings },
+  { href: "/espace/formation", label: "Formation", icon: GraduationCap },
   { href: "/espace/assistance", label: "Assistance", icon: LifeBuoy },
 ];
 

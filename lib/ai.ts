@@ -532,7 +532,7 @@ export async function aiDiagnose(input: DiagnoseInput, image?: ImageInput): Prom
     ...(input.answers ?? []).map((a) => `Question : ${a.question}\nRéponse : ${a.answer.slice(0, 1000)}`),
     image ? "Le client a joint une image (photo de cahier, formulaire, facture ou capture d'un ancien logiciel) : déduis-en les tables et champs utiles. N'en recopie pas les données personnelles." : "",
     input.csvColumns?.length ? `Colonnes d'un fichier joint par le client : ${input.csvColumns.map((c) => `${c.name} (${c.type})`).join(", ")}` : "",
-    `Produis le diagnostic : problème principal, causes probables, solutions proposées, tâches manuelles à améliorer, données à conserver, utilisateurs, automatisations possibles, limites techniques, et 3 à 8 fonctionnalités (chacune = une table avec ses champs et ses indicateurs), adaptées précisément à CE client. Coche (selected=true) les fonctionnalités indispensables, propose les autres décochées.`,
+    `Produis le diagnostic : problème principal, causes probables, solutions proposées, tâches manuelles à améliorer, données à conserver, utilisateurs, automatisations possibles, limites techniques, et 3 à 5 fonctionnalités (chacune = une table avec ses champs et ses indicateurs), adaptées précisément à CE client. Coche (selected=true) les fonctionnalités indispensables, propose les autres décochées.`,
   ]
     .filter(Boolean)
     .join("\n\n");

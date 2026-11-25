@@ -13,6 +13,8 @@ import { diagnoseWithRules, type Diagnosis, type DiagnoseResponse } from "@/lib/
 
 const body = z.object({
   jobId: z.string().uuid().optional(),
+  /** Analyse rapide (activité choisie en un appui) : plan par modèles validés, instantané et gratuit, sans IA. */
+  quick: z.boolean().optional(),
   problem: z.string().trim().min(5, "Décrivez votre problème en quelques mots.").max(4000),
   businessName: z.string().trim().max(80).optional(),
   answers: z.array(z.object({ question: z.string().max(200), answer: z.string().trim().max(1000) })).max(10).optional(),
@@ -42,13 +44,14 @@ async function handle(req: Request, input: z.infer<typeof body>): Promise<NextRe
   await refreshAiSettings();
   const cfg = aiConfig();
   let fallbackReason: string | null = null;
-  if (!cfg) fallbackReason = "Aucun fournisseur IA n'est configuré sur le serveur.";
+  if (input.quick) fallbackReason = null;
+  else if (!cfg) fallbackReason = "Aucun fournisseur IA n'est configuré sur le serveur.";
   else {
     const quota = await checkAiQuota(profile.id).catch(() => ({ ok: false as const, reason: "Les limites d'utilisation de l'IA n'ont pas pu être vérifiées." }));
     if (!quota.ok) fallbackReason = quota.reason;
   }
 
-  if (cfg && !fallbackReason) {
+  if (cfg && !fallbackReason && !input.quick) {
     try {
       const answered: { usage: AiUsage | null } = { usage: null };
       const { result, creditsUsed } = await withCredits<Diagnosis>(

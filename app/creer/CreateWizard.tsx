@@ -113,6 +113,7 @@ export function CreateWizard({ initialProblem, ai, credits, costs }: { initialPr
       const res = await api<DiagnoseResponse>("/api/diagnose", {
         body: {
           jobId,
+          quick: QUICK.some(([, t]) => t === problem) && !attachment && withAnswers.length === 0 ? true : undefined,
           problem,
           businessName: businessName || undefined,
           answers: withAnswers.length ? withAnswers : undefined,

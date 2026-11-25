@@ -4,7 +4,7 @@ import Link from "next/link";
 import { SlidingPill, useSlidingIndicator } from "@/components/ui/SlidingIndicator";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeft, Database, Eye, FlaskConical, Globe, History, Send, Settings, Users, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Database, Eye, FlaskConical, Globe, GraduationCap, History, Send, Settings, Users, type LucideIcon } from "lucide-react";
 import { STATUS } from "@/lib/status";
 import type { AppSpec, Role } from "@/lib/spec";
 import type { CheckResult } from "@/lib/checks";
@@ -17,6 +17,8 @@ import { PublishTab } from "./tabs/PublishTab";
 import { TeamTab } from "./tabs/TeamTab";
 import { DataTab } from "./tabs/DataTab";
 import { SettingsTab } from "./tabs/SettingsTab";
+import { FormationTab } from "./tabs/FormationTab";
+import type { FormationModule } from "@/lib/formation";
 import { WebsiteTab } from "./tabs/WebsiteTab";
 
 export type VersionRow = {
@@ -43,6 +45,8 @@ export type WorkspaceData = {
   credits: number;
   canPublish: boolean;
   planName: string;
+  /** Leçons de la formation ; null si la formule ne les inclut pas. */
+  formation: FormationModule[] | null;
   url: string;
   versions: VersionRow[];
   members: { userId: string; role: string; name: string; since: string }[];
@@ -62,6 +66,7 @@ const TABS = [
   ["donnees", "Données", Database],
   ["site", "Site Internet", Globe],
   ["parametres", "Paramètres", Settings],
+  ["formation", "Formation", GraduationCap],
 ] as const satisfies readonly (readonly [string, string, LucideIcon])[];
 export type TabId = (typeof TABS)[number][0];
 
@@ -130,6 +135,7 @@ export function Workspace({ data, initialTab }: { data: WorkspaceData; initialTa
         {tab === "equipe" && <TeamTab data={data} onChanged={refresh} />}
         {tab === "donnees" && <DataTab data={data} spec={data.spec} onChanged={refresh} />}
         {tab === "site" && <WebsiteTab projectId={data.project.id} />}
+        {tab === "formation" && <FormationTab data={data} />}
         {tab === "parametres" && <SettingsTab data={data} spec={data.spec} onChanged={refresh} />}
       </div>
     </div>

@@ -58,3 +58,39 @@ export const FORMATION: FormationModule[] = [
 ];
 
 export const totalMinutes = FORMATION.reduce((n, m) => n + m.lessons.reduce((k, l) => k + l.minutes, 0), 0);
+
+export const CONCLUSION_VIDEO = { src: "/formation/conclusion.mp4", poster: "/formation/conclusion.jpg" };
+
+/** Leçons propres à chaque logiciel prêt à l'emploi (fonctions réellement présentes). */
+const SPECIFIC: Record<string, FormationModule> = {
+  shop: {
+    id: "shop", title: "MiniSoft Shop : la boutique au quotidien", goal: "Caisse, stock et boutique en ligne.",
+    lessons: [
+      { title: "Encaisser avec la caisse", minutes: 4, steps: ["Ouvrez la caisse, choisissez les produits, puis validez le paiement.", "Un reçu est généré pour le client.", "Les ventes mettent le stock à jour automatiquement."] },
+      { title: "Suivre le stock et les alertes", minutes: 4, steps: ["Renseignez le stock de départ de chaque produit et un seuil d'alerte.", "Quand un produit passe sous le seuil, une alerte apparaît.", "Enregistrez les réceptions de marchandises et les fournisseurs."] },
+      { title: "Ouvrir la boutique en ligne", minutes: 4, steps: ["Publiez le logiciel pour obtenir le lien de votre boutique.", "Partagez le lien ou le QR code avec vos clients.", "Traitez les commandes reçues depuis l'onglet Commandes."] },
+    ],
+  },
+  bureau: {
+    id: "bureau", title: "MiniSoft Bureau : piloter son agence", goal: "Clients, projets, équipe et facturation.",
+    lessons: [
+      { title: "Clients et projets", minutes: 4, steps: ["Créez vos clients puis rattachez-leur des projets.", "Suivez l'avancement et les échéances de chaque projet."] },
+      { title: "Agenda et équipe", minutes: 4, steps: ["Planifiez les rendez-vous et réunions dans l'agenda.", "Donnez à chaque membre le poste qui correspond à son rôle."] },
+      { title: "Devis et factures PDF", minutes: 4, steps: ["Créez un devis, faites-le valider, puis transformez-le en facture.", "Téléchargez le PDF pour l'envoyer au client."] },
+    ],
+  },
+  transport: {
+    id: "transport", title: "MiniSoft Transport : livraisons et suivi", goal: "Commandes, livreurs et suivi des colis.",
+    lessons: [
+      { title: "Créer et attribuer une commande", minutes: 4, steps: ["Enregistrez la commande avec l'adresse de départ et d'arrivée.", "Le tarif se calcule selon vos règles.", "Attribuez la livraison à un livreur et à un véhicule."] },
+      { title: "Application livreur", minutes: 3, steps: ["Chaque livreur se connecte avec son poste et voit ses livraisons.", "Il met à jour le statut à chaque étape."] },
+      { title: "Suivi public des colis", minutes: 3, steps: ["Après publication, vos clients suivent leur colis depuis une page publique.", "Partagez le lien de suivi avec le numéro de commande."] },
+    ],
+  },
+};
+
+/** Modules de formation pour un logiciel : les bases communes puis, s'il y en a, les leçons de son type. */
+export function formationFor(module?: string | null): FormationModule[] {
+  const extra = module ? SPECIFIC[module] : undefined;
+  return extra ? [FORMATION[0]!, extra, ...FORMATION.slice(1)] : FORMATION;
+}

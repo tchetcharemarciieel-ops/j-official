@@ -6,6 +6,7 @@ import { aiAvailable, refreshAiSettings } from "@/lib/ai";
 import { CREDIT_COSTS, SITE_URL } from "@/lib/config";
 import type { Role } from "@/lib/spec";
 import { AppShell } from "@/components/AppShell";
+import { formationFor } from "@/lib/formation";
 import { Workspace, type WorkspaceData } from "./Workspace";
 import { LockedApp } from "@/components/LockedApp";
 import { projectLocked } from "@/lib/unlock";
@@ -65,6 +66,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
     credits: profile.credits,
     canPublish: profile.is_admin || Boolean(plan.data?.can_publish),
     planName: plan.data?.name ?? profile.plan,
+    formation: profile.is_admin || plan.data?.can_publish ? formationFor(draftSpec(p)?.module) : null,
     url: `${SITE_URL}/apps/${p.slug}`,
     versions: (versions.data ?? []).map((v) => ({ ...v, author: who[v.author_id] ?? "—" })),
     members: (members.data ?? []).map((m) => ({ userId: m.user_id, role: m.role, name: who[m.user_id] ?? "—", since: m.created_at })),

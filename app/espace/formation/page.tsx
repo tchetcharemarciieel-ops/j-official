@@ -3,6 +3,7 @@ import { GraduationCap, Lock } from "lucide-react";
 import { requireProfile } from "@/lib/auth";
 import { adminClient } from "@/lib/supabase/admin";
 import { FORMATION, totalMinutes } from "@/lib/formation";
+import { FormationView } from "@/components/formation/FormationView";
 
 export const metadata = { title: "Formation" };
 export const dynamic = "force-dynamic";
@@ -27,27 +28,19 @@ export default async function Formation() {
         </div>
       )}
 
-      <div className="space-y-4">
-        {FORMATION.map((m) => (
-          <section key={m.id} className="glass animate-fade-up rounded-2xl p-5" aria-labelledby={m.id}>
-            <h2 id={m.id} className="font-display text-lg font-semibold text-slate-900">{m.title}</h2>
-            <p className="mt-1 text-sm text-slate-600">{m.goal}</p>
-            {allowed ? (
-              <div className="mt-3 space-y-2">
-                {m.lessons.map((l) => (
-                  <details key={l.title} className="rounded-xl border border-slate-200 bg-white p-3">
-                    <summary className="cursor-pointer font-medium text-slate-900">{l.title} <span className="ml-1 text-xs font-normal text-slate-500">· {l.minutes} min</span></summary>
-                    <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm text-slate-700">{l.steps.map((s) => <li key={s}>{s}</li>)}</ol>
-                    {l.tip && <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">Astuce : {l.tip}</p>}
-                  </details>
-                ))}
-              </div>
-            ) : (
+      {allowed ? (
+        <FormationView modules={FORMATION} />
+      ) : (
+        <div className="space-y-4">
+          {FORMATION.map((m) => (
+            <section key={m.id} className="glass rounded-2xl p-5" aria-labelledby={m.id}>
+              <h2 id={m.id} className="font-display text-lg font-semibold text-slate-900">{m.title}</h2>
+              <p className="mt-1 text-sm text-slate-600">{m.goal}</p>
               <ul className="mt-3 space-y-1 text-sm text-slate-500">{m.lessons.map((l) => <li key={l.title} className="flex items-center gap-2"><Lock className="h-3.5 w-3.5" aria-hidden /> {l.title}</li>)}</ul>
-            )}
-          </section>
-        ))}
-      </div>
+            </section>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

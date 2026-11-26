@@ -1,3 +1,5 @@
+import type { AppSpec } from "./spec";
+
 /** Formation MiniSoft RCA : réservée aux formules avec publication (Pro et plus). Contenu = fonctions réelles de la plateforme. */
 export type Lesson = { title: string; minutes: number; steps: string[]; tip?: string };
 export type FormationModule = { id: string; title: string; goal: string; lessons: Lesson[] };
@@ -89,8 +91,31 @@ const SPECIFIC: Record<string, FormationModule> = {
   },
 };
 
-/** Modules de formation pour un logiciel : les bases communes puis, s'il y en a, les leçons de son type. */
-export function formationFor(module?: string | null): FormationModule[] {
-  const extra = module ? SPECIFIC[module] : undefined;
+const TYPE_HINT: Record<string, string> = { money: "montant en FCFA", date: "date", number: "nombre", boolean: "case oui/non", email: "adresse e-mail", phone: "numéro de téléphone", longtext: "texte long", relation: "lien vers une autre table" };
+
+/** Formation propre à un logiciel sur mesure : une leçon par table, construite à partir de son plan réel. */
+function customModule(spec: AppSpec): FormationModule {
+  const lessons: Lesson[] = spec.entities.slice(0, 15).map((e) => {
+    const required = e.fields.filter((f) => f.required).map((f) => f.label);
+    const selects = e.fields.filter((f) => f.type === "select" && f.options?.length).slice(0, 3);
+    const steps = [
+      `Ouvrez « ${e.labelPlural} » dans le menu du logiciel.${e.description ? ` ${e.description}` : ""}`,
+      `Ajoutez un élément avec le bouton de création. Champs : ${e.fields.slice(0, 8).map((f) => `${f.label}${TYPE_HINT[f.type] ? ` (${TYPE_HINT[f.type]})` : ""}`).join(", ")}${e.fields.length > 8 ? "…" : ""}.`,
+      ...(required.length ? [`Champs obligatoires : ${required.join(", ")}.`] : []),
+      ...selects.map((f) => `« ${f.label} » se choisit dans une liste : ${f.options!.slice(0, 6).join(", ")}.`),
+      "Pour corriger, ouvrez l'élément puis modifiez-le ; la recherche et les filtres retrouvent vite une ligne.",
+    ];
+    return { title: `${e.icon ? e.icon + " " : ""}${e.labelPlural}`, minutes: 3, steps };
+  });
+  if (spec.dashboard.length) {
+    lessons.push({ title: "Lire le tableau de bord", minutes: 3, steps: ["Le tableau de bord se met à jour avec vos saisies.", ...spec.dashboard.slice(0, 6).map((w) => `« ${w.label} » : ${{ count: "nombre d'éléments", sum: "total", monthly: "évolution par mois", breakdown: "répartition", recent: "derniers ajouts", low_stock: "alertes de stock bas" }[w.type]}.`)] });
+  }
+  return { id: "logiciel", title: `Votre logiciel « ${spec.name} » pas à pas`, goal: "Comment chaque partie de votre logiciel fonctionne.", lessons };
+}
+
+/** Modules de formation pour un logiciel : bases communes, leçons de son type (Shop, Bureau, Transport) ou de son plan (sur mesure). */
+export function formationFor(spec?: AppSpec | null): FormationModule[] {
+  const m = spec?.module;
+  const extra = m && SPECIFIC[m] ? SPECIFIC[m] : spec ? customModule(spec) : undefined;
   return extra ? [FORMATION[0]!, extra, ...FORMATION.slice(1)] : FORMATION;
 }

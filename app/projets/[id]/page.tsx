@@ -66,7 +66,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
     credits: profile.credits,
     canPublish: profile.is_admin || Boolean(plan.data?.can_publish),
     planName: plan.data?.name ?? profile.plan,
-    formation: profile.is_admin || plan.data?.can_publish ? formationFor(draftSpec(p)?.module) : null,
+    formation: profile.is_admin || plan.data?.can_publish ? formationFor(draftSpec(p)) : null,
     url: `${SITE_URL}/apps/${p.slug}`,
     versions: (versions.data ?? []).map((v) => ({ ...v, author: who[v.author_id] ?? "—" })),
     members: (members.data ?? []).map((m) => ({ userId: m.user_id, role: m.role, name: who[m.user_id] ?? "—", since: m.created_at })),

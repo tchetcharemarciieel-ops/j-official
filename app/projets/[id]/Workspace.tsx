@@ -4,7 +4,7 @@ import Link from "next/link";
 import { SlidingPill, useSlidingIndicator } from "@/components/ui/SlidingIndicator";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeft, Database, Eye, FlaskConical, Globe, GraduationCap, History, Send, Settings, Users, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Database, Eye, FlaskConical, Globe, GraduationCap, History, Pencil, Send, Settings, Users, type LucideIcon } from "lucide-react";
 import { STATUS } from "@/lib/status";
 import type { AppSpec, Role } from "@/lib/spec";
 import type { CheckResult } from "@/lib/checks";
@@ -18,6 +18,7 @@ import { TeamTab } from "./tabs/TeamTab";
 import { DataTab } from "./tabs/DataTab";
 import { SettingsTab } from "./tabs/SettingsTab";
 import { FormationTab } from "./tabs/FormationTab";
+import { ModifyTab } from "./tabs/ModifyTab";
 import type { FormationModule } from "@/lib/formation";
 import { WebsiteTab } from "./tabs/WebsiteTab";
 
@@ -59,6 +60,7 @@ export type WorkspaceData = {
 
 const TABS = [
   ["apercu", "Aperçu", Eye],
+  ["modifier", "Modifier", Pencil],
   ["tests", "Tests", FlaskConical],
   ["versions", "Versions", History],
   ["publication", "Publication", Send],
@@ -72,7 +74,7 @@ export type TabId = (typeof TABS)[number][0];
 
 export function Workspace({ data, initialTab }: { data: WorkspaceData; initialTab?: string }) {
   const router = useRouter();
-  const [tab, setTab] = useState<TabId>(() => (TABS.some(([id]) => id === initialTab) ? (initialTab as TabId) : "apercu"));
+  const [tab, setTab] = useState<TabId>(() => (initialTab === "assistant" ? "modifier" : TABS.some(([id]) => id === initialTab) ? (initialTab as TabId) : "apercu"));
   const refresh = () => router.refresh();
   const { ref: tabsRef, box: tabBox, animate: tabAnimate } = useSlidingIndicator<HTMLDivElement>(tab);
   const st = STATUS[data.project.status] ?? STATUS.preparation!;
@@ -103,6 +105,7 @@ export function Workspace({ data, initialTab }: { data: WorkspaceData; initialTa
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button className="btn btn-ghost" onClick={() => setTab("modifier")}><Pencil className="h-4 w-4" aria-hidden />Modifier mon logiciel</button>
           <button className="btn btn-ghost" onClick={() => setTab("tests")}><FlaskConical className="h-4 w-4" aria-hidden />Tester le logiciel</button>
           <button className="btn btn-primary" onClick={() => setTab("publication")}><Send className="h-4 w-4" aria-hidden />Publier mon logiciel</button>
         </div>
@@ -129,6 +132,7 @@ export function Workspace({ data, initialTab }: { data: WorkspaceData; initialTa
 
       <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="mt-6">
         {tab === "apercu" && <PreviewTab data={data} spec={data.spec} goTo={setTab} />}
+        {tab === "modifier" && <ModifyTab data={data} spec={data.spec} onChanged={refresh} goTo={setTab} />}
         {tab === "tests" && <TestsTab data={data} onChanged={refresh} />}
         {tab === "versions" && <VersionsTab data={data} onChanged={refresh} />}
         {tab === "publication" && <PublishTab data={data} onChanged={refresh} goTo={setTab} />}

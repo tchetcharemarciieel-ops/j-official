@@ -20,7 +20,7 @@ export const POST = route(async (req, { params }: Ctx) => {
   const parsed = parseSpec(input.spec);
   if (!parsed.ok) throw new HttpError(400, `Proposition invalide : ${parsed.errors.slice(0, 3).join(" ; ")}`);
   const saved = await saveVersion(project, parsed.spec, { summary: input.summary, source: input.source, authorId: profile.id });
-  // Sauvegarde des données réelles après un changement de structure d'un logiciel publié
-  if (project.status === "published" || project.status === "suspended") await createBackup(id, `Avant application de la version ${saved.version}`, profile.id, project.published_version);
+  // Sauvegarde des données réelles à chaque modification enregistrée (retour arrière possible)
+  await createBackup(id, `Avant application de la version ${saved.version}`, profile.id, project.published_version);
   return NextResponse.json({ version: saved.version, checks: saved.checks, summary: summarize(saved.checks) });
 });

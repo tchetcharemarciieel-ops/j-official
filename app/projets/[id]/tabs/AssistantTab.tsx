@@ -93,7 +93,7 @@ export function AssistantTab({ data, spec, onApplied }: { data: WorkspaceData; s
                   {data.project.publishedVersion && <p className="text-xs text-slate-600">Une sauvegarde de vos données réelles sera créée avant application.</p>}
                   {!m.status ? (
                     <div className="flex gap-2 pt-1">
-                      <button className="btn btn-primary flex-1" disabled={busy} onClick={() => apply(m)}>Appliquer</button>
+                      <button className="btn btn-primary flex-1" disabled={busy} onClick={() => apply(m)}>Enregistrer les modifications</button>
                       <button className="btn btn-ghost flex-1" disabled={busy} onClick={() => setMsgs((all) => all.map((x) => (x === m ? { ...x, status: "cancelled" } : x)))}>Annuler</button>
                     </div>
                   ) : (

@@ -101,7 +101,7 @@ export function ProjectCard({ project: p, delay = 0, compact = false }: { projec
         )}
         {manage ? (
           <>
-            <Link href={`/projets/${p.id}?onglet=assistant`} className={`${btn} bg-slate-100 text-slate-900 hover:bg-slate-200`}><Pencil className="h-3.5 w-3.5" aria-hidden />Modifier</Link>
+            <Link href={`/projets/${p.id}?onglet=modifier`} className={`${btn} bg-slate-100 text-slate-900 hover:bg-slate-200`}><Pencil className="h-3.5 w-3.5" aria-hidden />Modifier</Link>
             <Link href={`/projets/${p.id}?onglet=tests`} className={`${btn} bg-slate-100 text-slate-900 hover:bg-slate-200`}><FlaskConical className="h-3.5 w-3.5" aria-hidden />Tester</Link>
             <button onClick={publish} disabled={busy !== null || (hasPublished && !outdated && p.status !== "suspended")} className={`${btn} bg-blue-600 text-white hover:bg-blue-700`}>
               {busy === "publish" ? <span className="spinner" /> : <Send className="h-3.5 w-3.5" aria-hidden />}{publishLabel}

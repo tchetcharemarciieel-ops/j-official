@@ -15,6 +15,7 @@ const validDiagnosis = {
   businessName: "Pharmacie du Centre",
   sector: "pharmacie",
   sectorLabel: "Pharmacie",
+  howItWorks: "Une pharmacie vend des médicaments et suit les dates de péremption.",
   mainProblem: "Des médicaments périmés restent en rayon.",
   causes: ["Les dates de péremption sont notées sur papier."],
   solutions: ["Suivre chaque lot avec sa date de péremption."],

@@ -60,7 +60,7 @@ export type WorkspaceData = {
 
 const TABS = [
   ["apercu", "Aperçu", Eye],
-  ["modifier", "Modifier", Pencil],
+  ["modifier", "Faire évoluer", Pencil],
   ["tests", "Tests", FlaskConical],
   ["versions", "Versions", History],
   ["publication", "Publication", Send],
@@ -105,7 +105,7 @@ export function Workspace({ data, initialTab }: { data: WorkspaceData; initialTa
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button className="btn btn-ghost" onClick={() => setTab("modifier")}><Pencil className="h-4 w-4" aria-hidden />Modifier mon logiciel</button>
+          <button className="btn btn-ghost" onClick={() => setTab("modifier")}><Pencil className="h-4 w-4" aria-hidden />Faire évoluer mon logiciel</button>
           <button className="btn btn-ghost" onClick={() => setTab("tests")}><FlaskConical className="h-4 w-4" aria-hidden />Tester le logiciel</button>
           <button className="btn btn-primary" onClick={() => setTab("publication")}><Send className="h-4 w-4" aria-hidden />Publier mon logiciel</button>
         </div>

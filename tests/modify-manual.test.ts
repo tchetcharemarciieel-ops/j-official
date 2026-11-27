@@ -34,3 +34,38 @@ describe("modification manuelle d'un logiciel", () => {
     expect(diffSpecs(full, less).some((c) => c.kind === "removed")).toBe(true);
   });
 });
+
+import { modifyWithRules } from "@/lib/modify-rules";
+
+describe("faire évoluer : demandes en langage courant (sans IA)", () => {
+  const spec = () => base();
+  it.each([
+    ["Ajoute un système de livraison", "livraisons"],
+    ["Ajoute une fonctionnalité de réservation", "reservations"],
+    ["Crée un module de gestion des employés", "employes"],
+    ["Ajoute un suivi des paiements", "paiements"],
+  ])("%s", (instruction, key) => {
+    const before = spec();
+    const r = modifyWithRules(before, instruction);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.spec.entities.some((e) => e.key === key)).toBe(true);
+    expect(r.spec.entities.find((e) => e.key === "clients")).toEqual(before.entities[0]);
+    expect(runChecks(autoFix(r.spec), before).some((c) => c.status === "fail")).toBe(false);
+  });
+  it("ne duplique pas une fonctionnalité existante", () => {
+    const r = modifyWithRules(spec(), "Ajoute un module de gestion des clients");
+    expect(r.ok).toBe(false);
+  });
+  it("crée un nouveau tableau de bord depuis les tables existantes", () => {
+    const r = modifyWithRules(withModule(spec(), getModule("ventes")!), "Crée un nouveau tableau de bord");
+    expect(r.ok).toBe(true);
+    if (r.ok) { expect(r.spec.dashboard.length).toBeGreaterThan(1); expect(r.spec.entities).toHaveLength(2); }
+  });
+  it("signale les modules isolés (3 tables ou plus)", () => {
+    let s = withModule(withModule(spec(), getModule("taches")!), getModule("depenses")!);
+    const c = runChecks(autoFix(s)).find((x) => x.id === "linked_modules");
+    expect(c).toBeTruthy();
+    s = s;
+  });
+});

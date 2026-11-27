@@ -80,6 +80,21 @@ export function runChecks(spec: AppSpec, previous?: AppSpec): CheckResult[] {
     message: `Menu généré : Tableau de bord + ${spec.entities.map((e) => e.labelPlural).join(", ")}.`,
   });
 
+  // Les modules communiquent : avec 3 tables ou plus, une table qui n'a aucun lien avec les autres est signalée.
+  if (spec.entities.length >= 3) {
+    const linked = new Set<string>();
+    for (const e of spec.entities) for (const f of e.fields) if (f.type === "relation" && f.relation && keys.includes(f.relation)) { linked.add(e.key); linked.add(f.relation); }
+    const isolated = spec.entities.filter((e) => !linked.has(e.key)).map((e) => e.labelPlural);
+    add({
+      id: "linked_modules",
+      category: "Navigation",
+      name: "Modules reliés entre eux",
+      status: isolated.length ? "warn" : "pass",
+      message: isolated.length ? `Sans lien avec les autres modules : ${isolated.join(", ")}. Un lien (ex. une vente reliée à un client) évite les doubles saisies et rend les statistiques plus justes.` : "Tous les modules sont reliés entre eux.",
+      fix: isolated.length ? "Demandez à l'assistant de relier ces modules (ex. « relie les ventes aux clients »)." : undefined,
+    });
+  }
+
   // Listes de choix
   const noOptions = spec.entities.flatMap((e) => e.fields.filter((f) => f.type === "select" && !f.options?.length).map((f) => `${e.labelPlural}.${f.label}`));
   add({

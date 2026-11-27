@@ -15,7 +15,7 @@ import { ChecksList } from "./ChecksList";
 type Proposal = { engine: "ai" | "rules"; creditsUsed: number; summary: string; changes: Change[]; checks: CheckResult[]; proposal: AppSpec | null; baseVersion: number };
 type Msg = { role: "user" | "assistant"; text: string; proposal?: Proposal; status?: "applied" | "cancelled" };
 
-const EXAMPLES = ["Ajoute une page pour gérer les employés.", "Ajoute un champ numéro de téléphone aux clients.", "Change les couleurs en vert et blanc.", "Ajoute des statistiques mensuelles.", "Permets à mon employé de consulter les commandes sans modifier les prix.", "Ajoute un export PDF."];
+const EXAMPLES = ["Ajoute un système de livraison.", "Crée un module de gestion des employés.", "Ajoute une fonctionnalité de réservation.", "Modifie le système de facturation.", "Ajoute un suivi des paiements.", "Crée un nouveau tableau de bord.", "Ajoute un champ numéro de téléphone aux clients.", "Change les couleurs en vert et blanc."];
 
 export function AssistantTab({ data, spec, onApplied }: { data: WorkspaceData; spec: AppSpec; onApplied: () => void }) {
   const toast = useToast();
@@ -59,7 +59,7 @@ export function AssistantTab({ data, spec, onApplied }: { data: WorkspaceData; s
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,420px)_1fr]">
-      <Panel title="Assistant de modification" subtitle={data.ai ? `IA configurée · ${data.costs.modify} crédits par demande (remboursés en cas d'échec) · solde ${data.credits}` : "Mode sans IA : demandes courantes reconnues par règles (gratuit)."}>
+      <Panel title="Dites ce que vous voulez changer" subtitle={data.ai ? `IA configurée · ${data.costs.modify} crédits par demande (remboursés en cas d'échec) · solde ${data.credits}` : "Mode sans IA : demandes courantes reconnues par règles (gratuit)."}>
         <div className="max-h-[480px] space-y-3 overflow-y-auto pr-1" aria-live="polite">
           {msgs.length === 0 && (
             <div className="space-y-2">

@@ -508,13 +508,15 @@ Tu ne produis jamais de code : uniquement une définition structurée interprét
 Types de champs disponibles : ${FIELD_TYPES.join(", ")}. Indicateurs : count (nombre de fiches), sum (somme d'un champ numérique/montant), monthly (total mensuel d'un champ, sur un champ date), breakdown (répartition par valeur d'un champ), recent (dernières fiches), low_stock (fiches dont le champ numérique est sous un seuil).
 Rôles : owner (tous droits), admin, manager, employee (par défaut : lit/crée/modifie, ne supprime pas), viewer (lecture seule).
 Modules de référence : ${MODULES.map((m) => `${m.id} (${m.title})`).join(", ")}.
-Écris tout en français simple. Identifiants : minuscules, sans accents, underscore. N'invente pas de fonctionnalités impossibles (paiement en ligne, SMS, e-mail automatique) : signale-les dans les limites.`;
+Écris tout en français simple. Identifiants : minuscules, sans accents, underscore. N'invente pas de fonctionnalités impossibles (paiement en ligne, SMS, e-mail automatique, page publique de réservation) : signale-les dans les limites et propose l'équivalent réel (ex. un suivi des paiements reçus, un registre de réservations).
+Principes de conception : (1) comprends d'abord COMMENT l'entreprise fonctionne (qui fait quoi, de la commande au paiement) avant de choisir des tables ; (2) ne reproduis pas un modèle type du secteur : deux entreprises du même secteur reçoivent des tables, champs, listes de choix et indicateurs différents, avec le vocabulaire du client ; (3) ne crée aucune fonctionnalité inutile : chaque table répond à un problème cité ou clairement déduit ; (4) relie les tables entre elles avec des champs « relation » (une vente → un client, une livraison → une commande) pour éviter les doubles saisies ; (5) crée des indicateurs de tableau de bord qui répondent aux difficultés du client (montants dus, stock bas, retards…) ; (6) les listes de choix reprennent les étapes réelles du client (ex. statuts de ses commandes) ; (7) un employé ne doit pas pouvoir supprimer ni modifier les prix.`;
 
 export async function aiDiagnose(input: DiagnoseInput, image?: ImageInput): Promise<{ diagnosis: Diagnosis; usage: AiUsage }> {
   const schema = z.object({
     businessName: z.string(),
     sector: z.enum(Object.keys(SECTORS) as [string, ...string[]]),
     sectorLabel: z.string(),
+    howItWorks: z.string().describe("2 à 4 phrases : comment fonctionne cette entreprise (qui fait quoi, du client au paiement), en français simple"),
     mainProblem: z.string(),
     causes: z.array(z.string()).describe("2 à 5 causes probables du problème, propres à ce client"),
     solutions: z.array(z.string()).describe("2 à 6 solutions concrètes que le mini-logiciel apporte, ou bonnes pratiques à adopter"),
@@ -532,7 +534,7 @@ export async function aiDiagnose(input: DiagnoseInput, image?: ImageInput): Prom
     ...(input.answers ?? []).map((a) => `Question : ${a.question}\nRéponse : ${a.answer.slice(0, 1000)}`),
     image ? "Le client a joint une image (photo de cahier, formulaire, facture ou capture d'un ancien logiciel) : déduis-en les tables et champs utiles. N'en recopie pas les données personnelles." : "",
     input.csvColumns?.length ? `Colonnes d'un fichier joint par le client : ${input.csvColumns.map((c) => `${c.name} (${c.type})`).join(", ")}` : "",
-    `Produis le diagnostic : problème principal, causes probables, solutions proposées, tâches manuelles à améliorer, données à conserver, utilisateurs, automatisations possibles, limites techniques, et 3 à 5 fonctionnalités (chacune = une table avec ses champs et ses indicateurs), adaptées précisément à CE client. Coche (selected=true) les fonctionnalités indispensables, propose les autres décochées.`,
+    `Produis le diagnostic. Décris d'abord en 2 à 4 phrases comment fonctionne cette entreprise (howItWorks). Puis : problème principal, causes probables, solutions proposées, tâches manuelles à améliorer, données à conserver, utilisateurs, automatisations possibles, limites techniques, et 3 à 5 fonctionnalités (chacune = une table avec ses champs et ses indicateurs), adaptées précisément à CE client. Coche (selected=true) les fonctionnalités indispensables, propose les autres décochées.`,
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -542,6 +544,7 @@ export async function aiDiagnose(input: DiagnoseInput, image?: ImageInput): Prom
     businessName: data.businessName.slice(0, 80),
     sector: data.sector,
     sectorLabel: data.sectorLabel.slice(0, 60),
+    howItWorks: data.howItWorks.slice(0, 600),
     mainProblem: data.mainProblem.slice(0, 400),
     causes: data.causes.slice(0, 6).map((s) => s.slice(0, 300)),
     solutions: data.solutions.slice(0, 8).map((s) => s.slice(0, 300)),
@@ -579,7 +582,7 @@ export async function aiModify(spec: AppSpec, instruction: string): Promise<{ sp
     summary: z.string().describe("résumé en français des modifications, ou explication du refus"),
     spec: aiSpec,
   });
-  const user = `Logiciel actuel (JSON) :\n${JSON.stringify(toAiSpec(spec))}\n\nDemande du propriétaire : """${instruction.slice(0, 2000)}"""\n\nRenvoie le logiciel complet modifié. Règles : modifie UNIQUEMENT ce qui est demandé ; conserve à l'identique les clés (key) des tables et champs existants pour préserver les données ; n'efface pas de table sans demande explicite ; un export PDF se fait par features.pdfExport ; une permission « consulter sans modifier les prix » se fait par readonlyFields sur le rôle employee.`;
+  const user = `Logiciel actuel (JSON) :\n${JSON.stringify(toAiSpec(spec))}\n\nDemande du propriétaire : """${instruction.slice(0, 2000)}"""\n\nRenvoie le logiciel complet modifié. Commence par analyser le logiciel existant : tables, champs, liens, indicateurs, droits. Réutilise ce qui existe (n'ajoute pas une table « employés » si elle existe déjà : enrichis-la) et relie toute nouvelle table aux tables existantes concernées par des champs « relation ». Une demande de livraison, réservation, facturation ou paiement se traduit par des tables et champs réels (statuts, dates, montants en FCFA, liens vers clients/commandes) : n'annonce jamais un paiement en ligne, un SMS ou un e-mail automatique, et dis-le dans le résumé si la demande en contient. Règles : modifie UNIQUEMENT ce qui est demandé ; conserve à l'identique les clés (key) des tables et champs existants pour préserver les données ; n'efface pas de table sans demande explicite ; un export PDF se fait par features.pdfExport ; une permission « consulter sans modifier les prix » se fait par readonlyFields sur le rôle employee.`;
   const { data, usage } = await call(CONTEXT, user, schema);
   if (!data.understood) throw new AiError(data.summary || "Demande non réalisable.", usage);
   return { spec: fromAiSpec(data.spec, spec), summary: data.summary.slice(0, 1000), usage };

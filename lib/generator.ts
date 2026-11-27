@@ -32,6 +32,8 @@ export const diagnosisSchema = z.object({
   businessName: z.string().max(80).default(""),
   sector: z.string().max(40),
   sectorLabel: z.string().max(60),
+  /** Comment fonctionne l'entreprise (compréhension de l'IA, montrée au client avant de valider). */
+  howItWorks: z.string().max(600).optional(),
   mainProblem: z.string().max(400),
   causes: z.array(z.string().max(300)).max(6).default([]),
   solutions: z.array(z.string().max(300)).max(8).default([]),

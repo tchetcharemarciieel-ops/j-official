@@ -127,6 +127,44 @@ export function modifyWithRules(spec: AppSpec, instruction: string): ModifyResul
     return { ok: true, spec: s, summary: `Page ${target.labelPlural} retirée. Ses données restent stockées et réapparaîtront si vous restaurez la version précédente.` };
   }
 
+  // Nouveau tableau de bord : indicateurs utiles construits depuis les tables et champs existants
+  if (/(nouveau|autre|refais|cree[rz]?|ajoute[rz]?).{0,30}tableau de bord/.test(t)) {
+    const widgets: AppSpec["dashboard"] = [];
+    for (const e of s.entities) {
+      widgets.push({ type: "count", label: `${e.labelPlural} (nombre)`, entity: e.key });
+      const money = e.fields.find((f) => f.type === "money");
+      const date = e.fields.find((f) => f.type === "date");
+      if (money) {
+        widgets.push({ type: "sum", label: `${e.labelPlural} : total ${money.label.toLowerCase()} (FCFA)`, entity: e.key, field: money.key });
+        if (date) widgets.push({ type: "monthly", label: `${e.labelPlural} par mois (FCFA)`, entity: e.key, field: money.key, dateField: date.key });
+      }
+      const sel = e.fields.find((f) => f.type === "select" && f.options?.length);
+      if (sel) widgets.push({ type: "breakdown", label: `${e.labelPlural} par ${sel.label.toLowerCase()}`, entity: e.key, field: sel.key });
+    }
+    s.dashboard = widgets.slice(0, 12);
+    return { ok: true, spec: s, summary: `Nouveau tableau de bord : ${s.dashboard.length} indicateur(s) construits à partir de vos tables (nombres, totaux en FCFA, évolution par mois, répartitions). Vos données ne changent pas.` };
+  }
+
+  // « Ajoute un système de livraison / une fonctionnalité de réservation / un module de gestion des employés… »
+  const words = t.split(/[^a-z0-9]+/).filter(Boolean);
+  const scoreOf = (m: (typeof MODULES)[number]) =>
+    m.keywords.filter((k) => (k.includes(" ") ? t.includes(k) : words.some((w) => w === k || (k.length >= 4 && w.startsWith(k)))) ).length + (words.includes(normalize(m.entity.labelPlural)) ? 2 : 0);
+  const featureMatch = /(ajoute|cree|creer|mets|mettre|installe|integre|veux|besoin|rajoute)/.test(t)
+    ? [...MODULES].map((m) => ({ m, score: scoreOf(m) })).filter((x) => x.score > 0).sort((a, b) => b.score - a.score)[0]?.m
+    : undefined;
+  if (featureMatch && !/(champ|colonne|case)\b/.test(t)) {
+    if (s.entities.some((e) => e.key === featureMatch.entity.key)) return { ok: false, message: `La fonctionnalité « ${featureMatch.title} » existe déjà (page ${featureMatch.entity.labelPlural}). Précisez ce que vous voulez y changer.` };
+    const added = structuredClone(featureMatch.entity);
+    const keys = new Set([...s.entities.map((e) => e.key), added.key]);
+    // Le nouveau module est relié aux modules existants quand il le prévoit (ex. livraison → clients) ; sinon le lien devient un texte simple.
+    added.fields = added.fields.map((f) => (f.type === "relation" && (!f.relation || !keys.has(f.relation)) ? { ...f, type: "text" as const, relation: undefined } : f));
+    s.entities.push(added);
+    s.dashboard.push(...featureMatch.widgets.filter((w) => w.entity === added.key));
+    s.dashboard = s.dashboard.slice(0, 12);
+    const links = added.fields.filter((f) => f.type === "relation").map((f) => s.entities.find((e) => e.key === f.relation)?.labelPlural).filter(Boolean);
+    return { ok: true, spec: s, summary: `« ${featureMatch.title} » ajouté : page ${added.labelPlural} (${added.fields.map((f) => f.label).join(", ")}).${links.length ? ` Reliée à : ${links.join(", ")}.` : ""} Le reste de votre logiciel est conservé.` };
+  }
+
   // Ajout d'une page
   const pageMatch = t.match(/ajoute[rz]?\s+(?:une\s+)?(?:page|module|section|table)\s+(?:pour\s+(?:gerer|suivre)\s+|de\s+gestion\s+des?\s+|des?\s+|du\s+)?(?:les\s+|la\s+|le\s+)?(.+)/);
   if (pageMatch) {

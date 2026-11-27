@@ -67,7 +67,7 @@ export function ModifyTab({ data, spec, onChanged, goTo }: { data: WorkspaceData
   const shortcut = "flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-blue-300";
   return (
     <div className="space-y-6">
-      <Panel title="Modifier mon logiciel" subtitle="Tout se modifie ici, sans recréer le logiciel : vos données, vos utilisateurs et leurs accès, et votre lien public sont conservés. Rien n'est supprimé automatiquement, et chaque enregistrement crée une version à laquelle vous pouvez revenir.">
+      <Panel title="Faire évoluer mon logiciel" subtitle="Tout se modifie ici, sans recréer le logiciel : vos données, vos utilisateurs et leurs accès, et votre lien public sont conservés. Rien n'est supprimé automatiquement, et chaque enregistrement crée une version à laquelle vous pouvez revenir.">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <button className={shortcut} onClick={() => goTo("parametres")}><Palette className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" aria-hidden /><span><b className="block text-sm text-slate-900">Nom, logo et couleurs</b><span className="text-xs text-slate-600">Apparence, texte d&apos;accueil, règles de fonctionnement.</span></span></button>
           <Link href="/espace/parametres" className={shortcut}><Building2 className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" aria-hidden /><span><b className="block text-sm text-slate-900">Informations de l&apos;entreprise</b><span className="text-xs text-slate-600">Nom, adresse, téléphone : reprises sur vos documents.</span></span></Link>

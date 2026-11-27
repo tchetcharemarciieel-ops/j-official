@@ -356,6 +356,12 @@ export function CreateWizard({ initialProblem, ai, credits, costs }: { initialPr
             </div>
             {result && <EngineNotice result={result} canRetry={Boolean(ai)} loading={loading} onRetry={() => void diagnose(answers)} />}
             <dl className="mt-6 grid gap-5 sm:grid-cols-2">
+              {diagnosis.howItWorks && (
+                <div className="sm:col-span-2 rounded-xl bg-blue-50 p-4">
+                  <dt className="text-xs uppercase tracking-wide text-blue-700">Comment nous avons compris votre entreprise</dt>
+                  <dd className="mt-1 text-sm text-slate-800">{diagnosis.howItWorks}</dd>
+                </div>
+              )}
               <div className="sm:col-span-2">
                 <dt className="text-xs uppercase tracking-wide text-slate-500">Problème principal</dt>
                 <dd className="mt-1 text-sm text-slate-800">{diagnosis.mainProblem}</dd>

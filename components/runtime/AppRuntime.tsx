@@ -20,6 +20,7 @@ import { ShopApp } from "@/components/shop/ShopApp";
 import { zoneForEntity } from "@/lib/zone-map";
 import { StationPanel } from "./workspace/StationPanel";
 import { TransportApp } from "@/components/transport/TransportApp";
+import { EcoleApp } from "@/components/ecole/EcoleApp";
 import { BureauApp } from "@/components/bureau/BureauApp";
 
 type Answer = { answer: string; facts: string[]; period: string; basis: string; missing: string[]; mode: string; engine: string };
@@ -37,6 +38,10 @@ export function AppRuntime(props: { projectId: string; spec: AppSpec; mode: Data
   if (props.spec.module === "transport") {
     if (props.mode === "local") return <p className="p-6 text-sm text-slate-600">MiniSoft Transport demande un compte : créez votre espace pour l'essayer avec vos propres données.</p>;
     return <TransportApp projectId={props.projectId} mode={props.mode} />;
+  }
+  if (props.spec.module === "ecole") {
+    if (props.mode === "local") return <p className="p-6 text-sm text-slate-600">MiniSoft École demande un compte : créez votre établissement pour l&apos;essayer avec vos propres données.</p>;
+    return <EcoleApp projectId={props.projectId} mode={props.mode} />;
   }
   if (props.spec.module === "bureau") {
     if (props.mode === "local") return <p className="p-6 text-sm text-slate-600">MiniSoft Bureau demande un compte : créez votre espace pour l&apos;essayer avec vos propres données.</p>;

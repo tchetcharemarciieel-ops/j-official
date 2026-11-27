@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BureauPitch } from "@/app/creer/BureauPitch";
+import { EcolePitch } from "@/app/creer/EcolePitch";
 import { ShopPitch } from "@/app/creer/ShopPitch";
 import { TransportPitch } from "@/app/creer/TransportPitch";
 import { CATALOG_GRID, CatalogCard, CatalogModal, type CatalogItem } from "./Catalog";
@@ -38,6 +39,15 @@ export const PRODUCTS: CatalogItem[] = [
     },
   },
   {
+    id: "ecole", icon: "ecole", tone: "blue", name: "MiniSoft École", short: "Élèves, notes, bulletins, présences et frais d'un établissement.",
+    features: ["Inscriptions et classes", "Notes et bulletins PDF", "Espace parents"], cta: "Créer",
+    detail: {
+      description: "La gestion d'une école, d'un collège, d'un lycée ou d'un centre de formation : vous répondez à quelques questions (type, effectifs, système éducatif, périodes, barème) et le logiciel est adapté à votre établissement.",
+      features: ["Inscriptions, élèves, parents et tuteurs", "Classes, matières et coefficients", "Notes, moyennes pondérées et classements", "Bulletins et reçus PDF", "Présences, absences et retards", "Frais, paiements et impayés", "Postes : directeur, secrétaire, comptable, enseignant, parent", "Espace parent : notes, absences, paiements, annonces", "Analyses pour la direction"],
+      benefits: ["Un enseignant ne voit que ses classes", "Un parent ne voit que ses enfants", "Aucune note ni aucun paiement n'est supprimé automatiquement"],
+    },
+  },
+  {
     id: "custom", icon: "custom", tone: "amber", name: "Logiciel sur mesure", short: "Décrivez votre besoin, MiniSoft RCA crée votre logiciel.",
     features: ["Une phrase suffit", "Plan validé par vous", "Testé avant publication"], cta: "Décrire",
     detail: {
@@ -48,7 +58,7 @@ export const PRODUCTS: CatalogItem[] = [
   },
 ];
 
-const FORMS = { shop: ShopPitch, bureau: BureauPitch, transport: TransportPitch } as const;
+const FORMS = { shop: ShopPitch, bureau: BureauPitch, transport: TransportPitch, ecole: EcolePitch } as const;
 
 /**
  * `mode="create"` (page de création) : la fiche contient le formulaire de création ; `mode="link"`

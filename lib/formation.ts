@@ -81,6 +81,16 @@ const SPECIFIC: Record<string, FormationModule> = {
       { title: "Devis et factures PDF", minutes: 4, steps: ["Créez un devis, faites-le valider, puis transformez-le en facture.", "Téléchargez le PDF pour l'envoyer au client."] },
     ],
   },
+  ecole: {
+    id: "ecole", title: "MiniSoft École : gérer l'établissement", goal: "Inscriptions, notes, bulletins, présences et frais.",
+    lessons: [
+      { title: "Préparer l'année", minutes: 5, steps: ["Créez l'année scolaire et les niveaux (Classes et matières).", "Créez les classes, puis les matières, et affectez chaque matière à sa classe avec un enseignant et un coefficient.", "Définissez les frais de scolarité par niveau (Finances) : ils sont facturés à chaque inscription."] },
+      { title: "Inscrire un élève", minutes: 4, steps: ["Ouvrez Élèves puis Inscrire : renseignez l'élève, sa classe et son parent.", "Le matricule et la facture des frais obligatoires sont créés automatiquement.", "Un parent déjà connu (même téléphone) est réutilisé pour ses autres enfants."] },
+      { title: "Notes, moyennes et bulletins", minutes: 6, steps: ["Créez une évaluation (devoir, composition…) dans Notes, puis saisissez les notes de la classe.", "Les moyennes utilisent les coefficients de la classe et le barème défini dans les réglages.", "Ouvrez Bulletins pour voir le classement et télécharger le bulletin PDF de chaque élève."] },
+      { title: "Présences et parents", minutes: 4, steps: ["Faites l'appel par classe et par date ; les parents reliés à un compte sont notifiés des absences.", "Invitez le parent avec le poste Parent, puis reliez son compte à la fiche de l'élève : il ne verra que ses enfants."] },
+      { title: "Paiements et impayés", minutes: 4, steps: ["Encaissez depuis Finances ou la fiche de l'élève : le reçu PDF est numéroté.", "Un paiement ne dépasse jamais le solde ; une annulation reste visible dans la facture.", "La liste des impayés peut s'exporter vers Excel."] },
+    ],
+  },
   transport: {
     id: "transport", title: "MiniSoft Transport : livraisons et suivi", goal: "Commandes, livreurs et suivi des colis.",
     lessons: [

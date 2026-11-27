@@ -199,3 +199,18 @@ export const TRANSPORT_OP_PERMS: Record<string, Permission[]> = {
   "transaction.save": P("finances"), "transaction.delete": P("finances"),
   "photo.add": P("livraisons", "missions"),
 };
+
+export const ECOLE_OP_PERMS: Record<string, Permission[]> = {
+  "settings.save": P("parametres"),
+  "year.save": P("classes"), "year.delete": P("classes"), "year.current": P("classes"),
+  "level.save": P("classes"), "level.delete": P("classes"), "class.save": P("classes"), "class.delete": P("classes"),
+  "subject.save": P("classes"), "subject.delete": P("classes"), "assign.save": P("classes"), "assign.delete": P("classes"),
+  "teacher.save": P("enseignants"), "teacher.delete": P("enseignants"),
+  "student.enroll": P("eleves"), "student.save": P("eleves"), "student.move": P("eleves"), "student.status": P("eleves"), "student.delete": P("eleves"), "guardian.save": P("eleves"),
+  "exam.save": P("notes"), "exam.delete": P("notes"), "grades.save": P("notes"),
+  "attendance.save": P("presences"),
+  "fee.save": P("finances"), "fee.delete": P("finances"), "invoice.create": P("finances", "eleves"), "invoice.discount": P("finances"),
+  "payment.add": P("finances"), "payment.cancel": P("finances"),
+  "transaction.save": P("finances"), "transaction.delete": P("finances"),
+  "announcement.save": P("annonces"), "announcement.delete": P("annonces"),
+};

@@ -15,6 +15,8 @@ import { bureauSpec } from "@/lib/bureau/spec";
 import { AGENCY_TYPES, AGENCY_TYPE_IDS, CURRENCIES, defaultSettings as bureauDefaults, entityKey as bureauKey, type AgencyType } from "@/lib/bureau/model";
 import { TRANSPORT_TYPES, TRANSPORT_TYPE_IDS, CURRENCIES as TR_CURRENCIES, defaultSettings as transportDefaults, entityKey as transportKey, type TransportType } from "@/lib/transport/model";
 import { transportSpec } from "@/lib/transport/spec";
+import { SCHOOL_TYPES, SCHOOL_TYPE_IDS, SYSTEM_IDS, CURRENCIES as EC_CURRENCIES, DEFAULT_LEVELS, defaultSettings as ecoleDefaults, entityKey as ecoleKey, defaultMentions, type SchoolType } from "@/lib/ecole/model";
+import { ecoleSpec } from "@/lib/ecole/spec";
 import { SHOP_TYPE_IDS, SHOP_TYPES, defaultSettings, entityKey, type ShopType } from "@/lib/shop/model";
 
 const bureauInput = z.object({
@@ -40,7 +42,27 @@ const transportInput = z.object({
   currency: z.enum(Object.keys(TR_CURRENCIES) as [string, ...string[]]).default("XAF"),
   logo: z.string().max(380_000).regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/).nullish(),
 });
+const ecoleInput = z.object({
+  name: z.string().trim().min(2).max(80),
+  school_type: z.enum(SCHOOL_TYPE_IDS as [string, ...string[]]),
+  system: z.enum(SYSTEM_IDS as [string, ...string[]]).default("francophone"),
+  system_note: z.string().trim().max(200).default(""),
+  students_count: z.coerce.number().int().min(0).max(100000).default(0),
+  teachers_count: z.coerce.number().int().min(0).max(10000).default(0),
+  classes_count: z.coerce.number().int().min(0).max(1000).default(0),
+  terms: z.coerce.number().int().min(1).max(6).default(3),
+  scale: z.coerce.number().min(1).max(1000).default(20),
+  pass_mark: z.coerce.number().min(0).max(1000).default(10),
+  year_start: z.coerce.number().int().min(2000).max(2100),
+  levels: z.array(z.string().trim().min(1).max(40)).max(30).default([]),
+  needs: z.string().trim().max(1000).default(""),
+  address: z.string().trim().max(200).default(""),
+  phone: z.string().trim().max(30).default(""),
+  currency: z.enum(Object.keys(EC_CURRENCIES) as [string, ...string[]]).default("XAF"),
+  logo: z.string().max(380_000).regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/).nullish(),
+});
 const body = z.union([
+  z.object({ ecole: ecoleInput }),
   z.object({ transport: transportInput }),
   z.object({ bureau: bureauInput }),
   z.object({ shop: z.object({ name: z.string().trim().min(2).max(80), type: z.enum(SHOP_TYPE_IDS as [string, ...string[]]) }) }),
@@ -68,7 +90,13 @@ export const POST = route(async (req) => {
   const shopType = "shop" in input ? (input.shop.type as ShopType) : null;
   const bureau = "bureau" in input ? input.bureau : null;
   const transport = "transport" in input ? input.transport : null;
-  if ("transport" in input) {
+  const ecole = "ecole" in input ? input.ecole : null;
+  if ("ecole" in input) {
+    spec = ecoleSpec(input.ecole.name, input.ecole.school_type as SchoolType);
+    problem = "MiniSoft École : gestion scolaire (inscriptions, notes, bulletins, présences, finances, parents).";
+    diagnosis = null;
+    sector = SCHOOL_TYPES[input.ecole.school_type as SchoolType].label;
+  } else if ("transport" in input) {
     spec = transportSpec(input.transport.name, input.transport.transport_type as TransportType);
     problem = "MiniSoft Transport & Delivery : gestion de transport et de livraison.";
     diagnosis = null;
@@ -108,6 +136,25 @@ export const POST = route(async (req) => {
   if (error || !project) throw new HttpError(500, "Création du projet impossible.");
   await db.from("project_members").insert({ project_id: project.id, user_id: profile.id, role: "owner" });
   await audit("project.created", { projectId: project.id, actorId: profile.id, details: { templateId, slug, ...(shopType ? { module: "shop", type: shopType } : {}) } });
+  if (ecole) {
+    // Configuration saisie à la création : paramètres de l'établissement, année scolaire en cours et niveaux.
+    for (const demo of [false, true]) {
+      let logoId: string | null = null;
+      if (ecole.logo) {
+        const { data: f } = await db.from("records").insert({ project_id: project.id, entity: ecoleKey("file"), data: { name: "logo", mime: ecole.logo.slice(5, ecole.logo.indexOf(";")), size: Math.floor((ecole.logo.length * 3) / 4), data: ecole.logo.slice(ecole.logo.indexOf(",") + 1) }, is_demo: demo, created_by: profile.id, updated_by: profile.id }).select("id").single();
+        logoId = f?.id ?? null;
+      }
+      const d = ecoleDefaults(ecole.name, ecole.school_type as SchoolType);
+      const termLabel = ecole.terms === 2 ? "Semestre" : ecole.terms === 3 ? "Trimestre" : "Période";
+      const base = { ...d, system: ecole.system, system_note: ecole.system_note, students_count: ecole.students_count, teachers_count: ecole.teachers_count, classes_count: ecole.classes_count, terms: ecole.terms, term_label: termLabel, scale: ecole.scale, pass_mark: ecole.pass_mark, mentions: defaultMentions(ecole.scale, ecole.pass_mark), needs: ecole.needs, address: ecole.address, phone: ecole.phone, currency: ecole.currency, logo_id: logoId };
+      const rows: { entity: string; data: object }[] = [
+        { entity: ecoleKey("settings"), data: base },
+        { entity: ecoleKey("year"), data: { name: `${ecole.year_start}-${ecole.year_start + 1}`, start: `${ecole.year_start}-09-01`, end: `${ecole.year_start + 1}-06-30`, current: true } },
+        ...(ecole.levels.length ? ecole.levels : DEFAULT_LEVELS[ecole.school_type as SchoolType]).map((name, i) => ({ entity: ecoleKey("level"), data: { name, order: i + 1 } })),
+      ];
+      await db.from("records").insert(rows.map((r) => ({ project_id: project.id, entity: r.entity, data: r.data, is_demo: demo, created_by: profile.id, updated_by: profile.id })));
+    }
+  }
   if (transport) {
     for (const demo of [false, true]) {
       let logoId: string | null = null;

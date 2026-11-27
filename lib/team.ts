@@ -9,7 +9,7 @@
 
 import type { Role } from "./spec";
 
-export type Sector = "restaurant" | "hotel" | "garage" | "shop" | "bureau" | "transport" | "autre";
+export type Sector = "restaurant" | "hotel" | "garage" | "shop" | "bureau" | "transport" | "ecole" | "autre";
 
 /** Permissions : une par grande fonction de l'entreprise. */
 export const PERMISSIONS = {
@@ -43,6 +43,14 @@ export const PERMISSIONS = {
   livreurs: { label: "Livreurs", hint: "Profils, disponibilités, zones, performances" },
   vehicules: { label: "Véhicules", hint: "Motos, voitures, camions, entretien, carburant" },
   missions: { label: "Mes missions (livreur)", hint: "Voir et mettre à jour ses propres missions de livraison" },
+  eleves: { label: "Élèves et inscriptions", hint: "Inscrire les élèves, fiches élèves, parents et tuteurs" },
+  enseignants: { label: "Enseignants", hint: "Fiches des enseignants et affectations" },
+  classes: { label: "Classes et matières", hint: "Années scolaires, niveaux, classes, matières, coefficients" },
+  notes: { label: "Notes et évaluations", hint: "Créer des évaluations et saisir les notes (un enseignant ne voit que ses classes)" },
+  bulletins: { label: "Bulletins et classements", hint: "Moyennes, rangs, bulletins PDF" },
+  presences: { label: "Présences", hint: "Appel, absences et retards" },
+  annonces: { label: "Annonces", hint: "Annonces de l'école pour les parents, enseignants et le personnel" },
+  espace_parent: { label: "Espace parent", hint: "Consulter les notes, bulletins, absences et paiements de ses propres enfants" },
   equipe: { label: "Gestion des équipes", hint: "Inviter, modifier, suspendre des employés" },
 } as const;
 export type Permission = keyof typeof PERMISSIONS;
@@ -56,6 +64,7 @@ export const SECTOR_PERMISSIONS: Record<Sector, Permission[]> = {
   shop: ["caisse", "stock", "commandes", "clients", "achats", "remises", "rapports", "finances", "parametres", "equipe"],
   bureau: ["clients", "projets", "agenda", "documents", "finances", "personnel", "equipements", "metier", "rapports", "parametres", "equipe"],
   transport: ["livraisons", "livreurs", "vehicules", "missions", "rapports", "finances", "parametres", "equipe"],
+  ecole: ["eleves", "enseignants", "classes", "notes", "bulletins", "presences", "finances", "annonces", "espace_parent", "rapports", "parametres", "equipe"],
   autre: ["donnees", "rapports", "finances", "personnel", "parametres", "equipe"],
 };
 
@@ -108,6 +117,14 @@ export const POSITIONS: Record<Sector, Position[]> = {
     { key: "livreur", label: "Livreur", role: "employee", permissions: ["missions"] },
     { key: "comptable", label: "Comptable", role: "employee", permissions: ["finances", "rapports"] },
   ],
+  ecole: [
+    { key: "directeur", label: "Directeur", role: "manager", permissions: [] },
+    { key: "administrateur", label: "Administrateur", role: "admin", permissions: [] },
+    { key: "secretaire", label: "Secrétaire", role: "employee", permissions: ["eleves", "classes", "presences", "annonces", "bulletins", "rapports"] },
+    { key: "comptable", label: "Comptable", role: "employee", permissions: ["finances", "rapports"] },
+    { key: "enseignant", label: "Enseignant", role: "employee", permissions: ["notes", "presences", "bulletins"] },
+    { key: "parent", label: "Parent", role: "viewer", permissions: ["espace_parent"] },
+  ],
   autre: [
     { key: "administrateur", label: "Administrateur", role: "admin", permissions: [] },
     { key: "responsable", label: "Responsable", role: "manager", permissions: [] },
@@ -120,6 +137,7 @@ export function sectorOf(layout: string | null | undefined, module?: string | nu
   if (module === "shop") return "shop";
   if (module === "bureau") return "bureau";
   if (module === "transport") return "transport";
+  if (module === "ecole") return "ecole";
   return layout === "restaurant" || layout === "hotel" || layout === "garage" ? layout : "autre";
 }
 

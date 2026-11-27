@@ -112,7 +112,7 @@ export function NotificationBell() {
         {unread > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">{unread > 9 ? "9+" : unread}</span>}
       </button>
       {open && (
-        <div className="absolute right-0 top-12 z-[60] w-[min(92vw,380px)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg" style={{ animation: "pop-in 0.18s ease-out" }}>
+        <div className="fixed inset-x-3 top-[4.5rem] z-[60] overflow-hidden sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-[380px] rounded-2xl border border-slate-200 bg-white shadow-lg" style={{ animation: "pop-in 0.18s ease-out" }}>
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
             <p className="font-semibold text-slate-900">Notifications</p>
             <span className="flex gap-3">

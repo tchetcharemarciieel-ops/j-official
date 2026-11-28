@@ -7,6 +7,7 @@ import { can, readonlyFields } from "@/lib/permissions";
 import { api, ApiError } from "@/lib/fetcher";
 import { initials, interactionsFor, moduleStats, relatedFields, statusField, statusTone, type Stat } from "@/lib/crm";
 import { ago } from "@/lib/dashboard-stats";
+import { kindOf } from "@/lib/module-kinds";
 import type { AppSpec, Entity, Field, Role } from "@/lib/spec";
 import { RecordForm } from "./RecordForm";
 import type { Rec, useAppData } from "./useAppData";
@@ -22,6 +23,8 @@ export function EntityView({ spec, entity, role, data, notify, openRecordId, sta
   const [confirmDelete, setConfirmDelete] = useState<Rec | null>(null);
   const [detail, setDetail] = useState<Rec | null>(null);
   const [limit, setLimit] = useState(50);
+  const [chip, setChip] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
   // Fiche demandée depuis l'espace de travail : ouverte dès que les données sont chargées.
   const [opened, setOpened] = useState(false);
   useEffect(() => {
@@ -39,6 +42,8 @@ export function EntityView({ spec, entity, role, data, notify, openRecordId, sta
   const columns = entity.fields.filter((f) => f.showInTable);
   const filterable = entity.fields.filter((f) => f.type === "select" || f.type === "boolean");
   const ro = readonlyFields(entity, role);
+  const kind = useMemo(() => kindOf(entity), [entity]);
+  const activeChip = kind?.chips.find((c) => c.id === chip) ?? null;
   const canCreate = can(entity, role, "create");
   const canUpdate = can(entity, role, "update");
   const canDelete = can(entity, role, "delete");
@@ -66,6 +71,7 @@ export function EntityView({ spec, entity, role, data, notify, openRecordId, sta
     let list = rows.filter((r) => {
       if (needle && !entity.fields.some((f) => String(r.data[f.key] ?? "").toLowerCase().includes(needle))) return false;
       for (const [k, v] of Object.entries(filters)) if (v && String(r.data[k] ?? "") !== v) return false;
+      if (activeChip && !activeChip.test({ id: r.id, data: r.data, created_at: r.created_at }, new Date())) return false;
       return true;
     });
     if (sort) {
@@ -79,7 +85,7 @@ export function EntityView({ spec, entity, role, data, notify, openRecordId, sta
       });
     }
     return list;
-  }, [rows, q, filters, sort, entity]);
+  }, [rows, q, filters, sort, entity, activeChip]);
 
   async function save(values: Record<string, unknown>) {
     try {
@@ -126,9 +132,12 @@ export function EntityView({ spec, entity, role, data, notify, openRecordId, sta
   const sf = statusField(entity);
   const titleField = entity.fields.find((f) => f.type === "text") ?? entity.fields[0];
   const titleOf = (r: Rec) => String(r.data[titleField?.key ?? ""] ?? "").trim() || entity.label;
-  const subFields = columns.filter((c) => c.key !== titleField?.key && c.key !== sf?.key).slice(0, 2);
-  const stats = useMemo(() => moduleStats(spec, entity, rows, data.records), [spec, entity, rows, data.records]);
-  const filtersOn = Boolean(q.trim()) || Object.values(filters).some(Boolean);
+  const moneyCol = columns.find((c) => c.type === "money");
+  const subFields = columns.filter((c) => c.key !== titleField?.key && c.key !== sf?.key && c.key !== moneyCol?.key).slice(0, 2);
+  const stats = useMemo(() => (kind ? kind.stats(rows.map((r) => ({ id: r.id, data: r.data, created_at: r.created_at })), new Date()) : moduleStats(spec, entity, rows, data.records)), [kind, spec, entity, rows, data.records]);
+  const asRow = (r: Rec) => ({ id: r.id, data: r.data, created_at: r.created_at });
+  const fcfa = (x: number) => `${x.toLocaleString("fr-FR")} FCFA`;
+  const filtersOn = Boolean(q.trim()) || Object.values(filters).some(Boolean) || Boolean(chip);
   const sortable = columns.length ? columns : entity.fields.slice(0, 1);
   const TONE: Record<Stat["tone"], string> = { blue: "bg-blue-50 text-blue-700", green: "bg-emerald-50 text-emerald-700", amber: "bg-amber-50 text-amber-700", red: "bg-red-50 text-red-700", slate: "bg-slate-100 text-slate-600" };
   const BADGE = { green: "bg-emerald-50 text-emerald-700", amber: "bg-amber-50 text-amber-700", red: "bg-red-50 text-red-700", blue: "bg-blue-50 text-blue-700", slate: "bg-slate-100 text-slate-600" };
@@ -136,6 +145,11 @@ export function EntityView({ spec, entity, role, data, notify, openRecordId, sta
     const text = display(c.key, r.data[c.key]);
     if (c.type === "select" && r.data[c.key]) return <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${BADGE[statusTone(r.data[c.key])]}`}>{text}</span>;
     if (c.type === "money") return <span className="font-semibold text-slate-900">{text}</span>;
+    if (kind?.id === "stock" && c.key === "quantite") {
+      const q = Number(r.data.quantite) || 0, low = r.data.seuil === undefined || r.data.seuil === "" ? 5 : Number(r.data.seuil) || 0;
+      const pct = Math.min(100, Math.round((q / Math.max(1, low * 3)) * 100));
+      return <span className="flex items-center gap-2"><span className="w-8 font-semibold text-slate-900">{text}</span><span className="hidden h-1.5 w-20 overflow-hidden rounded-full bg-slate-100 lg:block"><span className={`block h-full rounded-full ${q <= 0 ? "bg-red-500" : q <= low ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${Math.max(q > 0 ? 6 : 0, pct)}%` }} /></span></span>;
+    }
     return text;
   };
 
@@ -186,7 +200,8 @@ export function EntityView({ spec, entity, role, data, notify, openRecordId, sta
           <label className="sr-only" htmlFor={`search-${entity.key}`}>Rechercher</label>
           <input id={`search-${entity.key}`} value={q} onChange={(e) => { setQ(e.target.value); setLimit(50); }} placeholder={`Rechercher ${entity.labelPlural.toLowerCase()}…`} className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-slate-900 placeholder:text-slate-400" />
         </div>
-        <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => setShowFilters((v) => !v)} aria-expanded={showFilters} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 lg:hidden">Filtres et tri{filtersOn ? <span className="h-2 w-2 rounded-full" style={{ background: "var(--app-primary)" }} /> : null}</button>
+        <div className={`${showFilters ? "flex" : "hidden"} flex-wrap gap-2 lg:flex`}>
           {filterable.map((f) => (
             <select key={f.key} aria-label={`Filtrer par ${f.label}`} value={filters[f.key] ?? ""} onChange={(e) => { setFilters((s) => ({ ...s, [f.key]: e.target.value })); setLimit(50); }} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700">
               <option value="">{f.label} : tous</option>
@@ -197,10 +212,21 @@ export function EntityView({ spec, entity, role, data, notify, openRecordId, sta
             <option value="">Tri : plus récents</option>
             {sortable.flatMap((c) => [<option key={`${c.key}a`} value={`${c.key}:1`}>{c.label} ↑</option>, <option key={`${c.key}d`} value={`${c.key}:-1`}>{c.label} ↓</option>])}
           </select>
-          {filtersOn && <button onClick={() => { setQ(""); setFilters({}); }} className="inline-flex items-center gap-1 rounded-xl px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-100"><X className="h-4 w-4" aria-hidden />Effacer</button>}
+          {filtersOn && <button onClick={() => { setQ(""); setFilters({}); setChip(null); }} className="inline-flex items-center gap-1 rounded-xl px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-100"><X className="h-4 w-4" aria-hidden />Effacer</button>}
         </div>
         <p className="text-sm text-slate-500 lg:ml-auto">{visible.length} sur {rows.length}</p>
       </div>
+
+      {kind && kind.chips.length > 0 && rows.length > 0 && (
+        <div className="no-print mt-3 flex flex-wrap gap-2" role="group" aria-label="Filtres rapides">
+          <button onClick={() => { setChip(null); setLimit(50); }} aria-pressed={!chip} className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${!chip ? "border-transparent text-white" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"}`} style={!chip ? { background: "var(--app-primary)" } : undefined}>Tous <span className="opacity-70">{rows.length}</span></button>
+          {kind.chips.map((c) => {
+            const count = rows.filter((r) => c.test(asRow(r), new Date())).length;
+            const on = chip === c.id;
+            return <button key={c.id} onClick={() => { setChip(on ? null : c.id); setLimit(50); }} aria-pressed={on} className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${on ? "border-transparent text-white" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"}`} style={on ? { background: "var(--app-primary)" } : undefined}>{c.label} <span className="opacity-70">{count}</span></button>;
+          })}
+        </div>
+      )}
 
       {data.loading ? (
         <div className="mt-6 space-y-2">{[0, 1, 2, 3].map((i) => <div key={i} className="h-14 animate-pulse rounded-xl bg-slate-200/70" />)}</div>
@@ -236,7 +262,7 @@ export function EntityView({ spec, entity, role, data, notify, openRecordId, sta
                     {columns.map((c, i) => (
                       <td key={c.key} className="max-w-60 truncate px-4 py-3">
                         {i === 0 ? (
-                          <span className="flex items-center gap-3"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white" style={{ background: "var(--app-primary)" }} aria-hidden>{initials(titleOf(r))}</span><span className="truncate font-medium text-slate-900">{cell(c, r)}</span></span>
+                          <span className="flex items-center gap-3">{c.key === titleField?.key ? <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white" style={{ background: "var(--app-primary)" }} aria-hidden>{initials(titleOf(r))}</span> : <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-slate-100 text-base" aria-hidden>{entity.icon}</span>}<span className="truncate font-medium text-slate-900">{cell(c, r)}</span>{kind?.badge?.(asRow(r), new Date()) && <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${BADGE[kind.badge(asRow(r), new Date())!.tone]}`}>{kind.badge(asRow(r), new Date())!.label}</span>}</span>
                         ) : cell(c, r)}
                       </td>
                     ))}
@@ -263,12 +289,16 @@ export function EntityView({ spec, entity, role, data, notify, openRecordId, sta
                     <span className="block truncate font-semibold text-slate-900">{titleOf(r)}</span>
                     <span className="block truncate text-xs text-slate-500">{subFields.map((c) => display(c.key, r.data[c.key])).filter((v) => v && v !== "—").join(" · ") || entity.label}</span>
                   </span>
-                  {sf && r.data[sf.key] ? <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${BADGE[statusTone(r.data[sf.key])]}`}>{String(r.data[sf.key])}</span> : null}
+                  <span className="flex shrink-0 flex-col items-end gap-1">
+                    {moneyCol && r.data[moneyCol.key] !== undefined && r.data[moneyCol.key] !== "" && <span className="text-sm font-bold text-slate-900">{display(moneyCol.key, r.data[moneyCol.key])}</span>}
+                    {kind?.badge?.(asRow(r), new Date()) ? <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${BADGE[kind.badge(asRow(r), new Date())!.tone]}`}>{kind.badge(asRow(r), new Date())!.label}</span> : sf && r.data[sf.key] ? <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${BADGE[statusTone(r.data[sf.key])]}`}>{String(r.data[sf.key])}</span> : null}
+                  </span>
                   <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" aria-hidden />
                 </button>
               </li>
             ))}
           </ul>
+          {kind?.footer && kind.footer(visible.map(asRow), fcfa) && <p className="no-print mt-3 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-medium text-slate-700">{kind.footer(visible.map(asRow), fcfa)}</p>}
           {visible.length > limit && <div className="no-print mt-4 text-center"><button onClick={() => setLimit((n) => n + 50)} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Afficher plus ({visible.length - limit} restants)</button></div>}
         </>
       )}

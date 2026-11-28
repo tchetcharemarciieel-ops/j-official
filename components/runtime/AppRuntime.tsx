@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, LayoutDashboard, Map as MapIcon, Menu, MessageSquare, Pencil, Settings2, Table2, TriangleAlert, Users, type LucideIcon } from "lucide-react";
+import { Building2, LayoutDashboard, Map as MapIcon, Menu, MessageSquare, Pencil, Search, Settings2, Table2, TriangleAlert, Users, type LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { can } from "@/lib/permissions";
 import { api } from "@/lib/fetcher";
@@ -9,13 +9,13 @@ import { ROLE_LABELS, type AppSpec, type Role } from "@/lib/spec";
 import type { Row } from "@/lib/stats";
 import { useToast } from "@/components/Toaster";
 import { useAppData, type DataMode, type Rec } from "./useAppData";
-import { WidgetCard } from "./Widgets";
 import { EntityView } from "./EntityView";
 import { usePrefs } from "./usePrefs";
 import { WorkspaceView } from "./workspace/WorkspaceView";
 import { NotificationBell } from "@/components/espace/NotificationBell";
 import { effectiveWorkspace } from "@/lib/workspace";
-import { dashboardFor, sortWidgets } from "@/lib/auto-dashboard";
+import { globalSearch } from "@/lib/dashboard-stats";
+import { Dashboard2D } from "./Dashboard2D";
 import { SlidingNotch, SlidingPill, useSlidingIndicator } from "@/components/ui/SlidingIndicator";
 import { ShopApp } from "@/components/shop/ShopApp";
 import { zoneForEntity } from "@/lib/zone-map";
@@ -60,6 +60,8 @@ function GeneratedRuntime({ projectId, spec, mode, role, perms = null, compact =
   const [page, setPage] = useState<string>(dataAllowed ? "__dashboard" : "__workspace");
   const [openRecord, setOpenRecord] = useState<string | undefined>();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [newKey, setNewKey] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
   const current = entities.find((e) => e.key === page);
   const ws = useMemo(() => effectiveWorkspace(spec), [spec]);
   const { prefs, loaded, save } = usePrefs(projectId, mode);
@@ -74,6 +76,7 @@ function GeneratedRuntime({ projectId, spec, mode, role, perms = null, compact =
   }, [loaded, prefs.view, ws.enabled, dataAllowed]);
 
   const go = (target: string, recordId?: string) => {
+    if (!(target === newKey)) setNewKey(null);
     if (target === "__dashboard" && !dataAllowed) {
       notify("error", "Le tableau de bord général ne fait pas partie de votre poste.");
       return;
@@ -118,7 +121,7 @@ function GeneratedRuntime({ projectId, spec, mode, role, perms = null, compact =
       {ws.enabled && <NavItem id="__workspace" active={page === "__workspace"} onClick={() => go("__workspace")} icon={Building2} label="Espace de travail" />}
       {dataAllowed && <NavItem id="__dashboard" active={page === "__dashboard"} onClick={() => go("__dashboard")} icon={LayoutDashboard} label="Tableau de bord" />}
       {entities.map((e) => (
-        <NavItem key={e.key} id={e.key} active={page === e.key} onClick={() => go(e.key)} icon={Table2} label={e.labelPlural} count={data.records[e.key]?.length} />
+        <NavItem key={e.key} id={e.key} active={page === e.key} onClick={() => go(e.key)} icon={Table2} emoji={e.icon} label={e.labelPlural} count={data.records[e.key]?.length} />
       ))}
       {manage && (
         <div className="mt-3 space-y-1 border-t border-slate-100 pt-3">
@@ -162,7 +165,25 @@ function GeneratedRuntime({ projectId, spec, mode, role, perms = null, compact =
             {!ws.enabled && <button className="rounded-lg border border-slate-200 px-3 py-2" onClick={() => setMenuOpen((o) => !o)} aria-expanded={menuOpen} aria-label="Menu"><Menu className="h-4 w-4" aria-hidden /></button>}
             <Brand spec={spec} small />
           </div>
-          <h1 className="hidden truncate text-sm font-medium text-slate-500 lg:block">{current ? current.labelPlural : page === "__workspace" ? "Espace de travail" : "Tableau de bord"}</h1>
+          <div className="relative hidden min-w-0 flex-1 items-center gap-4 lg:flex">
+            <h1 className="shrink-0 truncate text-sm font-semibold text-slate-700">{current ? current.labelPlural : page === "__workspace" ? "Espace de travail" : "Tableau de bord"}</h1>
+            {dataAllowed && (
+              <div className="relative w-full max-w-sm">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
+                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher dans toutes vos fiches…" aria-label="Rechercher dans toutes vos fiches" className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white" />
+                {search.trim().length >= 2 && (
+                  <div className="absolute left-0 right-0 top-11 z-40 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg" role="listbox">
+                    {globalSearch(spec, data.records as never, search, entities.map((e) => e.key)).map((r) => (
+                      <button key={`${r.entity}-${r.id}`} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-slate-50" onClick={() => { setSearch(""); goSmart(r.entity, r.id); }}>
+                        <span aria-hidden>{r.icon}</span><span className="min-w-0 flex-1"><span className="block truncate font-medium text-slate-900">{r.title}</span><span className="block truncate text-xs text-slate-500">{r.entityLabel}{r.detail ? ` · ${r.detail}` : ""}</span></span>
+                      </button>
+                    ))}
+                    {globalSearch(spec, data.records as never, search, entities.map((e) => e.key)).length === 0 && <p className="px-3 py-3 text-sm text-slate-500">Aucune fiche trouvée.</p>}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-2 text-xs">
             {manage && <a href={`/projets/${projectId}?onglet=modifier`} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-800 hover:border-slate-300"><Pencil className="h-3.5 w-3.5" aria-hidden /><span className="hidden sm:inline">Modifier mon mini-logiciel</span><span className="sm:hidden">Modifier</span></a>}
             {mode !== "live" && <span className="rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-800">Démo</span>}
@@ -186,27 +207,11 @@ function GeneratedRuntime({ projectId, spec, mode, role, perms = null, compact =
           )}
           {!data.online && <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Vous êtes hors ligne. Les nouvelles fiches seront envoyées au retour du réseau ; la modification et la suppression nécessitent Internet.</p>}
           {current ? (
-            <EntityView key={`${current.key}:${openRecord ?? ""}`} spec={spec} entity={current} role={role} data={data} notify={notify} openRecordId={openRecord} />
+            <EntityView key={`${current.key}:${openRecord ?? ""}:${newKey === current.key ? "new" : ""}`} spec={spec} entity={current} role={role} data={data} notify={notify} openRecordId={openRecord} startNew={newKey === current.key} />
           ) : page === "__workspace" && ws.enabled ? (
             <WorkspaceView projectId={projectId} spec={spec} ws={ws} mode={mode} role={role} readable={entities.map((e) => e.key)} records={data.records} loading={data.loading} reload={data.reload} prefs={prefs} savePrefs={save} onOpen={goPlan} onClassic={dataAllowed ? () => go("__dashboard") : undefined} perms={perms} command={wsCommand} />
           ) : (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-bold">{spec.name}</h2>
-                {spec.welcome && <p className="mt-1 text-sm text-slate-500">{spec.welcome}</p>}
-              </div>
-              {data.loading ? (
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-28 animate-pulse rounded-2xl bg-slate-200/70" />)}</div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-                  {sortWidgets(dashboardFor(spec))
-                    .filter((w) => entities.some((e) => e.key === w.entity))
-                    .map((w, i) => (
-                      <WidgetCard key={`${w.label}-${i}`} spec={spec} widget={w} rows={rowsFor(w.entity)} onOpen={(k) => goSmart(k)} />
-                    ))}
-                </div>
-              )}
-            </div>
+            <Dashboard2D spec={spec} readable={entities.map((e) => e.key)} records={Object.fromEntries(entities.map((e) => [e.key, rowsFor(e.key)]))} loading={data.loading} onOpen={(k, id) => goSmart(k, id)} onNew={(k) => (go(k), setNewKey(k))} canCreate={(k) => { const e = entities.find((x) => x.key === k); return Boolean(e && can(e, role, "create")); }} />
           )}
         </main>
         {panel && <StationPanel spec={spec} stations={ws.stations} target={panel} role={role} data={data} notify={notify} onClose={() => setPanel(null)} onSelect={setPanel} />}
@@ -263,10 +268,10 @@ function Brand({ spec, small }: { spec: AppSpec; small?: boolean }) {
   );
 }
 
-function NavItem({ id, active, onClick, icon: Icon, label, count }: { id: string; active: boolean; onClick: () => void; icon: LucideIcon; label: string; count?: number }) {
+function NavItem({ id, active, onClick, icon: Icon, emoji, label, count }: { id: string; active: boolean; onClick: () => void; icon: LucideIcon; emoji?: string; label: string; count?: number }) {
   return (
     <button data-tab={id} onClick={onClick} aria-current={active ? "page" : undefined} className={`relative flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm transition-colors duration-300 ${active ? "font-semibold text-white" : "text-slate-600 hover:bg-slate-100"}`}>
-      <Icon key={active ? "on" : "off"} className={`h-4 w-4 shrink-0 ${active ? "tab-pop" : "text-slate-500"}`} aria-hidden />
+      {emoji ? <span className="grid h-5 w-5 shrink-0 place-items-center text-[15px] leading-none" aria-hidden>{emoji}</span> : <Icon key={active ? "on" : "off"} className={`h-4 w-4 shrink-0 ${active ? "tab-pop" : "text-slate-500"}`} aria-hidden />}
       <span className="flex-1 truncate">{label}</span>
       {count !== undefined && <span className={`text-xs ${active ? "text-white/80" : "text-slate-600"}`}>{count}</span>}
     </button>

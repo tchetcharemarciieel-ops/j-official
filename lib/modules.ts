@@ -100,7 +100,7 @@ export const MODULES: Module[] = [
       f("quantite", "Quantité", "number"),
       f("montant", "Montant", "money", req),
       f("paiement", "Mode de paiement", "select", { options: ["Espèces", "Mobile Money", "Carte", "Crédit"] }),
-      f("client", "Client", "text", hidden),
+      f("client", "Client", "relation", { relation: "clients", showInTable: false }),
       f("remise", "Remise", "money", hidden),
       f("vendeur", "Vendu par", "text", hidden),
     ]),

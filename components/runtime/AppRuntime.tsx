@@ -15,6 +15,7 @@ import { WorkspaceView } from "./workspace/WorkspaceView";
 import { NotificationBell } from "@/components/espace/NotificationBell";
 import { effectiveWorkspace } from "@/lib/workspace";
 import { globalSearch } from "@/lib/dashboard-stats";
+import { groupEntities } from "@/lib/ui-profile";
 import { Dashboard2D } from "./Dashboard2D";
 import { SlidingNotch, SlidingPill, useSlidingIndicator } from "@/components/ui/SlidingIndicator";
 import { ShopApp } from "@/components/shop/ShopApp";
@@ -120,8 +121,13 @@ function GeneratedRuntime({ projectId, spec, mode, role, perms = null, compact =
       <SlidingPill box={navBox} animate={navAnimate} className="rounded-xl shadow-sm" style={{ background: "var(--app-primary)" }} />
       {ws.enabled && <NavItem id="__workspace" active={page === "__workspace"} onClick={() => go("__workspace")} icon={Building2} label="Espace de travail" />}
       {dataAllowed && <NavItem id="__dashboard" active={page === "__dashboard"} onClick={() => go("__dashboard")} icon={LayoutDashboard} label="Tableau de bord" />}
-      {entities.map((e) => (
-        <NavItem key={e.key} id={e.key} active={page === e.key} onClick={() => go(e.key)} icon={Table2} emoji={e.icon} label={e.labelPlural} count={data.records[e.key]?.length} />
+      {groupEntities(spec, entities).map((g, gi) => (
+        <div key={g.title || gi} className={g.title ? "pt-2" : ""}>
+          {g.title && <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">{g.title}</p>}
+          {g.entities.map((e) => (
+            <NavItem key={e.key} id={e.key} active={page === e.key} onClick={() => go(e.key)} icon={Table2} emoji={e.icon} label={e.labelPlural} count={data.records[e.key]?.length} />
+          ))}
+        </div>
       ))}
       {manage && (
         <div className="mt-3 space-y-1 border-t border-slate-100 pt-3">
@@ -198,7 +204,7 @@ function GeneratedRuntime({ projectId, spec, mode, role, perms = null, compact =
         </header>
         {menuOpen && !ws.enabled && <div className="no-print border-b border-slate-200 bg-white p-3 lg:hidden">{nav}</div>}
 
-        <main className="flex-1 p-4 sm:p-6">
+        <main className="flex-1 p-4 pb-32 sm:p-6 sm:pb-32 lg:pb-6">
           {data.error && (
             <div role="alert" className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {data.error}
@@ -207,7 +213,7 @@ function GeneratedRuntime({ projectId, spec, mode, role, perms = null, compact =
           )}
           {!data.online && <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Vous êtes hors ligne. Les nouvelles fiches seront envoyées au retour du réseau ; la modification et la suppression nécessitent Internet.</p>}
           {current ? (
-            <EntityView key={`${current.key}:${openRecord ?? ""}:${newKey === current.key ? "new" : ""}`} spec={spec} entity={current} role={role} data={data} notify={notify} openRecordId={openRecord} startNew={newKey === current.key} />
+            <EntityView key={`${current.key}:${openRecord ?? ""}:${newKey === current.key ? "new" : ""}`} spec={spec} entity={current} role={role} data={data} notify={notify} openRecordId={openRecord} startNew={newKey === current.key} projectId={projectId} mode={mode} />
           ) : page === "__workspace" && ws.enabled ? (
             <WorkspaceView projectId={projectId} spec={spec} ws={ws} mode={mode} role={role} readable={entities.map((e) => e.key)} records={data.records} loading={data.loading} reload={data.reload} prefs={prefs} savePrefs={save} onOpen={goPlan} onClassic={dataAllowed ? () => go("__dashboard") : undefined} perms={perms} command={wsCommand} />
           ) : (

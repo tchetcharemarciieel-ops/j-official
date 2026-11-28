@@ -4,6 +4,7 @@ import { Activity as ActivityIcon, ArrowDownRight, ArrowUpRight, Plus, TrendingU
 import { useMemo } from "react";
 import { ago, monthTrend, recentActivity } from "@/lib/dashboard-stats";
 import { dashboardFor, sortWidgets } from "@/lib/auto-dashboard";
+import { orderEntities, profileFor } from "@/lib/ui-profile";
 import { computeWidget, type Row } from "@/lib/stats";
 import type { AppSpec, Widget } from "@/lib/spec";
 
@@ -17,7 +18,9 @@ function monthLabel(k: string) {
 
 /** Tableau de bord 2D : cartes de chiffres avec évolution réelle, courbe mensuelle, répartition, activité récente et actions rapides. */
 export function Dashboard2D({ spec, readable, records, loading, onOpen, onNew, canCreate }: { spec: AppSpec; readable: string[]; records: Record<string, Row[]>; loading: boolean; onOpen: (entity: string, id?: string) => void; onNew: (entity: string) => void; canCreate: (entity: string) => boolean }) {
-  const widgets = useMemo(() => sortWidgets(dashboardFor(spec)).filter((w) => readable.includes(w.entity)), [spec, readable]);
+  const ordered = useMemo(() => orderEntities(spec), [spec]);
+  // Les modules les plus importants pour le métier passent en premier (cartes, graphiques, actions rapides).
+  const widgets = useMemo(() => { const rank = (k: string) => ordered.findIndex((e) => e.key === k); const base = sortWidgets(dashboardFor(spec)).filter((w) => readable.includes(w.entity)); const kind = (t: string) => (t === "count" || t === "sum" ? 0 : t === "monthly" || t === "breakdown" ? 1 : 2); return [...base].sort((a, b) => kind(a.type) - kind(b.type) || rank(a.entity) - rank(b.entity)); }, [spec, readable, ordered]);
   const allNums = widgets.filter((w) => w.type === "count" || w.type === "sum");
   // Grille sans trou : 8, 4 ou 2 cartes (les autres chiffres restent dans les pages et les listes).
   const nums = allNums.slice(0, allNums.length >= 8 ? 8 : allNums.length >= 4 ? 4 : allNums.length >= 2 ? 2 : allNums.length);
@@ -25,7 +28,7 @@ export function Dashboard2D({ spec, readable, records, loading, onOpen, onNew, c
   const breaks = widgets.filter((w) => w.type === "breakdown");
   const lists = widgets.filter((w) => w.type === "recent" || w.type === "low_stock");
   const activity = useMemo(() => recentActivity(spec, records, 8).filter((a) => readable.includes(a.entity)), [spec, records, readable]);
-  const quick = spec.entities.filter((e) => readable.includes(e.key) && canCreate(e.key)).slice(0, 4);
+  const quick = ordered.filter((e) => readable.includes(e.key) && canCreate(e.key)).slice(0, 4);
   const today = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
   if (loading) return <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-28 animate-pulse rounded-2xl bg-slate-200/70" />)}</div>;
   const rows = (w: Widget) => records[w.entity] ?? [];
@@ -34,7 +37,7 @@ export function Dashboard2D({ spec, readable, records, loading, onOpen, onNew, c
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <h2 className="truncate text-xl font-bold text-slate-900 sm:text-2xl">Bonjour 👋 {spec.name}</h2>
-          <p className="mt-0.5 text-sm capitalize text-slate-500">{today}</p>
+          <p className="mt-0.5 text-sm text-slate-500"><span className="capitalize">{today}</span> · {profileFor(spec).tagline}</p>
         </div>
         {quick.length > 0 && (
           <div className="flex flex-wrap gap-2">

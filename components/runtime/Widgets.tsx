@@ -15,9 +15,9 @@ export function WidgetCard({ spec, widget, rows, onOpen }: { spec: AppSpec; widg
   const r = computeWidget(spec, widget, rows);
   const wide = r.kind !== "number";
   return (
-    <section className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ${wide ? "sm:col-span-2" : ""}`} aria-label={widget.label}>
+    <section className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ${wide ? "col-span-2" : ""}`} aria-label={widget.label}>
       <h3 className="text-sm font-medium text-slate-500">{widget.label}</h3>
-      {r.kind === "number" && <p className="mt-2 text-2xl font-bold text-slate-900">{fmt(r.value, r.unit)}</p>}
+      {r.kind === "number" && <p className="mt-2 text-xl font-bold text-slate-900 sm:text-2xl">{fmt(r.value, r.unit)}</p>}
       {r.kind === "series" &&
         (r.points.length === 0 ? (
           <p className="mt-3 text-sm text-slate-600">Pas encore de données.</p>

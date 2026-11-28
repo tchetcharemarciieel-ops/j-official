@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, LayoutDashboard, Map as MapIcon, Menu, MessageSquare, Settings2, Table2, TriangleAlert, type LucideIcon } from "lucide-react";
+import { Building2, LayoutDashboard, Map as MapIcon, Menu, MessageSquare, Pencil, Settings2, Table2, TriangleAlert, Users, type LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { can } from "@/lib/permissions";
 import { api } from "@/lib/fetcher";
@@ -15,6 +15,7 @@ import { usePrefs } from "./usePrefs";
 import { WorkspaceView } from "./workspace/WorkspaceView";
 import { NotificationBell } from "@/components/espace/NotificationBell";
 import { effectiveWorkspace } from "@/lib/workspace";
+import { dashboardFor, sortWidgets } from "@/lib/auto-dashboard";
 import { SlidingNotch, SlidingPill, useSlidingIndicator } from "@/components/ui/SlidingIndicator";
 import { ShopApp } from "@/components/shop/ShopApp";
 import { zoneForEntity } from "@/lib/zone-map";
@@ -68,7 +69,8 @@ function GeneratedRuntime({ projectId, spec, mode, role, perms = null, compact =
   useEffect(() => {
     if (!loaded || initial.current) return;
     initial.current = true;
-    if (ws.enabled && (prefs.view !== "classic" || !dataAllowed)) setPage("__workspace");
+    // Interface 2D par défaut ; l'ancien plan n'ouvre que pour ceux qui l'avaient choisi, ou si leur poste n'a pas d'autre écran.
+    if (ws.enabled && (prefs.view === "workspace" || !dataAllowed)) setPage("__workspace");
   }, [loaded, prefs.view, ws.enabled, dataAllowed]);
 
   const go = (target: string, recordId?: string) => {
@@ -107,6 +109,8 @@ function GeneratedRuntime({ projectId, spec, mode, role, perms = null, compact =
   const rowsFor = (key: string): Row[] => (data.records[key] ?? []).map((r) => ({ id: r.id, data: r.data, created_at: r.created_at }));
   const style = useMemo(() => ({ "--app-primary": spec.theme.primary, "--app-accent": spec.theme.accent }) as React.CSSProperties, [spec.theme]);
 
+  // Propriétaire ou administrateur d'un logiciel publié ou en aperçu (pas dans la démo locale ni dans l'aperçu intégré) : accès réels à la gestion.
+  const manage = !compact && mode !== "local" && (role === "owner" || role === "admin");
   const { ref: navRef, box: navBox, animate: navAnimate } = useSlidingIndicator<HTMLElement>(page);
   const nav = (
     <nav ref={navRef} aria-label={`Menu de ${spec.name}`} className="relative space-y-1">
@@ -116,6 +120,12 @@ function GeneratedRuntime({ projectId, spec, mode, role, perms = null, compact =
       {entities.map((e) => (
         <NavItem key={e.key} id={e.key} active={page === e.key} onClick={() => go(e.key)} icon={Table2} label={e.labelPlural} count={data.records[e.key]?.length} />
       ))}
+      {manage && (
+        <div className="mt-3 space-y-1 border-t border-slate-100 pt-3">
+          <a href={`/projets/${projectId}?onglet=equipe`} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-100"><Users className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />Utilisateurs et accès</a>
+          <a href={`/projets/${projectId}?onglet=parametres`} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-100"><Settings2 className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />Paramètres</a>
+        </div>
+      )}
     </nav>
   );
 
@@ -154,6 +164,7 @@ function GeneratedRuntime({ projectId, spec, mode, role, perms = null, compact =
           </div>
           <h1 className="hidden truncate text-sm font-medium text-slate-500 lg:block">{current ? current.labelPlural : page === "__workspace" ? "Espace de travail" : "Tableau de bord"}</h1>
           <div className="flex items-center gap-2 text-xs">
+            {manage && <a href={`/projets/${projectId}?onglet=modifier`} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-800 hover:border-slate-300"><Pencil className="h-3.5 w-3.5" aria-hidden /><span className="hidden sm:inline">Modifier mon mini-logiciel</span><span className="sm:hidden">Modifier</span></a>}
             {mode !== "live" && <span className="rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-800">Démo</span>}
             {mode === "live" && !compact && <NotificationBell />}
             {data.pending > 0 && <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-800">{data.pending} en attente d&apos;envoi</span>}
@@ -187,8 +198,8 @@ function GeneratedRuntime({ projectId, spec, mode, role, perms = null, compact =
               {data.loading ? (
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-28 animate-pulse rounded-2xl bg-slate-200/70" />)}</div>
               ) : (
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  {spec.dashboard
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+                  {sortWidgets(dashboardFor(spec))
                     .filter((w) => entities.some((e) => e.key === w.entity))
                     .map((w, i) => (
                       <WidgetCard key={`${w.label}-${i}`} spec={spec} widget={w} rows={rowsFor(w.entity)} onOpen={(k) => goSmart(k)} />

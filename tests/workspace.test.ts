@@ -5,9 +5,21 @@ import { assignCrew, buildWorkspace, effectiveWorkspace, layoutForSector, placeS
 import { autoFix, runChecks } from "@/lib/checks";
 import type { Row } from "@/lib/stats";
 
-const spec = (id: string): AppSpec => TEMPLATES.find((t) => t.id === id)!.build();
+/** Logiciel « ancien » avec son plan 3D : les nouveaux logiciels n'en reçoivent plus (voir le test ci-dessous), mais les existants continuent de fonctionner. */
+const spec = (id: string): AppSpec => {
+  const s = TEMPLATES.find((t) => t.id === id)!.build();
+  return { ...s, workspace: buildWorkspace(s) };
+};
 
 describe("espace de travail 3D", () => {
+  it("les nouveaux logiciels générés n'ont plus de plan 3D (interface 2D)", () => {
+    for (const t of TEMPLATES) {
+      const w = t.build().workspace;
+      expect(w?.enabled).toBe(false);
+      expect(w?.stations).toHaveLength(0);
+    }
+  });
+
   it("restaurant : cuisine, réserve, caisse et statistiques, tous reliés à de vrais modules", () => {
     const s = spec("restaurant");
     const ws = s.workspace!;

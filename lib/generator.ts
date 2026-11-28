@@ -230,7 +230,8 @@ export function composeSpec(diagnosis: Diagnosis): AppSpec {
     dashboard: validWidgets.slice(0, 12),
     automations: [],
     features: { csvExport: true, pdfExport: true, dataAssistant: true },
-    // Bureau virtuel adapté au métier, chaque poste relié à un module du logiciel.
-    workspace: buildWorkspace({ sector: `${diagnosis.sector} ${diagnosis.sectorLabel}`, entities }),
+    // Interface 2D de gestion (tableau de bord, menu, tableaux) : aucun plan 3D n'est généré. La disposition est
+    // conservée, désactivée, pour que les logiciels existants et l'espace de travail restent cohérents.
+    workspace: { ...buildWorkspace({ sector: `${diagnosis.sector} ${diagnosis.sectorLabel}`, entities }), enabled: false, stations: [] },
   });
 }

@@ -457,3 +457,71 @@ select.input option {
 .bu-dark .text-blue-800 { color: #93c5fd !important; }
 .bu-dark .shadow-sm, .bu-dark .shadow { box-shadow: none !important; }
 .bu-dark .bg-slate-900\/40 { background-color: rgba(2, 6, 14, 0.7) !important; }
+
+/* ===== Page d'accueil : animations (désactivées si l'utilisateur préfère réduire les animations) ===== */
+.landing .btn { position: relative; overflow: hidden; transition: transform 0.2s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.2s ease, background-color 0.15s ease, border-color 0.15s ease, filter 0.15s ease; }
+.landing .btn:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 10px 22px -10px rgba(15, 23, 42, 0.35); }
+.landing .btn:not(:disabled):active { transform: translateY(0) scale(0.97); box-shadow: none; }
+.landing .btn svg { transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.landing .btn:hover svg { transform: translateX(3px); }
+.landing .btn-primary::after { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.35) 50%, transparent 70%); transform: translateX(-120%); }
+.landing .btn-primary:hover::after { transform: translateX(120%); transition: transform 0.7s ease; }
+.landing .btn-cta { animation: cta-ring 2.6s ease-out infinite; }
+@keyframes cta-ring { 0% { box-shadow: 0 0 0 0 rgba(4, 120, 87, 0.45); } 70% { box-shadow: 0 0 0 16px rgba(4, 120, 87, 0); } 100% { box-shadow: 0 0 0 0 rgba(4, 120, 87, 0); } }
+
+.landing .lift { transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.3s ease, border-color 0.3s ease; }
+.landing .lift:hover { transform: translateY(-5px); box-shadow: 0 18px 36px -18px rgba(37, 99, 235, 0.35); border-color: #bfdbfe; }
+.landing .lift .icon-pop { transition: transform 0.35s cubic-bezier(0.3, 1.6, 0.5, 1), background-color 0.3s ease, color 0.3s ease; }
+.landing .lift:hover .icon-pop { transform: scale(1.15) rotate(-6deg); background-color: #2563eb; color: #ffffff; }
+
+/* Apparitions au défilement : directions variées */
+.reveal-left { transform: translateX(-28px); }
+.reveal-right { transform: translateX(28px); }
+.reveal-zoom { transform: scale(0.94); }
+.reveal-fade { transform: none; }
+.reveal.is-visible.reveal-left, .reveal.is-visible.reveal-right, .reveal.is-visible.reveal-zoom { transform: none; }
+
+/* Fond d'ouverture qui respire, formes flottantes */
+.hero-glow { background: linear-gradient(120deg, #eef2ff, #ffffff 40%, #ecfdf5 70%, #eef2ff); background-size: 220% 220%; animation: hero-shift 14s ease-in-out infinite; }
+@keyframes hero-shift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+.blob { animation: blob 9s ease-in-out infinite; }
+.blob-b { animation-delay: -4s; animation-duration: 12s; }
+@keyframes blob { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(24px, -18px) scale(1.08); } 66% { transform: translate(-16px, 14px) scale(0.95); } }
+
+/* Mot mis en valeur : soulignement qui se dessine */
+.underline-draw { background: linear-gradient(#10b981, #10b981) no-repeat 0 100% / 0% 0.18em; animation: underline-draw 0.9s 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) forwards; }
+@keyframes underline-draw { to { background-size: 100% 0.18em; } }
+
+/* Bandeau défilant des métiers */
+.marquee { display: flex; width: max-content; animation: marquee 38s linear infinite; }
+.marquee:hover { animation-play-state: paused; }
+@keyframes marquee { to { transform: translateX(-50%); } }
+
+/* Barre de progression de lecture de la page */
+.scroll-progress { position: fixed; inset: 0 0 auto 0; height: 3px; z-index: 100; transform-origin: left; transform: scaleX(0); background: linear-gradient(90deg, #2563eb, #10b981); }
+
+/* Éléments d'aperçu qui se construisent à l'apparition */
+.grow-bar { transform-origin: bottom; transform: scaleY(0); transition: transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.in-view .grow-bar { transform: scaleY(1); }
+.draw-path { stroke-dasharray: 400; stroke-dashoffset: 400; transition: stroke-dashoffset 1.6s ease 0.2s; }
+.in-view .draw-path { stroke-dashoffset: 0; }
+.donut-seg { transition: stroke-dasharray 1.2s cubic-bezier(0.2, 0.7, 0.2, 1) 0.2s; }
+
+/* Pastille « nouveau » qui brille */
+.badge-shine { position: relative; overflow: hidden; }
+.badge-shine::after { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.6) 50%, transparent 70%); transform: translateX(-120%); animation: badge-shine 3.2s ease-in-out infinite; }
+@keyframes badge-shine { 0%, 60% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+
+/* Réponse de la FAQ qui se déplie en douceur */
+.landing details[open] > .faq-answer { animation: fade-up 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .landing .btn, .landing .btn svg, .landing .lift, .landing .lift .icon-pop { transition: none; }
+  .landing .btn:hover, .landing .lift:hover, .landing .lift:hover .icon-pop, .landing .btn:hover svg { transform: none; }
+  .landing .btn-cta, .hero-glow, .blob, .marquee, .badge-shine::after, .landing details[open] > .faq-answer { animation: none; }
+  .underline-draw { animation: none; background-size: 100% 0.18em; }
+  .reveal-left, .reveal-right, .reveal-zoom { transform: none; }
+  .grow-bar { transform: none; transition: none; }
+  .draw-path { stroke-dashoffset: 0; transition: none; }
+  .scroll-progress { display: none; }
+}
